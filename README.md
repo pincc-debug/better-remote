@@ -28,3 +28,13 @@
 ## 系统要求
 
 macOS（Apple 芯片或 Intel）。
+
+## 交流反馈
+
+扫码加入体验反馈群：
+
+<img src="images/group-qr.png" alt="体验反馈群二维码" width="240">
+
+群二维码 7 天有效，如果已过期，请扫下面的二维码加我微信，我拉你进群：
+
+<img src="images/wechat-qr.jpg" alt="个人微信二维码" width="240">
