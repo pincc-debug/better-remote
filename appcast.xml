@@ -5,6 +5,15 @@
     <language>zh-CN</language>
 <!-- ITEMS -->
     <item>
+      <title>0.8.116</title>
+      <pubDate>Tue, 13 Oct 2026 07:11:15 +0000</pubDate>
+      <sparkle:version>134</sparkle:version>
+      <sparkle:shortVersionString>0.8.116</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<h3>0.8.116 更新内容</h3><ul><li>优化操作体验，使用更流畅。</li></ul>]]></description>
+      <enclosure url="https://github.com/pincc-debug/better-remote-releases/releases/download/v0.8.116/Better-Remote-0.8.116.dmg" type="application/octet-stream" sparkle:edSignature="oTFLU129okBY20NgS0JvhQLl3cYiui5HxHMJR5+DBz0mPnAS57228gHg2a2ZmUbJQMSgXd7JAMkHI8vsuV5WDA==" length="7402950" />
+    </item>
+    <item>
       <title>0.8.115</title>
       <pubDate>Tue, 13 Oct 2026 05:19:58 +0000</pubDate>
       <sparkle:version>133</sparkle:version>
