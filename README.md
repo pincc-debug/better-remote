@@ -47,7 +47,7 @@
 
 ## 💬 加入交流群
 
-扫码加入体验反馈群。群二维码 7 天有效，如果已过期，请扫码加我微信，我拉你进群：
+扫码加入体验反馈群。群二维码 7 天有效，如果已过期，请扫码加开发者微信，我拉你进群：
 
 <div align="center">
 <table>
@@ -59,8 +59,8 @@
 </td>
 <td align="center" width="260" valign="top">
   <br>
-  <img src="images/wechat-qr.jpg" alt="个人微信二维码" width="200">
-  <p><strong>个人微信</strong></p>
+  <img src="images/wechat-qr.jpg" alt="开发者微信二维码" width="200">
+  <p><strong>开发者微信</strong></p>
 </td>
 </tr>
 </table>
