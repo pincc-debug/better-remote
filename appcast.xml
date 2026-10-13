@@ -5,6 +5,15 @@
     <language>zh-CN</language>
 <!-- ITEMS -->
     <item>
+      <title>0.8.117</title>
+      <pubDate>Tue, 13 Oct 2026 08:52:26 +0000</pubDate>
+      <sparkle:version>135</sparkle:version>
+      <sparkle:shortVersionString>0.8.117</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<h3>0.8.117 更新内容</h3><ul><li>适配新版远程软件：连接后分辨率能自动切到适合手机的大小，单指滑动也恢复正常。旧版不受影响。</li><li>原因：新版远程软件连接时发出的信号换了叫法，之前的版本只认旧的，所以没察觉到已经连上，自动切换和滑动也就没启动。</li></ul>]]></description>
+      <enclosure url="https://github.com/pincc-debug/better-remote-releases/releases/download/v0.8.117/Better-Remote-0.8.117.dmg" type="application/octet-stream" sparkle:edSignature="pnxXZxE/QvX3xt7wmbIBP0nI88cWfteSJYrNVxr/THsTo6l7TdO8usPyK3wsTt9CDt/yTgVHoRdqINUMsurZAQ==" length="7405459" />
+    </item>
+    <item>
       <title>0.8.116</title>
       <pubDate>Tue, 13 Oct 2026 07:11:15 +0000</pubDate>
       <sparkle:version>134</sparkle:version>
