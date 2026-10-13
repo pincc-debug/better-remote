@@ -19,7 +19,7 @@
 
 ## 下载
 
-当前版本：0.8.114
+当前版本：0.8.115
 
 - 直接下载：[Better-Remote.dmg](https://github.com/pincc-debug/better-remote-releases/releases/latest/download/Better-Remote.dmg)
 - 或前往 [Releases](../../releases/latest) 查看所有版本

@@ -5,6 +5,15 @@
     <language>zh-CN</language>
 <!-- ITEMS -->
     <item>
+      <title>0.8.115</title>
+      <pubDate>Tue, 13 Oct 2026 05:19:58 +0000</pubDate>
+      <sparkle:version>133</sparkle:version>
+      <sparkle:shortVersionString>0.8.115</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<h3>0.8.115 更新内容</h3><ul><li>移除「常规」里的「自动检查更新」开关和「立即检查」按钮；自动检查改为固定行为，每 3 小时检查一次，有新版本时提示安装。</li><li>菜单栏菜单里的「检查更新…」保留，可随时手动检查。</li><li>编辑快捷操作的弹窗：标题栏和底部按钮固定，只有中间内容滚动，不再被窗口上下边缘截断；右上角新增关闭按钮，按 Esc 或「取消」放弃修改。</li><li>修复切换分辨率或「还原本机」后，悬浮球和工具条没有重新贴到屏幕右侧边缘的问题。</li></ul>]]></description>
+      <enclosure url="https://github.com/pincc-debug/better-remote-releases/releases/download/v0.8.115/Better-Remote-0.8.115.dmg" type="application/octet-stream" sparkle:edSignature="9BZslu7GS0U0z+Bzpv14pATCDwLsYm/ypQ/lTJBiFgNJbopaU9+mhZ4N6HWakBnw+PsFTOPbzXoR3v9m8n71BA==" length="7377595" />
+    </item>
+    <item>
       <title>0.8.114</title>
       <pubDate>Tue, 13 Oct 2026 04:50:48 +0000</pubDate>
       <sparkle:version>132</sparkle:version>
@@ -12,24 +21,6 @@
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
       <description><![CDATA[<h3>0.8.114 更新内容</h3><ul><li>启动时自动打开并前置设置窗口；开机自动启动时保持安静，只在缺少辅助功能权限时才打开。</li><li>缺少权限的提示从「快捷操作」页移到设置左侧菜单底部、版本号上方，仅在未授权时显示，点按即可前往授权。</li><li>新安装默认使用深色主题；已保存的主题设置保持不变，仍可在「常规」里切换。</li></ul>]]></description>
       <enclosure url="https://github.com/pincc-debug/better-remote-releases/releases/download/v0.8.114/Better-Remote-0.8.114.dmg" type="application/octet-stream" sparkle:edSignature="J22GOXs8MEkcl2ZliLhHRPgaahGscAjQVU145lz1POdMqRqvtQlgQjF7rCpIwuc2KtnuZnNYpgwD1ERxaCdhAA==" length="7382475" />
-    </item>
-    <item>
-      <title>0.8.113</title>
-      <pubDate>Tue, 13 Oct 2026 04:40:25 +0000</pubDate>
-      <sparkle:version>131</sparkle:version>
-      <sparkle:shortVersionString>0.8.113</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <description><![CDATA[<h3>0.8.113 更新内容</h3><ul><li>安装包打开后显示设计过的安装窗口：柔和渐变背景与箭头指引，把应用拖到右侧「应用程序」文件夹即可安装。</li></ul>]]></description>
-      <enclosure url="https://github.com/pincc-debug/better-remote-releases/releases/download/v0.8.113/Better-Remote-0.8.113.dmg" type="application/octet-stream" sparkle:edSignature="Fx05PIUS0f/22W7o15I1YKrGUFSnvIzMuLJGjZ6Mk1ewfz+hr3gh8FBV1L7ntZXvC8ZBd9uiyDeNFb/BL6drBg==" length="7373586" />
-    </item>
-    <item>
-      <title>0.8.112</title>
-      <pubDate>Tue, 13 Oct 2026 04:06:58 +0000</pubDate>
-      <sparkle:version>130</sparkle:version>
-      <sparkle:shortVersionString>0.8.112</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <description><![CDATA[<h3>0.8.112 更新内容</h3><ul><li>新增自动更新：菜单栏菜单加入「检查更新…」，设置「常规」里可开关「自动检查更新」（默认开启，每天检查一次，有新版本时提示安装）。</li><li>安装包使用开发者证书签名并经过苹果公证，下载后可直接打开，无需再手动放行。</li></ul>]]></description>
-      <enclosure url="https://github.com/pincc-debug/better-remote-releases/releases/download/v0.8.112/Better-Remote-0.8.112.dmg" type="application/octet-stream" sparkle:edSignature="fbW/73gOByzwYrLqUQgdXlxt0rVz5r+xmvxVGKOkVjPtzZ+zzJ8atRdlMtT0Ic+FcLq5U7HEIyefLdMxqgZjCA==" length="7568524" />
     </item>
   </channel>
 </rss>
