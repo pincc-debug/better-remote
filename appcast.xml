@@ -5,6 +5,15 @@
     <language>zh-CN</language>
 <!-- ITEMS -->
     <item>
+      <title>0.8.121</title>
+      <pubDate>Tue, 13 Oct 2026 15:31:20 +0000</pubDate>
+      <sparkle:version>139</sparkle:version>
+      <sparkle:shortVersionString>0.8.121</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<h3>0.8.121 更新内容</h3><ul><li>修复 Mac mini 显示器熄屏后无法调整分辨率和显示大小的问题。</li></ul>]]></description>
+      <enclosure url="https://github.com/pincc-debug/better-remote-releases/releases/download/v0.8.121/Better-Remote-0.8.121.dmg" type="application/octet-stream" sparkle:edSignature="SrxR1iL9b0+7nmWWPyye4caAMUjcqN4TrV7g8nMmKbngog8HdAWcXyUyQ7FLle9FYAXGG5HnvWri/gq+4mKlCQ==" length="7457432" />
+    </item>
+    <item>
       <title>0.8.120</title>
       <pubDate>Tue, 13 Oct 2026 14:44:25 +0000</pubDate>
       <sparkle:version>138</sparkle:version>
