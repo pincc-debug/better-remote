@@ -50,6 +50,18 @@
 
 ---
 
+## 🎬 快速讲解
+
+原作者演示 Better Remote 怎么用（约 46 秒）：
+
+<div align="center">
+<video src="media/walkthrough.mp4" controls width="720" poster="media/walkthrough-poster.jpg"></video>
+</div>
+
+<p align="center"><a href="media/walkthrough.mp4">下载 / 打开视频</a></p>
+
+---
+
 ## 💬 加入交流群
 
 扫码加入体验反馈群。群二维码 7 天有效，如果已过期，请扫码加开发者微信，我拉你进群：
