@@ -52,8 +52,6 @@
 
 ## 🎬 快速讲解
 
-原作者演示 Better Remote 怎么用（约 46 秒）：
-
 https://github.com/user-attachments/assets/7c1b78d7-e8d3-4902-a371-f555cc6897a5
 
 ## 💬 加入交流群
