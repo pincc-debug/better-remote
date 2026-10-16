@@ -71,9 +71,16 @@ https://github.com/user-attachments/assets/7c1b78d7-e8d3-4902-a371-f555cc6897a5
   <img src="images/wechat-qr.jpg" alt="开发者微信二维码" width="200">
   <p><strong>开发者微信</strong></p>
 </td>
+<td align="center" width="260" valign="top">
+  <br>
+  <img src="images/reward-qr.png" alt="赞赏码" width="200">
+  <p><strong>请开发者喝杯咖啡</strong></p>
+</td>
 </tr>
 </table>
 </div>
+
+觉得好用的话，可以扫码赞赏，随意就好。
 
 ---
 
