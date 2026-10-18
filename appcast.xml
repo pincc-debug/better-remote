@@ -5,6 +5,15 @@
     <language>zh-CN</language>
 <!-- ITEMS -->
     <item>
+      <title>0.8.135</title>
+      <pubDate>Sun, 18 Oct 2026 05:22:39 +0000</pubDate>
+      <sparkle:version>153</sparkle:version>
+      <sparkle:shortVersionString>0.8.135</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<h3>0.8.135 更新内容</h3><ul><li>新增更多机型分辨率模板</li><li>工具条交互优化</li></ul>]]></description>
+      <enclosure url="https://github.com/pincc-debug/better-remote-releases/releases/download/v0.8.135/Better-Remote-0.8.135.dmg" type="application/octet-stream" sparkle:edSignature="WlRZGLh236Ks89XPvvzECg3yAqZ2hdq5oVO08FdjncgPV7HS4h/FXmOOLf5Ln7SHf92t37/3tlbVFF8nhtohBw==" length="7040396" />
+    </item>
+    <item>
       <title>0.8.134</title>
       <pubDate>Sat, 17 Oct 2026 07:52:35 +0000</pubDate>
       <sparkle:version>152</sparkle:version>
