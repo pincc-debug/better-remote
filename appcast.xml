@@ -5,6 +5,15 @@
     <language>zh-CN</language>
 <!-- ITEMS -->
     <item>
+      <title>0.8.143</title>
+      <pubDate>Mon, 19 Oct 2026 23:59:02 +0000</pubDate>
+      <sparkle:version>161</sparkle:version>
+      <sparkle:shortVersionString>0.8.143</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<h3>0.8.143 更新内容</h3><ul><li>桌面工具条改为「远程连接时显示」「未连接时显示」两个开关；工具条完全隐藏时，窗口会占回它的位置</li><li>连接自动化新增「远程时窗口自动铺满」</li><li>「连接时切换」的切换分辨率改为玻璃风格下拉菜单，支持键盘与读屏操作</li><li>展开的工具条更通透，边缘改为极细线，贴边一侧不再有描边</li><li>内置规格新增「手机横屏（保留操作栏）」1294×720 和「手机竖屏（保留操作栏）」604×1138，排在最前，画面不被远程软件的操作栏遮挡；新安装时「连接时切换」默认使用横屏这一档</li><li>规格名称不再显示比例，改为说明用途：「（保留操作栏）」画面不被操作栏遮挡，「（全屏）」铺满整个手机屏幕；已保存的规格不受影响</li></ul>]]></description>
+      <enclosure url="https://github.com/pincc-debug/better-remote-releases/releases/download/v0.8.143/Better-Remote-0.8.143.dmg" type="application/octet-stream" sparkle:edSignature="Gqvt4YDFG14bOhsLqA4H6hjAsv9GBDYwPezCdd6pw0geTADdv3Ydilh8T3e4QbL6xcMWLBSMdA25xOXCshdGAQ==" length="7246126" />
+    </item>
+    <item>
       <title>0.8.137</title>
       <pubDate>Mon, 19 Oct 2026 11:33:32 +0000</pubDate>
       <sparkle:version>155</sparkle:version>
