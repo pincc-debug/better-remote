@@ -5,6 +5,15 @@
     <language>zh-CN</language>
 <!-- ITEMS -->
     <item>
+      <title>0.8.145</title>
+      <pubDate>Tue, 20 Oct 2026 03:45:26 +0000</pubDate>
+      <sparkle:version>163</sparkle:version>
+      <sparkle:shortVersionString>0.8.145</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<h3>0.8.145 更新内容</h3><ul><li>连接自动化支持更多远程软件。</li><li>修复分辨率下拉菜单可能提前关闭的问题。</li></ul>]]></description>
+      <enclosure url="https://github.com/pincc-debug/better-remote-releases/releases/download/v0.8.145/Better-Remote-0.8.145.dmg" type="application/octet-stream" sparkle:edSignature="cGCkNxI1TgJd4kN3fDF4r9wjWCKN/JtObv9ZmE1aOaZocNKXhUWluNMQACvoa7C+XsbixqoRfinJdRT8iC2JAw==" length="7318792" />
+    </item>
+    <item>
       <title>0.8.143</title>
       <pubDate>Mon, 19 Oct 2026 23:59:02 +0000</pubDate>
       <sparkle:version>161</sparkle:version>
