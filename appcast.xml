@@ -5,6 +5,15 @@
     <language>zh-CN</language>
 <!-- ITEMS -->
     <item>
+      <title>0.8.147</title>
+      <pubDate>Tue, 20 Oct 2026 10:28:46 +0000</pubDate>
+      <sparkle:version>165</sparkle:version>
+      <sparkle:shortVersionString>0.8.147</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<h3>0.8.147 更新内容</h3><ul><li>设置窗口和弹窗在小分辨率（如手机竖屏）下自动缩小、完整显示。</li><li>设置窗口会避开侧边工具栏。</li><li>窄窗口下侧栏只显示图标。</li></ul>]]></description>
+      <enclosure url="https://github.com/pincc-debug/better-remote-releases/releases/download/v0.8.147/Better-Remote-0.8.147.dmg" type="application/octet-stream" sparkle:edSignature="U8pyusu2YqEDGM4e/xZe1ofg6TZTm0F+eluBXhKrYMGrPouEVC16+YQVEvh1BiVfxYZQaC20QZLV3X6PbfdWDg==" length="7447486" />
+    </item>
+    <item>
       <title>0.8.146</title>
       <pubDate>Tue, 20 Oct 2026 05:35:46 +0000</pubDate>
       <sparkle:version>164</sparkle:version>
