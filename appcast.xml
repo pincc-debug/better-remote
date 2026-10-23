@@ -5,6 +5,15 @@
     <language>zh-CN</language>
 <!-- ITEMS -->
     <item>
+      <title>0.8.155</title>
+      <pubDate>Fri, 23 Oct 2026 03:54:33 +0000</pubDate>
+      <sparkle:version>173</sparkle:version>
+      <sparkle:shortVersionString>0.8.155</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<h3>0.8.155 更新内容</h3><ul><li>设备识别更稳，连上即切换分辨率</li><li>断开后更快恢复原分辨率</li></ul>]]></description>
+      <enclosure url="https://github.com/pincc-debug/better-remote-releases/releases/download/v0.8.155/Better-Remote-0.8.155.dmg" type="application/octet-stream" sparkle:edSignature="CFYMnSJu5/pSx0+WEIlmkxlilZRggyJ/DeBR1SX+iqVMNS5tpk/jQx8cC6EWqWy44HeOuTe75rT3nmvtlzHmBA==" length="7633998" />
+    </item>
+    <item>
       <title>0.8.153</title>
       <pubDate>Thu, 22 Oct 2026 14:06:42 +0000</pubDate>
       <sparkle:version>171</sparkle:version>
