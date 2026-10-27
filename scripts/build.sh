@@ -31,6 +31,10 @@ cp "$BIN_DIR/BetterRemote" "$APP/Contents/MacOS/BetterRemote"
 cp "$PWD/Sources/RemoteFitCore/Resources/device-templates.json" "$APP/Contents/Resources/device-templates.json"
 cp "$PWD/Sources/RemoteFitCore/Resources/shortcut-presets.json" "$APP/Contents/Resources/shortcut-presets.json"
 cp "$PWD/THIRD_PARTY_NOTICES.md" "$APP/Contents/Resources/THIRD_PARTY_NOTICES.md"
+# Declare app localizations so Sparkle (and others) pick zh_CN / zh-Hans strings.
+mkdir -p "$APP/Contents/Resources/zh-Hans.lproj" "$APP/Contents/Resources/en.lproj"
+printf '%s\n' '/* Better Remote — declares zh-Hans localization for Sparkle UI. */' > "$APP/Contents/Resources/zh-Hans.lproj/InfoPlist.strings"
+printf '%s\n' '/* Better Remote */' > "$APP/Contents/Resources/en.lproj/InfoPlist.strings"
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -40,8 +44,14 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <key>CFBundleDisplayName</key><string>Better Remote</string>
 <key>CFBundleExecutable</key><string>BetterRemote</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.8.162</string>
-<key>CFBundleVersion</key><string>183</string>
+<key>CFBundleDevelopmentRegion</key><string>zh-Hans</string>
+<key>CFBundleLocalizations</key>
+<array>
+<string>zh-Hans</string>
+<string>en</string>
+</array>
+<key>CFBundleShortVersionString</key><string>0.8.163</string>
+<key>CFBundleVersion</key><string>184</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
 <key>LSUIElement</key><true/>
 <key>NSHighResolutionCapable</key><true/>
