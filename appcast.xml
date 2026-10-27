@@ -5,6 +5,15 @@
     <language>zh-CN</language>
 <!-- ITEMS -->
     <item>
+      <title>0.9.0</title>
+      <pubDate>Tue, 27 Oct 2026 14:56:15 +0000</pubDate>
+      <sparkle:version>192</sparkle:version>
+      <sparkle:shortVersionString>0.9.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<h3>0.9.0 更新内容</h3><ul><li>支持按设备分别设置分辨率、触控和连接自动化。</li></ul>]]></description>
+      <enclosure url="https://github.com/pincc-debug/better-remote/releases/download/v0.9.0/Better-Remote-0.9.0.dmg" type="application/octet-stream" sparkle:edSignature="MPSXq8/PUw/IYRKrI2Ojcq2FXNNsBYz5MSfIKTlKKNBK48zOR9gFmsHxsu1rvhDzIO72lKEhagSRCSyBfZj1DQ==" length="8343754" />
+    </item>
+    <item>
       <title>0.8.164</title>
       <pubDate>Tue, 27 Oct 2026 10:00:35 +0000</pubDate>
       <sparkle:version>185</sparkle:version>
