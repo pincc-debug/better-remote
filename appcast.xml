@@ -5,6 +5,15 @@
     <language>zh-CN</language>
 <!-- ITEMS -->
     <item>
+      <title>0.8.164</title>
+      <pubDate>Tue, 27 Oct 2026 10:00:35 +0000</pubDate>
+      <sparkle:version>185</sparkle:version>
+      <sparkle:shortVersionString>0.8.164</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<h3>0.8.164 更新内容</h3><ul><li>虚拟屏启动更稳，减少初始分辨率对不上</li></ul>]]></description>
+      <enclosure url="https://github.com/pincc-debug/better-remote/releases/download/v0.8.164/Better-Remote-0.8.164.dmg" type="application/octet-stream" sparkle:edSignature="DNERhYlPpGQln1KotEvAV6NousuNVnFh931r2+J7LhfHe0dY7mNpOslyJnQ1ULy73S/HWc89w+3Dz73F2zFeAA==" length="8109925" />
+    </item>
+    <item>
       <title>0.8.163</title>
       <pubDate>Tue, 27 Oct 2026 08:04:08 +0000</pubDate>
       <sparkle:version>184</sparkle:version>
