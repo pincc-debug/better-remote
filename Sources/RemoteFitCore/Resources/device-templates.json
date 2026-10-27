@@ -1,0 +1,2028 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-10-18",
+  "categories": [
+    {
+      "id": "phone",
+      "name": "手机",
+      "brands": [
+        {
+          "id": "apple",
+          "name": "Apple",
+          "models": [
+            {
+              "id": "iphone-18-pro-max",
+              "name": "iPhone 18 Pro Max",
+              "brand": "Apple",
+              "aliases": [
+                "苹果18 Pro Max"
+              ],
+              "source": "https://www.apple.com/iphone-18-pro/specs/",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1320,
+                  "height": 2868
+                }
+              ]
+            },
+            {
+              "id": "iphone-18-pro",
+              "name": "iPhone 18 Pro",
+              "brand": "Apple",
+              "aliases": [
+                "苹果18 Pro"
+              ],
+              "source": "https://www.apple.com/iphone-18-pro/specs/",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1206,
+                  "height": 2622
+                }
+              ]
+            },
+            {
+              "id": "iphone-17-pro-max",
+              "name": "iPhone 17 Pro Max",
+              "brand": "Apple",
+              "aliases": [
+                "苹果17 Pro Max"
+              ],
+              "source": "https://www.gsmarena.com/apple_iphone_17_pro_max-13964.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1320,
+                  "height": 2868
+                }
+              ]
+            },
+            {
+              "id": "iphone-17-pro",
+              "name": "iPhone 17 Pro",
+              "brand": "Apple",
+              "aliases": [
+                "苹果17 Pro"
+              ],
+              "source": "https://www.gsmarena.com/apple_iphone_17_pro-14049.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1206,
+                  "height": 2622
+                }
+              ]
+            },
+            {
+              "id": "iphone-air",
+              "name": "iPhone Air",
+              "brand": "Apple",
+              "aliases": [
+                "苹果Air"
+              ],
+              "source": "https://www.apple.com/iphone-air/specs/",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1260,
+                  "height": 2736
+                }
+              ]
+            },
+            {
+              "id": "iphone-17",
+              "name": "iPhone 17",
+              "brand": "Apple",
+              "aliases": [
+                "苹果17"
+              ],
+              "source": "https://www.apple.com/iphone-17/specs/",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1206,
+                  "height": 2622
+                }
+              ]
+            },
+            {
+              "id": "iphone-17e",
+              "name": "iPhone 17e / 16e",
+              "brand": "Apple",
+              "aliases": [
+                "苹果17e",
+                "苹果16e"
+              ],
+              "source": "https://www.gsmarena.com/apple_iphone_17e-14487.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1170,
+                  "height": 2532
+                }
+              ]
+            },
+            {
+              "id": "iphone-16-pro-max",
+              "name": "iPhone 16 Pro Max",
+              "brand": "Apple",
+              "aliases": [
+                "苹果16 Pro Max"
+              ],
+              "source": "https://support.apple.com/en-us/121032",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1320,
+                  "height": 2868
+                }
+              ]
+            },
+            {
+              "id": "iphone-16-pro",
+              "name": "iPhone 16 Pro",
+              "brand": "Apple",
+              "aliases": [
+                "苹果16 Pro"
+              ],
+              "source": "https://support.apple.com/en-us/121031",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1206,
+                  "height": 2622
+                }
+              ]
+            },
+            {
+              "id": "iphone-16",
+              "name": "iPhone 16",
+              "brand": "Apple",
+              "aliases": [
+                "苹果16"
+              ],
+              "source": "https://www.apple.com/iphone-16/specs/",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1179,
+                  "height": 2556
+                }
+              ]
+            },
+            {
+              "id": "iphone-15-pro",
+              "name": "iPhone 15 Pro",
+              "brand": "Apple",
+              "aliases": [
+                "苹果15 Pro"
+              ],
+              "source": "https://support.apple.com/en-us/111829",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1179,
+                  "height": 2556
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "honor",
+          "name": "荣耀",
+          "models": [
+            {
+              "id": "honor-magic9-pro-max",
+              "name": "荣耀 Magic9 Pro Max",
+              "brand": "荣耀",
+              "aliases": [
+                "Magic9 Pro Max",
+                "HONOR Magic9 Pro Max"
+              ],
+              "source": "https://www.gsmarena.com/honor_magic9_pro_max_5g-14940.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1320,
+                  "height": 2868
+                }
+              ]
+            },
+            {
+              "id": "honor-magic9",
+              "name": "荣耀 Magic9",
+              "brand": "荣耀",
+              "aliases": [
+                "Magic9",
+                "HONOR Magic9"
+              ],
+              "source": "https://www.gsmarena.com/honor_magic9_5g-14970.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1236,
+                  "height": 2664
+                }
+              ]
+            },
+            {
+              "id": "honor-x80-pro-max",
+              "name": "荣耀 X80 Pro Max",
+              "brand": "荣耀",
+              "aliases": [
+                "X80 Pro Max"
+              ],
+              "source": "https://www.gsmarena.com/honor_x80_pro_max_5g-14718.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1280,
+                  "height": 2788
+                }
+              ]
+            },
+            {
+              "id": "honor-x70-pro-max",
+              "name": "荣耀 X70 Pro Max",
+              "brand": "荣耀",
+              "aliases": [
+                "X70 Pro Max"
+              ],
+              "source": "https://www.gsmarena.com/honor_x70_pro_max_5g-14729.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1200,
+                  "height": 2640
+                }
+              ]
+            },
+            {
+              "id": "honor-win-turbo",
+              "name": "荣耀 WIN Turbo",
+              "brand": "荣耀",
+              "aliases": [
+                "WIN Turbo"
+              ],
+              "source": "https://www.gsmarena.com/honor_win_turbo_5g-14684.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1200,
+                  "height": 2640
+                }
+              ]
+            },
+            {
+              "id": "honor-600",
+              "name": "荣耀 600 / 600 Pro",
+              "brand": "荣耀",
+              "aliases": [
+                "荣耀600",
+                "荣耀600 Pro",
+                "HONOR 600"
+              ],
+              "source": "https://www.gsmarena.com/honor_600_pro_5g_(china)-14680.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1264,
+                  "height": 2728
+                }
+              ]
+            },
+            {
+              "id": "honor-magic8-rsr",
+              "name": "荣耀 Magic8 RSR 保时捷设计",
+              "brand": "荣耀",
+              "aliases": [
+                "Magic8 RSR",
+                "保时捷"
+              ],
+              "source": "https://www.gsmarena.com/honor_magic8_rsr_porsche_design_5g-14429.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1256,
+                  "height": 2808
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "huawei",
+          "name": "华为",
+          "models": [
+            {
+              "id": "huawei-mate-90-pro-max",
+              "name": "华为 Mate 90 Pro Max",
+              "brand": "华为",
+              "aliases": [
+                "Mate90 Pro Max"
+              ],
+              "source": "https://www.gsmarena.com/huawei_mate_90_pro_max_5g-14982.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1320,
+                  "height": 2848
+                }
+              ]
+            },
+            {
+              "id": "huawei-mate-90-pro",
+              "name": "华为 Mate 90 Pro",
+              "brand": "华为",
+              "aliases": [
+                "Mate90 Pro"
+              ],
+              "source": "https://www.gsmarena.com/huawei_mate_90_pro_5g-14983.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1080,
+                  "height": 2832
+                }
+              ]
+            },
+            {
+              "id": "huawei-mate-90",
+              "name": "华为 Mate 90",
+              "brand": "华为",
+              "aliases": [
+                "Mate90",
+                "HUAWEI Mate 90"
+              ],
+              "source": "https://www.gsmarena.com/huawei_mate_90_5g-14984.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1280,
+                  "height": 2832
+                }
+              ]
+            },
+            {
+              "id": "huawei-nova-16-pro",
+              "name": "华为 nova 16 Pro / Ultra",
+              "brand": "华为",
+              "aliases": [
+                "nova16 Pro",
+                "nova16 Ultra"
+              ],
+              "source": "https://www.gsmarena.com/huawei_nova_16_pro_5g-14699.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1320,
+                  "height": 2856
+                }
+              ]
+            },
+            {
+              "id": "huawei-nova-16",
+              "name": "华为 nova 16",
+              "brand": "华为",
+              "aliases": [
+                "nova16"
+              ],
+              "source": "https://www.gsmarena.com/huawei_nova_16_5g-14700.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1280,
+                  "height": 2800
+                }
+              ]
+            },
+            {
+              "id": "huawei-pura-90-pro-max",
+              "name": "华为 Pura 90 Pro Max",
+              "brand": "华为",
+              "aliases": [
+                "P90 Pro Max",
+                "Pura90 Pro Max"
+              ],
+              "source": "https://www.gsmarena.com/huawei_pura_90_pro_max_5g-14609.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1308,
+                  "height": 2880
+                }
+              ]
+            },
+            {
+              "id": "huawei-pura-90-pro",
+              "name": "华为 Pura 90 Pro",
+              "brand": "华为",
+              "aliases": [
+                "P90 Pro",
+                "Pura90 Pro"
+              ],
+              "source": "https://www.gsmarena.com/huawei_pura_90_pro_5g-14610.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1256,
+                  "height": 2760
+                }
+              ]
+            },
+            {
+              "id": "huawei-pura-90",
+              "name": "华为 Pura 90",
+              "brand": "华为",
+              "aliases": [
+                "P90",
+                "Pura90"
+              ],
+              "source": "https://www.gsmarena.com/huawei_pura_90_5g-14612.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1320,
+                  "height": 2856
+                }
+              ]
+            },
+            {
+              "id": "huawei-nova-15-pro",
+              "name": "华为 nova 15 Pro / Ultra",
+              "brand": "华为",
+              "aliases": [
+                "nova15 Pro",
+                "nova15 Ultra"
+              ],
+              "source": "https://www.gsmarena.com/huawei_nova_15_pro_5g-14371.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1320,
+                  "height": 2856
+                }
+              ]
+            },
+            {
+              "id": "huawei-nova-15",
+              "name": "华为 nova 15",
+              "brand": "华为",
+              "aliases": [
+                "nova15"
+              ],
+              "source": "https://www.gsmarena.com/huawei_nova_15_5g-14372.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1084,
+                  "height": 2412
+                }
+              ]
+            },
+            {
+              "id": "huawei-mate-80-pro-max",
+              "name": "华为 Mate 80 Pro Max / RS 非凡大师",
+              "brand": "华为",
+              "aliases": [
+                "Mate80 Pro Max",
+                "Mate80 RS",
+                "非凡大师"
+              ],
+              "source": "https://www.gsmarena.com/huawei_mate_80_pro_max_5g-14310.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1320,
+                  "height": 2848
+                }
+              ]
+            },
+            {
+              "id": "huawei-mate-80",
+              "name": "华为 Mate 80 / 80 Pro",
+              "brand": "华为",
+              "aliases": [
+                "Mate80",
+                "Mate80 Pro",
+                "HUAWEI Mate 80"
+              ],
+              "source": "https://www.gsmarena.com/huawei_mate_80_5g-14312.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1280,
+                  "height": 2832
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "xiaomi",
+          "name": "小米",
+          "models": [
+            {
+              "id": "xiaomi-18-pro-max",
+              "name": "Xiaomi 18 Pro Max",
+              "brand": "小米",
+              "aliases": [
+                "小米18 Pro Max",
+                "小米18ProMax"
+              ],
+              "source": "https://m.mi.com/commodity/detail/25526",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1208,
+                  "height": 2624
+                }
+              ]
+            },
+            {
+              "id": "xiaomi-18-pro",
+              "name": "Xiaomi 18 Pro",
+              "brand": "小米",
+              "aliases": [
+                "小米18 Pro"
+              ],
+              "source": "https://www.gsmarena.com/xiaomi_18_pro_5g-14959.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1120,
+                  "height": 2436
+                }
+              ]
+            },
+            {
+              "id": "redmi-note-17-pro",
+              "name": "Redmi Note 17 Pro / Pro Max",
+              "brand": "小米",
+              "aliases": [
+                "红米Note17 Pro",
+                "Note17 Pro+"
+              ],
+              "source": "https://www.gsmarena.com/xiaomi_redmi_note_17_pro_5g_(china)-14797.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1280,
+                  "height": 2772
+                }
+              ]
+            },
+            {
+              "id": "redmi-k100-pro",
+              "name": "Redmi K100 Pro",
+              "brand": "小米",
+              "aliases": [
+                "红米K100 Pro"
+              ],
+              "source": "https://www.gsmarena.com/xiaomi_redmi_k100_pro_5g-14715.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1156,
+                  "height": 2510
+                }
+              ]
+            },
+            {
+              "id": "redmi-k90-ultra",
+              "name": "Redmi K90 至尊版",
+              "brand": "小米",
+              "aliases": [
+                "红米K90至尊",
+                "K90 Ultra"
+              ],
+              "source": "https://www.gsmarena.com/xiaomi_redmi_k90_ultra_5g-14757.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1280,
+                  "height": 2772
+                }
+              ]
+            },
+            {
+              "id": "xiaomi-17t-pro",
+              "name": "Xiaomi 17T Pro",
+              "brand": "小米",
+              "aliases": [
+                "小米17T Pro"
+              ],
+              "source": "https://www.gsmarena.com/xiaomi_17t_pro_5g-14651.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1280,
+                  "height": 2772
+                }
+              ]
+            },
+            {
+              "id": "xiaomi-17-max",
+              "name": "Xiaomi 17 Max",
+              "brand": "小米",
+              "aliases": [
+                "小米17 Max"
+              ],
+              "source": "https://www.gsmarena.com/xiaomi_17_max_5g-14667.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1200,
+                  "height": 2608
+                }
+              ]
+            },
+            {
+              "id": "xiaomi-17",
+              "name": "Xiaomi 17",
+              "brand": "小米",
+              "aliases": [
+                "小米17"
+              ],
+              "source": "https://www.mi.com/my/product/xiaomi-17/specs/",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1220,
+                  "height": 2656
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "vivo",
+          "name": "vivo",
+          "models": [
+            {
+              "id": "vivo-x500-pro",
+              "name": "vivo X500 Pro",
+              "brand": "vivo",
+              "aliases": [
+                "X500 Pro"
+              ],
+              "source": "https://www.gsmarena.com/vivo_x500_pro_5g-14950.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1216,
+                  "height": 2660
+                }
+              ]
+            },
+            {
+              "id": "vivo-x500",
+              "name": "vivo X500",
+              "brand": "vivo",
+              "aliases": [
+                "X500"
+              ],
+              "source": "https://www.gsmarena.com/vivo_x500_5g-14951.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1260,
+                  "height": 2750
+                }
+              ]
+            },
+            {
+              "id": "iqoo-16",
+              "name": "iQOO 16",
+              "brand": "vivo",
+              "aliases": [
+                "爱酷16"
+              ],
+              "source": "https://www.gsmarena.com/vivo_iqoo_16_5g-14976.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1440,
+                  "height": 3168
+                }
+              ]
+            },
+            {
+              "id": "iqoo-neo11-ultra",
+              "name": "iQOO Neo11 Ultra",
+              "brand": "vivo",
+              "aliases": [
+                "Neo11 Ultra"
+              ],
+              "source": "https://www.gsmarena.com/vivo_iqoo_neo11_ultra_5g-14878.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1440,
+                  "height": 3200
+                }
+              ]
+            },
+            {
+              "id": "vivo-x300-ultra",
+              "name": "vivo X300 Ultra",
+              "brand": "vivo",
+              "aliases": [
+                "X300 Ultra"
+              ],
+              "source": "https://www.gsmarena.com/vivo_x300_ultra_5g-14388.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1440,
+                  "height": 3168
+                }
+              ]
+            },
+            {
+              "id": "vivo-x300-pro",
+              "name": "vivo X300 Pro",
+              "brand": "vivo",
+              "aliases": [
+                "X300Pro"
+              ],
+              "source": "https://www.vivo.com/in/products/param/x300-pro",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1260,
+                  "height": 2800
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "oppo",
+          "name": "OPPO",
+          "models": [
+            {
+              "id": "oppo-find-x10",
+              "name": "OPPO Find X10 / X10 Pro Max",
+              "brand": "OPPO",
+              "aliases": [
+                "FindX10",
+                "Find X10 Pro Max"
+              ],
+              "source": "https://www.gsmarena.com/oppo_find_x10-14953.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1272,
+                  "height": 2772
+                }
+              ]
+            },
+            {
+              "id": "oppo-reno16-pro",
+              "name": "OPPO Reno16 Pro",
+              "brand": "OPPO",
+              "aliases": [
+                "Reno16 Pro"
+              ],
+              "source": "https://www.gsmarena.com/oppo_reno16_pro_5g_(china)-14675.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1272,
+                  "height": 2772
+                }
+              ]
+            },
+            {
+              "id": "oppo-reno16",
+              "name": "OPPO Reno16",
+              "brand": "OPPO",
+              "aliases": [
+                "Reno16"
+              ],
+              "source": "https://www.gsmarena.com/oppo_reno16_5g_(china)-14676.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1216,
+                  "height": 2640
+                }
+              ]
+            },
+            {
+              "id": "oppo-find-x9-ultra",
+              "name": "OPPO Find X9 Ultra",
+              "brand": "OPPO",
+              "aliases": [
+                "FindX9 Ultra"
+              ],
+              "source": "https://www.gsmarena.com/oppo_find_x9_ultra_5g-14548.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1440,
+                  "height": 3168
+                }
+              ]
+            },
+            {
+              "id": "oppo-find-x9-pro",
+              "name": "OPPO Find X9 Pro",
+              "brand": "OPPO",
+              "aliases": [
+                "FindX9Pro"
+              ],
+              "source": "https://www.oppo.com/in/smartphones/series-find-x/find-x9-pro/specs/",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1272,
+                  "height": 2772
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "oneplus",
+          "name": "一加",
+          "models": [
+            {
+              "id": "oneplus-15",
+              "name": "一加 15",
+              "brand": "一加",
+              "aliases": [
+                "OnePlus 15",
+                "一加15"
+              ],
+              "source": "https://www.gsmarena.com/oneplus_15_5g-14206.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1272,
+                  "height": 2772
+                }
+              ]
+            },
+            {
+              "id": "oneplus-13",
+              "name": "一加 13",
+              "brand": "一加",
+              "aliases": [
+                "OnePlus 13",
+                "一加13"
+              ],
+              "source": "https://www.gsmarena.com/oneplus_13-13477.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1440,
+                  "height": 3168
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "samsung",
+          "name": "Samsung",
+          "models": [
+            {
+              "id": "galaxy-s26-ultra",
+              "name": "Galaxy S26 Ultra",
+              "brand": "Samsung",
+              "aliases": [
+                "三星S26 Ultra"
+              ],
+              "source": "https://www.gsmarena.com/samsung_galaxy_s26_ultra_5g-14320.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1440,
+                  "height": 3120
+                }
+              ]
+            },
+            {
+              "id": "galaxy-s26",
+              "name": "Galaxy S26",
+              "brand": "Samsung",
+              "aliases": [
+                "三星S26"
+              ],
+              "source": "https://www.gsmarena.com/samsung_galaxy_s26_5g-14456.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1080,
+                  "height": 2340
+                }
+              ]
+            },
+            {
+              "id": "galaxy-s25-fe",
+              "name": "Galaxy S25 FE",
+              "brand": "Samsung",
+              "aliases": [
+                "三星S25 FE"
+              ],
+              "source": "https://www.gsmarena.com/samsung_galaxy_s25_fe_5g-14042.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1080,
+                  "height": 2340
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tablet",
+      "name": "平板",
+      "brands": [
+        {
+          "id": "apple",
+          "name": "Apple",
+          "models": [
+            {
+              "id": "ipad-air-13-m4",
+              "name": "iPad Air 13英寸（M4）",
+              "brand": "Apple",
+              "aliases": [
+                "iPad Air13",
+                "iPadAir13"
+              ],
+              "source": "https://www.apple.com/ipad-air/specs/",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 2048,
+                  "height": 2732
+                }
+              ]
+            },
+            {
+              "id": "ipad-air-11-m4",
+              "name": "iPad Air 11英寸（M4）",
+              "brand": "Apple",
+              "aliases": [
+                "iPad Air11",
+                "iPadAir11"
+              ],
+              "source": "https://www.apple.com/ipad-air/specs/",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1640,
+                  "height": 2360
+                }
+              ]
+            },
+            {
+              "id": "ipad-pro-13-m5",
+              "name": "iPad Pro 13英寸（M5）",
+              "brand": "Apple",
+              "aliases": [
+                "iPad Pro13",
+                "iPadPro13"
+              ],
+              "source": "https://www.apple.com/ipad-pro/specs/",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 2064,
+                  "height": 2752
+                }
+              ]
+            },
+            {
+              "id": "ipad-pro-11-m5",
+              "name": "iPad Pro 11英寸（M5）",
+              "brand": "Apple",
+              "aliases": [
+                "iPad Pro11",
+                "iPadPro11"
+              ],
+              "source": "https://www.apple.com/ipad-pro/specs/",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1668,
+                  "height": 2420
+                }
+              ]
+            },
+            {
+              "id": "ipad-a16",
+              "name": "iPad（A16）",
+              "brand": "Apple",
+              "aliases": [
+                "iPad 11"
+              ],
+              "source": "https://www.gsmarena.com/apple_ipad_(2025)-13702.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1640,
+                  "height": 2360
+                }
+              ]
+            },
+            {
+              "id": "ipad-mini-a17-pro",
+              "name": "iPad mini（A17 Pro）",
+              "brand": "Apple",
+              "aliases": [
+                "iPad mini7",
+                "iPad迷你"
+              ],
+              "source": "https://www.apple.com/ipad-mini/specs/",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1488,
+                  "height": 2266
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "honor",
+          "name": "荣耀",
+          "models": [
+            {
+              "id": "honor-magicpad4",
+              "name": "荣耀 MagicPad4",
+              "brand": "荣耀",
+              "aliases": [
+                "MagicPad 4"
+              ],
+              "source": "https://www.gsmarena.com/honor_magicpad4-14511.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1920,
+                  "height": 3000
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "huawei",
+          "name": "华为",
+          "models": [
+            {
+              "id": "matepad-pro-12-2026",
+              "name": "华为 MatePad Pro 12.2英寸（2026）",
+              "brand": "华为",
+              "aliases": [
+                "MatePad Pro"
+              ],
+              "source": "https://www.gsmarena.com/huawei_matepad_pro_12_(2026)-14864.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1952,
+                  "height": 3036
+                }
+              ]
+            },
+            {
+              "id": "matepad-air-2026",
+              "name": "华为 MatePad Air 12英寸（2026）",
+              "brand": "华为",
+              "aliases": [
+                "MatePad Air"
+              ],
+              "source": "https://www.gsmarena.com/huawei_matepad_air_(2026)-14796.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1840,
+                  "height": 2800
+                }
+              ]
+            },
+            {
+              "id": "matepad-11-5-2026",
+              "name": "华为 MatePad 11.5英寸（2026）",
+              "brand": "华为",
+              "aliases": [
+                "MatePad 11.5"
+              ],
+              "source": "https://www.gsmarena.com/huawei_matepad_11_5_(2026)-14375.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 1600,
+                  "height": 2456
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "xiaomi",
+          "name": "小米",
+          "models": [
+            {
+              "id": "xiaomi-pad-9-pro",
+              "name": "Xiaomi Pad 9 Pro",
+              "brand": "小米",
+              "aliases": [
+                "小米平板9 Pro"
+              ],
+              "source": "https://www.gsmarena.com/xiaomi_pad_9_pro-14960.php",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 2136,
+                  "height": 3200
+                }
+              ]
+            },
+            {
+              "id": "xiaomi-pad-8",
+              "name": "Xiaomi Pad 8",
+              "brand": "小米",
+              "aliases": [
+                "小米平板8",
+                "小米Pad8"
+              ],
+              "source": "https://www.mi.com/global/product/xiaomi-pad-8/specs/",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 2136,
+                  "height": 3200
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "foldable",
+      "name": "折叠屏",
+      "brands": [
+        {
+          "id": "apple",
+          "name": "Apple",
+          "models": [
+            {
+              "id": "iphone-duo",
+              "name": "iPhone Duo",
+              "brand": "Apple",
+              "aliases": [
+                "苹果Duo",
+                "iPhone折叠屏"
+              ],
+              "source": "https://www.apple.com/iphone-duo/specs/",
+              "screens": [
+                {
+                  "id": "inner",
+                  "name": "内屏",
+                  "width": 2670,
+                  "height": 1878
+                },
+                {
+                  "id": "outer",
+                  "name": "外屏",
+                  "width": 1398,
+                  "height": 2034
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "huawei",
+          "name": "华为",
+          "models": [
+            {
+              "id": "huawei-pura-x-max",
+              "name": "华为 Pura X Max",
+              "brand": "华为",
+              "aliases": [
+                "PuraX Max"
+              ],
+              "source": "https://www.gsmarena.com/huawei_pura_x_max_5g-14607.php",
+              "screens": [
+                {
+                  "id": "inner",
+                  "name": "内屏",
+                  "width": 1828,
+                  "height": 2584
+                },
+                {
+                  "id": "outer",
+                  "name": "外屏",
+                  "width": 1264,
+                  "height": 1848
+                }
+              ]
+            },
+            {
+              "id": "huawei-mate-x7",
+              "name": "华为 Mate X7",
+              "brand": "华为",
+              "aliases": [
+                "MateX7"
+              ],
+              "source": "https://www.gsmarena.com/huawei_mate_x7_5g-14314.php",
+              "screens": [
+                {
+                  "id": "inner",
+                  "name": "内屏",
+                  "width": 2210,
+                  "height": 2416
+                },
+                {
+                  "id": "outer",
+                  "name": "外屏",
+                  "width": 1080,
+                  "height": 2444
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "vivo",
+          "name": "vivo",
+          "models": [
+            {
+              "id": "vivo-x-fold6",
+              "name": "vivo X Fold6",
+              "brand": "vivo",
+              "aliases": [
+                "XFold6",
+                "vivo折叠屏6"
+              ],
+              "source": "https://www.vivo.com.cn/vivo/param/xfold6",
+              "screens": [
+                {
+                  "id": "inner",
+                  "name": "内屏",
+                  "width": 2312,
+                  "height": 2504
+                },
+                {
+                  "id": "outer",
+                  "name": "外屏",
+                  "width": 1120,
+                  "height": 2528
+                }
+              ]
+            },
+            {
+              "id": "vivo-x-fold5",
+              "name": "vivo X Fold5",
+              "brand": "vivo",
+              "aliases": [
+                "XFold5",
+                "vivo折叠屏5"
+              ],
+              "source": "https://www.vivo.com.cn/vivo/param/xfold5",
+              "screens": [
+                {
+                  "id": "inner",
+                  "name": "内屏",
+                  "width": 2200,
+                  "height": 2480
+                },
+                {
+                  "id": "outer",
+                  "name": "外屏",
+                  "width": 1172,
+                  "height": 2748
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "oppo",
+          "name": "OPPO",
+          "models": [
+            {
+              "id": "oppo-find-n6",
+              "name": "OPPO Find N6",
+              "brand": "OPPO",
+              "aliases": [
+                "FindN6",
+                "OPPO折叠屏6"
+              ],
+              "source": "https://www.oppo.com/cn/smartphones/series-find-n/find-n6/specs/",
+              "screens": [
+                {
+                  "id": "inner",
+                  "name": "内屏",
+                  "width": 2248,
+                  "height": 2480
+                },
+                {
+                  "id": "outer",
+                  "name": "外屏",
+                  "width": 1140,
+                  "height": 2616
+                }
+              ]
+            },
+            {
+              "id": "oppo-find-n5",
+              "name": "OPPO Find N5",
+              "brand": "OPPO",
+              "aliases": [
+                "FindN5",
+                "OPPO折叠屏5"
+              ],
+              "source": "https://www.oppo.com/ph/smartphones/series-find-n/find-n5/specs/",
+              "screens": [
+                {
+                  "id": "inner",
+                  "name": "内屏",
+                  "width": 2248,
+                  "height": 2480
+                },
+                {
+                  "id": "outer",
+                  "name": "外屏",
+                  "width": 1140,
+                  "height": 2616
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "xiaomi",
+          "name": "小米",
+          "models": [
+            {
+              "id": "xiaomi-18-fold",
+              "name": "Xiaomi 18 Fold",
+              "brand": "小米",
+              "aliases": [
+                "小米18 Fold"
+              ],
+              "source": "https://www.gsmarena.com/xiaomi_18_fold_5g-14931.php",
+              "screens": [
+                {
+                  "id": "inner",
+                  "name": "内屏",
+                  "width": 2364,
+                  "height": 1672
+                },
+                {
+                  "id": "outer",
+                  "name": "外屏",
+                  "width": 1168,
+                  "height": 1712
+                }
+              ]
+            },
+            {
+              "id": "xiaomi-mix-fold-4",
+              "name": "Xiaomi MIX Fold 4",
+              "brand": "小米",
+              "aliases": [
+                "小米MIX Fold4",
+                "小米Fold4"
+              ],
+              "source": "https://www.mi.com/prod/xiaomi-mix-fold-4/specs",
+              "screens": [
+                {
+                  "id": "inner",
+                  "name": "内屏",
+                  "width": 2224,
+                  "height": 2488
+                },
+                {
+                  "id": "outer",
+                  "name": "外屏",
+                  "width": 1080,
+                  "height": 2520
+                }
+              ]
+            },
+            {
+              "id": "xiaomi-mix-fold-2",
+              "name": "Xiaomi MIX Fold 2",
+              "brand": "小米",
+              "aliases": [
+                "小米MIX Fold2",
+                "小米Fold2"
+              ],
+              "source": "https://dev.mi.com/distribute/doc/details?pId=1484",
+              "screens": [
+                {
+                  "id": "inner",
+                  "name": "内屏",
+                  "width": 1914,
+                  "height": 2160
+                },
+                {
+                  "id": "outer",
+                  "name": "外屏",
+                  "width": 1080,
+                  "height": 2520
+                }
+              ]
+            },
+            {
+              "id": "xiaomi-mix-flip",
+              "name": "Xiaomi MIX Flip",
+              "brand": "小米",
+              "aliases": [
+                "小米MIX Flip",
+                "小米小折叠"
+              ],
+              "source": "https://www.mi.com/global/product/xiaomi-mix-flip/specs/",
+              "screens": [
+                {
+                  "id": "inner",
+                  "name": "内屏",
+                  "width": 1224,
+                  "height": 2912
+                },
+                {
+                  "id": "outer",
+                  "name": "外屏",
+                  "width": 1208,
+                  "height": 1392
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "samsung",
+          "name": "Samsung",
+          "models": [
+            {
+              "id": "galaxy-z-fold8-ultra",
+              "name": "Galaxy Z Fold8 Ultra",
+              "brand": "Samsung",
+              "aliases": [
+                "三星Fold8 Ultra",
+                "三星Fold8Ultra"
+              ],
+              "source": "https://www.samsung.com/us/explore/mobile/buying-guide/introducing-the-latest-foldable-smartphones/",
+              "screens": [
+                {
+                  "id": "inner",
+                  "name": "内屏",
+                  "width": 2256,
+                  "height": 2504
+                },
+                {
+                  "id": "outer",
+                  "name": "外屏",
+                  "width": 1080,
+                  "height": 2520
+                }
+              ]
+            },
+            {
+              "id": "galaxy-z-fold8",
+              "name": "Galaxy Z Fold8",
+              "brand": "Samsung",
+              "aliases": [
+                "三星Fold8"
+              ],
+              "source": "https://www.samsung.com/us/explore/mobile/buying-guide/introducing-the-latest-foldable-smartphones/",
+              "screens": [
+                {
+                  "id": "inner",
+                  "name": "内屏",
+                  "width": 2448,
+                  "height": 1848
+                },
+                {
+                  "id": "outer",
+                  "name": "外屏",
+                  "width": 1248,
+                  "height": 1972
+                }
+              ]
+            },
+            {
+              "id": "galaxy-z-flip8",
+              "name": "Galaxy Z Flip8",
+              "brand": "Samsung",
+              "aliases": [
+                "三星Flip8"
+              ],
+              "source": "https://www.samsung.com/us/explore/mobile/buying-guide/introducing-the-latest-foldable-smartphones/",
+              "screens": [
+                {
+                  "id": "inner",
+                  "name": "内屏",
+                  "width": 1080,
+                  "height": 2520
+                },
+                {
+                  "id": "outer",
+                  "name": "外屏",
+                  "width": 948,
+                  "height": 1048
+                }
+              ]
+            },
+            {
+              "id": "galaxy-z-fold7",
+              "name": "Galaxy Z Fold7",
+              "brand": "Samsung",
+              "aliases": [
+                "三星Fold7"
+              ],
+              "source": "https://www.gsmarena.com/samsung_galaxy_z_fold7-13826.php",
+              "screens": [
+                {
+                  "id": "inner",
+                  "name": "内屏",
+                  "width": 1968,
+                  "height": 2184
+                },
+                {
+                  "id": "outer",
+                  "name": "外屏",
+                  "width": 1080,
+                  "height": 2520
+                }
+              ]
+            },
+            {
+              "id": "galaxy-z-flip7",
+              "name": "Galaxy Z Flip7",
+              "brand": "Samsung",
+              "aliases": [
+                "三星Flip7"
+              ],
+              "source": "https://www.gsmarena.com/samsung_galaxy_z_flip7-13712.php",
+              "screens": [
+                {
+                  "id": "inner",
+                  "name": "内屏",
+                  "width": 1080,
+                  "height": 2520
+                },
+                {
+                  "id": "outer",
+                  "name": "外屏",
+                  "width": 948,
+                  "height": 1048
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "honor",
+          "name": "荣耀",
+          "models": [
+            {
+              "id": "honor-magic-v6",
+              "name": "荣耀 Magic V6",
+              "brand": "荣耀",
+              "aliases": [
+                "荣耀V6",
+                "HONOR Magic V6"
+              ],
+              "source": "https://www.gsmarena.com/honor_magic_v6_5g-14518.php",
+              "screens": [
+                {
+                  "id": "inner",
+                  "name": "内屏",
+                  "width": 2172,
+                  "height": 2352
+                },
+                {
+                  "id": "outer",
+                  "name": "外屏",
+                  "width": 1080,
+                  "height": 2420
+                }
+              ]
+            },
+            {
+              "id": "honor-magic-v5",
+              "name": "荣耀 Magic V5",
+              "brand": "荣耀",
+              "aliases": [
+                "荣耀V5",
+                "HONOR Magic V5"
+              ],
+              "source": "https://www.honor.com/uk/phones/honor-magic-v5/spec/",
+              "screens": [
+                {
+                  "id": "inner",
+                  "name": "内屏",
+                  "width": 2172,
+                  "height": 2352
+                },
+                {
+                  "id": "outer",
+                  "name": "外屏",
+                  "width": 1060,
+                  "height": 2376
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "computer",
+      "name": "电脑",
+      "brands": [
+        {
+          "id": "apple",
+          "name": "Apple",
+          "models": [
+            {
+              "id": "macbook-air-13-m5",
+              "name": "MacBook Air 13英寸（M5）",
+              "brand": "Apple",
+              "aliases": [
+                "苹果笔记本13",
+                "MBA13"
+              ],
+              "source": "https://www.apple.com/macbook-air/specs/",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 2560,
+                  "height": 1664
+                }
+              ]
+            },
+            {
+              "id": "macbook-air-15-m5",
+              "name": "MacBook Air 15英寸（M5）",
+              "brand": "Apple",
+              "aliases": [
+                "苹果笔记本15",
+                "MBA15"
+              ],
+              "source": "https://www.apple.com/macbook-air/specs/",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 2880,
+                  "height": 1864
+                }
+              ]
+            },
+            {
+              "id": "macbook-pro-14-m5",
+              "name": "MacBook Pro 14英寸（M5 系列）",
+              "brand": "Apple",
+              "aliases": [
+                "苹果笔记本14",
+                "MBP14"
+              ],
+              "source": "https://www.apple.com/macbook-pro/specs/",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 3024,
+                  "height": 1964
+                }
+              ]
+            },
+            {
+              "id": "macbook-pro-16-m5",
+              "name": "MacBook Pro 16英寸（M5 系列）",
+              "brand": "Apple",
+              "aliases": [
+                "苹果笔记本16",
+                "MBP16"
+              ],
+              "source": "https://www.apple.com/macbook-pro/specs/",
+              "screens": [
+                {
+                  "id": "main",
+                  "name": "主屏",
+                  "width": 3456,
+                  "height": 2234
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "lenovo",
+          "name": "联想",
+          "models": [
+            {
+              "id": "thinkbook-14-g8-ial",
+              "name": "ThinkBook 14 G8 IAL",
+              "brand": "联想",
+              "aliases": [
+                "联想14",
+                "ThinkBook14"
+              ],
+              "source": "https://psref.lenovo.com/syspool/Sys/PDF/ThinkBook/ThinkBook_14_G8_IAL/ThinkBook_14_G8_IAL_Spec.html",
+              "screens": [
+                {
+                  "id": "wuxga",
+                  "name": "1920 × 1200",
+                  "width": 1920,
+                  "height": 1200
+                }
+              ]
+            },
+            {
+              "id": "thinkbook-16-g8-ial",
+              "name": "ThinkBook 16 G8 IAL",
+              "brand": "联想",
+              "aliases": [
+                "联想16",
+                "ThinkBook16"
+              ],
+              "source": "https://psref.lenovo.com/syspool/Sys/PDF/ThinkBook/ThinkBook_16_G8_IAL/ThinkBook_16_G8_IAL_Spec.PDF",
+              "screens": [
+                {
+                  "id": "wuxga",
+                  "name": "1920 × 1200",
+                  "width": 1920,
+                  "height": 1200
+                },
+                {
+                  "id": "wqxga",
+                  "name": "2560 × 1600",
+                  "width": 2560,
+                  "height": 1600
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "dell",
+          "name": "Dell",
+          "models": [
+            {
+              "id": "xps-13-9350-lunar-lake",
+              "name": "XPS 13 9350（Core Ultra）",
+              "brand": "Dell",
+              "aliases": [
+                "戴尔13",
+                "XPS13"
+              ],
+              "source": "https://www.dell.com/support/manuals/en-my/xps-13-9350-intel-laptop/xps-13-9350-owners-manual/display?guid=guid-5579fc11-9b22-44fa-ba0d-ae67ba34e9f8&lang=en-us",
+              "screens": [
+                {
+                  "id": "fhd",
+                  "name": "FHD+ · 1920 × 1200",
+                  "width": 1920,
+                  "height": 1200
+                },
+                {
+                  "id": "qhd",
+                  "name": "QHD+ · 2560 × 1600",
+                  "width": 2560,
+                  "height": 1600
+                },
+                {
+                  "id": "oled",
+                  "name": "OLED · 2880 × 1800",
+                  "width": 2880,
+                  "height": 1800
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "generic",
+          "name": "通用",
+          "models": [
+            {
+              "id": "laptop-14",
+              "name": "通用14英寸笔记本",
+              "brand": "通用",
+              "aliases": [
+                "14寸",
+                "14 inch"
+              ],
+              "source": "preset:generic",
+              "screens": [
+                {
+                  "id": "wuxga",
+                  "name": "16:10 · 1920 × 1200",
+                  "width": 1920,
+                  "height": 1200
+                },
+                {
+                  "id": "wqxga",
+                  "name": "16:10 · 2560 × 1600",
+                  "width": 2560,
+                  "height": 1600
+                }
+              ]
+            },
+            {
+              "id": "laptop-16",
+              "name": "通用16英寸笔记本",
+              "brand": "通用",
+              "aliases": [
+                "16寸",
+                "16 inch"
+              ],
+              "source": "preset:generic",
+              "screens": [
+                {
+                  "id": "wuxga",
+                  "name": "16:10 · 1920 × 1200",
+                  "width": 1920,
+                  "height": 1200
+                },
+                {
+                  "id": "wqxga",
+                  "name": "16:10 · 2560 × 1600",
+                  "width": 2560,
+                  "height": 1600
+                },
+                {
+                  "id": "oled",
+                  "name": "16:10 · 2880 × 1800",
+                  "width": 2880,
+                  "height": 1800
+                }
+              ]
+            },
+            {
+              "id": "laptop-15-6",
+              "name": "通用15.6英寸笔记本",
+              "brand": "通用",
+              "aliases": [
+                "15.6寸"
+              ],
+              "source": "preset:generic",
+              "screens": [
+                {
+                  "id": "fhd",
+                  "name": "16:9 · 1920 × 1080",
+                  "width": 1920,
+                  "height": 1080
+                }
+              ]
+            },
+            {
+              "id": "monitor-24",
+              "name": "通用24英寸显示器",
+              "brand": "通用",
+              "aliases": [
+                "24寸"
+              ],
+              "source": "preset:generic",
+              "screens": [
+                {
+                  "id": "fhd",
+                  "name": "16:9 · 1920 × 1080",
+                  "width": 1920,
+                  "height": 1080
+                }
+              ]
+            },
+            {
+              "id": "monitor-27",
+              "name": "通用27英寸显示器",
+              "brand": "通用",
+              "aliases": [
+                "27寸"
+              ],
+              "source": "preset:generic",
+              "screens": [
+                {
+                  "id": "qhd",
+                  "name": "16:9 · 2560 × 1440",
+                  "width": 2560,
+                  "height": 1440
+                },
+                {
+                  "id": "uhd",
+                  "name": "16:9 · 3840 × 2160",
+                  "width": 3840,
+                  "height": 2160
+                }
+              ]
+            },
+            {
+              "id": "monitor-34",
+              "name": "通用34英寸带鱼屏",
+              "brand": "通用",
+              "aliases": [
+                "34寸",
+                "超宽屏"
+              ],
+              "source": "preset:generic",
+              "screens": [
+                {
+                  "id": "ultrawide",
+                  "name": "3440 × 1440",
+                  "width": 3440,
+                  "height": 1440
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "pendingModels": [
+    {
+      "brand": "小米",
+      "name": "Xiaomi MIX Fold 5",
+      "reason": "尚未找到可核对的官方像素参数；不采用传闻数据。"
+    },
+    {
+      "brand": "小米",
+      "name": "Xiaomi 18",
+      "reason": "尚未找到独立标准版的官方像素参数；不沿用17或Pro型号。"
+    }
+  ]
+}

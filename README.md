@@ -4,6 +4,8 @@
 
 ### 让手机上的电脑，刚好装满你的屏幕
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat)](LICENSE)
+&nbsp;
 [![免费使用](https://img.shields.io/badge/%E8%B5%84%E8%B4%B9-%E5%85%8D%E8%B4%B9-brightgreen?style=flat)](#)
 &nbsp;
 [![系统要求](https://img.shields.io/badge/%E7%B3%BB%E7%BB%9F-macOS%2014%2B-0969da?style=flat)](#)
@@ -11,6 +13,14 @@
 </div>
 
 <br>
+
+Better Remote 是独立开源工具，与任何远程软件无产品主副、附属或官方合作关系。
+
+默认不采集个人信息；仅在你主动提交意见反馈时才会上传，且上传内容不含隐私数据。
+
+本仓库同时提供源码与安装包发布（[Releases](https://github.com/pincc-debug/better-remote-releases/releases)）。许可证为 [MIT](LICENSE)，贡献方式见 [CONTRIBUTING.md](CONTRIBUTING.md)。官网：https://betterremote.pincc.dev
+
+---
 
 用手机远程控制电脑，本该很方便。  
 可真连上了才发现：
@@ -77,7 +87,7 @@ https://github.com/user-attachments/assets/7c1b78d7-e8d3-4902-a371-f555cc6897a5
 
 ---
 
-## 📥 下载
+## 📥 下载与安装
 
 <div align="center">
 
@@ -89,6 +99,8 @@ https://github.com/user-attachments/assets/7c1b78d7-e8d3-4902-a371-f555cc6897a5
 
 **[下载最新版 Better Remote](https://github.com/pincc-debug/better-remote-releases/releases/latest/download/Better-Remote.dmg)** · 免费 · macOS 14 及以上
 
+官网：https://betterremote.pincc.dev
+
 </div>
 
 <br>
@@ -97,6 +109,21 @@ https://github.com/user-attachments/assets/7c1b78d7-e8d3-4902-a371-f555cc6897a5
 
 > [!NOTE]
 > 用 0.8.89 及更早版本的朋友，需要手动下载一次，之后都会自动更新。
+
+---
+
+## 🛠️ 从源码构建
+
+需要 macOS 14+ 与 Swift / Xcode 工具链。
+
+```bash
+git clone https://github.com/pincc-debug/better-remote-releases.git
+cd better-remote-releases
+swift build
+swift test
+```
+
+日常开发用 `swift build` / `swift test` 即可。签名、公证、打 dmg、更新 appcast 由维护者通过 `scripts/` 完成，贡献者请勿提交 `dist/` 或密钥。
 
 ---
 
@@ -119,10 +146,31 @@ Better Remote 本身不是远程软件，它是在你远程的时候，让电脑
 不会。断开就自动还原，也随时可以一键「还原本机」。
 
 **能配合哪些远程软件？**  
-常用的远程控制软件都可以，Better Remote 只负责让电脑这一端更好用。
+常用的远程控制软件都可以，Better Remote 只负责让电脑这一端更好用。与任何远程软件无官方合作或主副产品关系。
 
 **为什么要辅助功能权限？**  
 排列窗口、快捷按钮都需要它，第一次使用时系统会提示你开启。
+
+---
+
+## 📝 最近更新（精简）
+
+### 0.8.162
+
+- 关于页可检查更新、看帮助、反馈问题
+- 用 UU 远程时不再误弹退出确认
+
+### 0.8.160
+
+- 新增快捷操作「清理桌面」，点一下最小化所有窗口
+
+完整安装包与说明见 [Releases](https://github.com/pincc-debug/better-remote-releases/releases)。
+
+---
+
+## 🤝 贡献
+
+欢迎开 Issue / PR。流程见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ---
 

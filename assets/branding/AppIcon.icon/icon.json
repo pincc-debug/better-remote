@@ -1,0 +1,20 @@
+{
+  "fill" : {
+    "automatic-gradient" : "srgb:0.05882,0.14902,0.31765,1"
+  },
+  "groups" : [
+    {
+      "name" : "Phone",
+      "layers" : [ { "image-name" : "Phone.png", "name" : "Phone", "position" : { "scale" : 1, "translation-in-points" : [0, 0] } } ],
+      "shadow" : { "kind" : "neutral", "opacity" : 0.5 },
+      "translucency" : { "enabled" : false, "value" : 0 }
+    },
+    {
+      "name" : "Monitor",
+      "layers" : [ { "image-name" : "Monitor.png", "name" : "Monitor", "position" : { "scale" : 1, "translation-in-points" : [0, 0] } } ],
+      "shadow" : { "kind" : "neutral", "opacity" : 0.5 },
+      "translucency" : { "enabled" : false, "value" : 0 }
+    }
+  ],
+  "supported-platforms" : { "squares" : "shared" }
+}

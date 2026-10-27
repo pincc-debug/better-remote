@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-10-18",
+  "presets": [
+    {
+      "icon": "doc.on.doc",
+      "mode": "press",
+      "id": "preset:copy",
+      "name": "复制",
+      "key": {
+        "code": 8,
+        "modifiers": 1048576,
+        "label": "C"
+      }
+    },
+    {
+      "icon": "doc.on.clipboard",
+      "mode": "press",
+      "id": "preset:paste",
+      "name": "粘贴",
+      "key": {
+        "code": 9,
+        "label": "V",
+        "modifiers": 1048576
+      }
+    },
+    {
+      "icon": "text.magnifyingglass",
+      "mode": "press",
+      "id": "preset:spotlight",
+      "name": "聚焦搜索",
+      "key": {
+        "modifiers": 1048576,
+        "label": "Space",
+        "code": 49
+      }
+    },
+    {
+      "icon": "return",
+      "mode": "press",
+      "id": "preset:enter",
+      "name": "回车",
+      "key": {
+        "modifiers": 0,
+        "code": 36,
+        "label": "回车"
+      }
+    },
+    {
+      "icon": "macwindow.on.rectangle",
+      "mode": "press",
+      "id": "preset:mission-control",
+      "name": "调度中心",
+      "key": {
+        "modifiers": 262144,
+        "code": 126,
+        "label": "↑"
+      }
+    },
+    {
+      "id": "preset:toggle-dock",
+      "name": "程序坞",
+      "key": {
+        "code": 0,
+        "modifiers": 8388608,
+        "label": "A"
+      },
+      "mode": "press",
+      "icon": "dock.rectangle"
+    },
+    {
+      "icon": "arrow.left",
+      "mode": "press",
+      "id": "preset:desktop-left",
+      "name": "左移桌面",
+      "key": {
+        "modifiers": 262144,
+        "code": 123,
+        "label": "←"
+      }
+    },
+    {
+      "icon": "arrow.right",
+      "mode": "press",
+      "id": "preset:desktop-right",
+      "name": "右移桌面",
+      "key": {
+        "label": "→",
+        "code": 124,
+        "modifiers": 262144
+      }
+    },
+    {
+      "id": "preset:escape",
+      "name": "Esc",
+      "key": {
+        "code": 53,
+        "modifiers": 0,
+        "label": "Esc"
+      },
+      "mode": "press",
+      "icon": "xmark"
+    },
+    {
+      "id": "preset:switch-app",
+      "name": "切换应用",
+      "key": {
+        "code": 48,
+        "modifiers": 1048576,
+        "label": "Tab"
+      },
+      "mode": "press",
+      "icon": "arrow.left.arrow.right"
+    },
+    {
+      "id": "preset:undo",
+      "name": "撤销",
+      "key": {
+        "code": 6,
+        "modifiers": 1048576,
+        "label": "Z"
+      },
+      "mode": "press",
+      "icon": "arrow.uturn.backward"
+    },
+    {
+      "id": "preset:close-window",
+      "name": "关闭窗口",
+      "key": {
+        "code": 13,
+        "modifiers": 1048576,
+        "label": "W"
+      },
+      "mode": "press",
+      "icon": "xmark.rectangle"
+    }
+  ]
+}
