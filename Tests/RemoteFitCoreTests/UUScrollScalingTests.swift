@@ -36,6 +36,7 @@ final class UUScrollScalingTests: XCTestCase {
         XCTAssertEqual(old.uuScrollSpeedPercent, 100)
         var enabled = old
         enabled.uuScrollSpeedPercent = 5
+        enabled.uuTouchScrollEnabled = false
         let restored = try JSONDecoder().decode(Preferences.self, from: JSONEncoder().encode(enabled))
         XCTAssertEqual(restored.uuScrollSpeedPercent, 5)
         XCTAssertFalse(restored.uuTouchScrollEnabled)

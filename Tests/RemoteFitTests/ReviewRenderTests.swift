@@ -106,6 +106,64 @@ final class ReviewRenderTests: XCTestCase {
         }
     }
 
+    func testRenderDeviceProfiles() throws {
+        guard let folder = folder?.appendingPathComponent("device-profiles") else { throw XCTSkip("set BR_REVIEW_RENDER") }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        _ = NSApplication.shared
+        let model = ControlPanelModel()
+        model.preferences.remoteDevices = [.init(id: "uu:window:Phone", name: "iPhone 13"), .init(id: "uu:window:Computer", name: "办公电脑")]
+        model.preferences.customPresets += [CustomPreset(id: "review-phone", name: "手机竖屏", width: 1080, height: 1920),
+                                           CustomPreset(id: "review-computer", name: "电脑横屏", width: 2560, height: 1600)]
+        var phone = model.preferences.configuration(for: nil)
+        phone.selectResolution("review-phone")
+        model.preferences.setConfiguration(phone, for: "uu:window:Phone")
+        var computer = model.preferences.configuration(for: nil)
+        computer.selectResolution("review-computer")
+        model.preferences.setConfiguration(computer, for: "uu:window:Computer")
+        model.preferences.remoteDevices.append(.init(id: "uu:window:Disabled", name: "MacBook Pro", configurationEnabled: false))
+        for dark in [false, true] {
+            for width in [CGFloat(760), CGFloat(420)] {
+                for state in ["list", "detail", "disabled"] {
+                    let detail = state != "list"
+                    let size = CGSize(width: width, height: 1100)
+                    let content = Group {
+                        if detail {
+                            ScrollView { DeviceConfigurationSettings(model: model, deviceID: state == "disabled" ? "uu:window:Disabled" : "uu:window:Computer") }
+                        } else {
+                            DeviceListSettings(model: model)
+                        }
+                    }.padding(24).environment(\.settingsNarrow, width < 500)
+                        .frame(width: size.width, height: size.height)
+                        .background(DesignTokens.Colors.pageBackground)
+                    let host = NSHostingView(rootView: content)
+                    host.frame = CGRect(origin: .zero, size: size)
+                    try render(host, size: size, dark: dark, background: .windowBackgroundColor,
+                               to: folder.appendingPathComponent("\(state)-\(Int(width))-\(dark ? "dark" : "light").png"))
+                }
+            }
+        }
+    }
+
+    func testRenderUpdatedSettingsPages() throws {
+        guard let folder = folder?.appendingPathComponent("updated-settings") else { throw XCTSkip("set BR_REVIEW_RENDER") }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        _ = NSApplication.shared
+        let model = ControlPanelModel()
+        model.preferences.remember(.init(id: "uu:window:vivoV2545A", name: "vivoV2545A"))
+        model.preferences.renameDevice("uu:window:vivoV2545A", to: "我的手机")
+        for (name, page) in [("devices", SettingsPage.connection), ("general", SettingsPage.general), ("about", SettingsPage.about)] {
+            let size = CGSize(width: 880, height: 720)
+            let content = SettingsView(model: model, page: page)
+                .environment(\.settingsReview, SettingsReviewOverrides(version: "0.8.169-test"))
+                .frame(width: size.width, height: size.height)
+                .background(DesignTokens.Colors.pageBackground)
+            let host = NSHostingView(rootView: content)
+            host.frame = CGRect(origin: .zero, size: size)
+            try render(host, size: size, dark: true, background: .windowBackgroundColor,
+                       to: folder.appendingPathComponent("\(name).png"))
+        }
+    }
+
     func testRenderToolbarGlass() throws {
         guard let folder = folder?.appendingPathComponent("toolbar-glass") else { throw XCTSkip("set BR_REVIEW_RENDER") }
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

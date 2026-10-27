@@ -50,7 +50,7 @@ final class ScrollGestureTests: XCTestCase {
 }
 
 final class TouchScrollPreferenceTests: XCTestCase {
-    func testOffByDefaultAndPersists() throws {
+    func testOffByDefaultAndExplicitOnPersists() throws {
         let legacy = try JSONDecoder().decode(Preferences.self, from: Data("{}".utf8))
         XCTAssertFalse(legacy.uuTouchScrollEnabled)
         var enabled = legacy

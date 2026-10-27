@@ -42,6 +42,7 @@ final class ConnectionActionPolicyTests: XCTestCase {
         preferences.toolbarWhenConnected = false
         preferences.toolbarWhenDisconnected = false
         preferences.autoRestoreOnDisconnect = false
+        preferences.autoResolutionEnabled = false
         XCTAssertFalse(preferences.needsRemoteConnectionMonitoring)
         let data = try JSONEncoder().encode(preferences)
         XCTAssertFalse(String(decoding: data, as: UTF8.self).contains("\"autoShowDockEnabled\""))

@@ -3,8 +3,7 @@ import SwiftUI
 import RemoteFitCore
 
 struct UUScrollSpeedSettings: View {
-    @ObservedObject var model: ControlPanelModel
-    private var percent: Int { model.preferences.uuScrollSpeedPercent }
+    @Binding var percent: Int
 
     var body: some View {
         SettingsView.settingCard {
@@ -21,7 +20,7 @@ struct UUScrollSpeedSettings: View {
                     set: { newValue in
                         let next = Int(newValue.rounded())
                         guard next != percent else { return }
-                        model.onUUScrollSpeedPercent(next)
+                        percent = next
                         Self.hapticTick()
                     }
                 ), in: 1...100, step: 1)
@@ -36,7 +35,7 @@ struct UUScrollSpeedSettings: View {
                     ForEach([5, 10, 25, 100], id: \.self) { value in
                         Button {
                             if value != percent {
-                                model.onUUScrollSpeedPercent(value)
+                                percent = value
                             }
                             Self.hapticTick()
                         } label: {

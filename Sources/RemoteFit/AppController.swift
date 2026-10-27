@@ -56,6 +56,92 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var remoteStability = RemoteSessionStability()
     private var deviceCollection = RemoteDeviceCollection()
     private var remoteDeviceID: String?
+    private var appliedDeviceConfiguration: DeviceConfiguration?
+    private var awaitingConfirmedDisconnect = false
+    private var appliedConfigurationEnabled: Bool?
+    private var activeConfigurationEnabled: Bool {
+        if awaitingConfirmedDisconnect, remoteStability.isConnected, let appliedConfigurationEnabled {
+            return appliedConfigurationEnabled
+        }
+        if remoteStability.isConnected, deviceCollection.isRemoved(remoteDeviceID) { return false }
+        return preferences.appliesConfiguration(for: remoteStability.isConnected ? remoteDeviceID : nil)
+    }
+    private var activeDeviceConfiguration: DeviceConfiguration {
+        if awaitingConfirmedDisconnect, remoteStability.isConnected, let appliedDeviceConfiguration {
+            return appliedDeviceConfiguration
+        }
+        if remoteStability.isConnected, deviceCollection.isRemoved(remoteDeviceID) { return preferences.bypassedConfiguration }
+        return preferences.effectiveConfiguration(for: remoteStability.isConnected ? remoteDeviceID : nil)
+    }
+
+    private var sessionToolbarConfiguration: DeviceConfiguration?
+    private var toolbarPreferences: Preferences {
+        if remoteStability.isConnected { return activeDeviceConfiguration.applying(to: preferences) }
+        if toolbarPresence.context == .connected, let sessionToolbarConfiguration {
+            return sessionToolbarConfiguration.applying(to: preferences)
+        }
+        return preferences
+    }
+
+    private func syncDeviceConfiguration() {
+        guard remoteStability.isConnected else {
+            appliedDeviceConfiguration = nil
+            appliedConfigurationEnabled = nil
+            floatingSwitcher.configure(preferences: toolbarPreferences)
+            startTouchScroll()
+            startNativeScroll()
+            return
+        }
+        let next = activeDeviceConfiguration
+        let enabled = activeConfigurationEnabled
+        guard next != appliedDeviceConfiguration || enabled != appliedConfigurationEnabled else { return }
+        appliedConfigurationEnabled = enabled
+        let previous = appliedDeviceConfiguration
+        appliedDeviceConfiguration = next
+        sessionToolbarConfiguration = next
+        connectionToolbarPolicy.setEnabled(next.toolbarWhenConnected)
+        floatingSwitcher.configure(preferences: toolbarPreferences)
+        if !next.toolbarWhenConnected || (previous != nil && previous?.toolbarWhenConnected != next.toolbarWhenConnected) {
+            _ = connectionToolbarPolicy.takeAction(busy: false)
+            applyToolbarSetting()
+        }
+        if enabled {
+            automaticPolicy.setEnabled(next.autoResolutionEnabled)
+            automaticPolicy.restoreOnDisconnect = next.autoRestoreOnDisconnect
+        } else {
+            automaticPolicy.suspendConfiguration()
+        }
+        if previous?.autoResolutionPresetID != next.autoResolutionPresetID { automaticPolicy.controllerChanged() }
+        connectionDockPolicy.setEnabled(next.connectionDockMode != .keep)
+        if previous?.connectionDockMode != next.connectionDockMode { syncConnectionDock() }
+        startTouchScroll()
+        startNativeScroll()
+        renderMenu()
+    }
+
+    private var displayDiagnosticsTask: Task<Void, Never>?
+    private var displayDiagnosticsSequence = 0
+
+    private func startDisplayDiagnostics(_ expected: Dimensions, reason: String) {
+        displayDiagnosticsTask?.cancel()
+        displayDiagnosticsSequence += 1
+        let sequence = displayDiagnosticsSequence
+        let started = ProcessInfo.processInfo.systemUptime
+        displayDiagnosticsTask = Task { @MainActor [weak self] in
+            for offset in [0.0, 1.0, 5.0, 15.0] {
+                let remaining = started + offset - ProcessInfo.processInfo.systemUptime
+                if remaining > 0 {
+                    do { try await Task.sleep(for: .seconds(remaining)) } catch { return }
+                }
+                guard let self, !Task.isCancelled, !terminating, status.applied == expected else { return }
+                let connection = "connected=\(remoteStability.isConnected) deviceIdentified=\(remoteDeviceID != nil) configurationEnabled=\(activeConfigurationEnabled)"
+                await engine.recordDisplayObservation(expected: expected, sequence: sequence, reason: reason,
+                    elapsed: ProcessInfo.processInfo.systemUptime - started,
+                    appKit: DisplayDiagnostics.appKitGeometry(), connection: connection)
+            }
+        }
+    }
+
     private var lastMatchedDeviceID: String?
     private var connectionDockPolicy = ConnectionDockPolicy()
     private var connectionToolbarPolicy = ConnectionToolbarPolicy()
@@ -89,7 +175,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         do { instanceLock = try InstanceLock(root: root) }
         catch { NSApplication.shared.terminate(nil); return }
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "unknown"
+        Task { [engine] in await engine.log("app_launch", "version=\(version) build=\(build) uptime=\(ProcessInfo.processInfo.systemUptime)") }
         AppUpdater.shared.start()
+        GitHubStarModel.shared.ensureLaunchRefresh()
         NSApplication.shared.setActivationPolicy(.accessory)
         scheduleStableModeRecord()
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
@@ -100,6 +190,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.fitSettingsWindow()
+                if let self, !self.terminating {
+                    let geometry = DisplayDiagnostics.appKitGeometry()
+                    Task { [engine = self.engine] in await engine.log("appkit_screen_change", geometry) }
+                }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self?.fitSettingsWindow() }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { self?.fitSettingsWindow() }
             }
@@ -113,17 +207,17 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                   let screen = floatingSwitcher.actionScreen else { return nil }
             let visible = WindowController.accessibilityFrame(screen)
             let toolbar = floatingSwitcher.reservedToolbarFrame
-            let appKitArea = DesktopToolbarLayout.workspace(avoiding: toolbar, in: screen.visibleFrame, side: preferences.toolbarSide)
+            let appKitArea = DesktopToolbarLayout.workspace(avoiding: toolbar, in: screen.visibleFrame, side: toolbarPreferences.toolbarSide)
             let top = NSScreen.screens.first?.frame.maxY ?? screen.frame.maxY
             let area = CGRect(x: appKitArea.minX, y: top - appKitArea.maxY, width: appKitArea.width, height: appKitArea.height)
             let axToolbar = CGRect(x: toolbar.minX, y: top - toolbar.maxY, width: toolbar.width, height: toolbar.height)
-            return WorkspaceLayoutController.Region(area: area, screen: visible, toolbar: axToolbar, side: preferences.toolbarSide)
+            return WorkspaceLayoutController.Region(area: area, screen: visible, toolbar: axToolbar, side: toolbarPreferences.toolbarSide)
         }
         WindowControlPerformer.prepareLayout = { [weak self] in await self?.workspaceLayout.suspendCurrentAdjustment() }
         WindowControlPerformer.layoutArea = { [weak self] screen in
             guard let self, floatingSwitcher.actionScreen == screen else { return screen.visibleFrame }
             return DesktopToolbarLayout.workspace(presence: floatingSwitcher.presence, toolbar: floatingSwitcher.toolbarFrame,
-                                                  in: screen.visibleFrame, side: preferences.toolbarSide)
+                                                  in: screen.visibleFrame, side: toolbarPreferences.toolbarSide)
         }
         autoFill.perform = { pid in await WindowControlPerformer.autoFillFront(pid: pid) }
         autoFill.canFill = { [weak self] in self.map { !$0.applying && !$0.terminating && $0.connectionDockTask == nil } ?? false }
@@ -131,7 +225,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         startTouchScroll()
         configurePanel()
         startNativeScroll()
-        floatingSwitcher.configure(preferences: preferences)
+        floatingSwitcher.configure(preferences: toolbarPreferences)
         applyToolbarSetting()
         // SIGTERM follows the same restore-before-exit path as the menu item.
         for number in [SIGTERM, SIGINT] {
@@ -174,6 +268,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if instanceLock == nil { return .terminateNow }
         if terminating { return .terminateLater }
         terminating = true
+        displayDiagnosticsTask?.cancel(); displayDiagnosticsTask = nil
         connectionDockTask?.cancel(); connectionDockTask = nil
         applyGeneration += 1
         automaticPolicy.manualOverride()
@@ -314,7 +409,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 try JSONEncoder().encode(next).write(to: root.appendingPathComponent("preferences.json"), options: .atomic)
                 preferences = next
                 panelModel.preferences = next
-                floatingSwitcher.configure(preferences: next)
+                floatingSwitcher.configure(preferences: toolbarPreferences)
                 renderMenu()
                 return true
             } catch {
@@ -336,7 +431,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             do {
                 try JSONEncoder().encode(next).write(to: root.appendingPathComponent("preferences.json"), options: .atomic)
                 preferences = next
-                floatingSwitcher.configure(preferences: preferences)
+                floatingSwitcher.configure(preferences: toolbarPreferences)
             } catch { status.title = "保存失败"; status.detail = error.localizedDescription; renderMenu(); return false }
             renderMenu()
             return true
@@ -349,7 +444,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             do {
                 try JSONEncoder().encode(next).write(to: root.appendingPathComponent("preferences.json"), options: .atomic)
                 preferences = next
-                floatingSwitcher.configure(preferences: preferences)
+                floatingSwitcher.configure(preferences: toolbarPreferences)
                 renderMenu()
                 return true
             } catch {
@@ -362,7 +457,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             guard let self, let index = preferences.namedShortcuts.firstIndex(where: { $0.id == id }) else { return }
             preferences.namedShortcuts[index].enabled = enabled
             save()
-            floatingSwitcher.configure(preferences: preferences)
+            floatingSwitcher.configure(preferences: toolbarPreferences)
         }
         panelModel.onFloatingActionIcon = { [weak self] action, icon in
             guard let self else { return false }
@@ -371,7 +466,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             do {
                 try JSONEncoder().encode(next).write(to: root.appendingPathComponent("preferences.json"), options: .atomic)
                 preferences = next
-                floatingSwitcher.configure(preferences: next)
+                floatingSwitcher.configure(preferences: toolbarPreferences)
                 renderMenu()
                 return true
             } catch {
@@ -388,7 +483,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 preferences.floatingActions.removeAll { $0 == action }
             }
             save()
-            floatingSwitcher.configure(preferences: preferences)
+            floatingSwitcher.configure(preferences: toolbarPreferences)
         }
         panelModel.onMoveOperations = { [weak self] offsets, destination in
             guard let self else { return }
@@ -398,7 +493,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             do {
                 try JSONEncoder().encode(next).write(to: root.appendingPathComponent("preferences.json"), options: .atomic)
                 preferences = next
-                floatingSwitcher.configure(preferences: preferences)
+                floatingSwitcher.configure(preferences: toolbarPreferences)
             } catch {
                 status = .init(title: "排序保存失败", detail: error.localizedDescription)
             }
@@ -408,7 +503,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             guard let self else { return }
             dismissToolPanels()
             preferences.toolbarSide = side
-            floatingSwitcher.configure(preferences: preferences)
+            floatingSwitcher.configure(preferences: toolbarPreferences)
             save()
         }
         panelModel.onTheme = { [weak self] theme in
@@ -441,6 +536,37 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             var next = preferences
             next.toolbarWhenDisconnected = enabled
             saveAutomaticPreferences(next)
+        }
+        panelModel.onDeviceViewed = { [weak self] deviceID in
+            guard let self, let index = preferences.remoteDevices.firstIndex(where: { $0.id == deviceID }), preferences.remoteDevices[index].isNew == true else { return }
+            var next = preferences
+            next.remoteDevices[index].isNew = false
+            saveAutomaticPreferences(next)
+        }
+        panelModel.onDeviceName = { [weak self] deviceID, name in
+            guard let self else { return }
+            var next = preferences
+            next.renameDevice(deviceID, to: name)
+            saveAutomaticPreferences(next)
+        }
+        panelModel.onDeviceConfigurationEnabled = { [weak self] deviceID, enabled in
+            guard let self, let index = preferences.remoteDevices.firstIndex(where: { $0.id == deviceID }) else { return }
+            var next = preferences
+            next.remoteDevices[index].configurationEnabled = enabled
+            saveAutomaticPreferences(next)
+        }
+        panelModel.onDeviceConfiguration = { [weak self] deviceID, configuration in
+            guard let self else { return }
+            var next = preferences
+            next.setConfiguration(configuration, for: deviceID)
+            saveAutomaticPreferences(next)
+            if (configuration.uuTouchScrollEnabled || configuration.uuScrollSpeedPercent < 100 || configuration.autoFillWindowsOnRemote), !AXIsProcessTrusted() {
+                ShortcutPermissions.shared.prepare { [weak self] in
+                    self?.startTouchScroll()
+                    self?.startNativeScroll()
+                    self?.renderMenu()
+                }
+            }
         }
         panelModel.onAutoFillWindowsToggle = { [weak self] enabled in
             guard let self else { return }
@@ -476,7 +602,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         panelModel.onDeleteRemoteDevice = { [weak self] id in
             guard let self else { return }
             var next = preferences
-            deviceCollection.remove(id, from: &next)
+            deviceCollection.remove(id, from: &next, suppressRediscovery: remoteDeviceID == id || (remoteStability.isConnected && lastMatchedDeviceID == id))
             saveAutomaticPreferences(next)
         }
         panelModel.onDeviceResolutionPreset = { [weak self] deviceID, presetID in
@@ -517,7 +643,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             preferences.showWindowControls = enabled
             save()
             panelModel.preferences = preferences
-            floatingSwitcher.configure(preferences: preferences)
+            floatingSwitcher.configure(preferences: toolbarPreferences)
         }
         panelModel.onConnectionDockMode = { [weak self] mode in
             guard let self, mode != preferences.connectionDockMode else { return }
@@ -589,6 +715,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             for index in preferences.remoteDevices.indices where preferences.remoteDevices[index].presetID == id {
                 preferences.remoteDevices[index].presetID = nil
             }
+            for index in preferences.remoteDevices.indices where preferences.remoteDevices[index].configuration?.autoResolutionPresetID == id {
+                preferences.remoteDevices[index].configuration?.autoResolutionPresetID = nil
+            }
             if preferences.autoResolutionPresetID == id {
                 preferences.autoResolutionPresetID = nil
             }
@@ -606,7 +735,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     /// UU one-finger drags scroll; needs Accessibility, so retry quietly until granted.
     private func startTouchScroll() {
-        guard preferences.uuTouchScrollEnabled, remoteStability.isConnected, !terminating else {
+        guard activeDeviceConfiguration.uuTouchScrollEnabled, remoteStability.isConnected, !terminating else {
             touchScrollRetry?.invalidate(); touchScrollRetry = nil
             touchScroll.stop()
             return
@@ -625,7 +754,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func retryTouchScroll() {
-        guard !terminating, preferences.uuTouchScrollEnabled, remoteStability.isConnected, AXIsProcessTrusted(), touchScroll.start() else { return }
+        guard !terminating, activeDeviceConfiguration.uuTouchScrollEnabled, remoteStability.isConnected, AXIsProcessTrusted(), touchScroll.start() else { return }
         touchScrollRetry?.invalidate(); touchScrollRetry = nil
     }
 
@@ -635,7 +764,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func startNativeScroll() {
         nativeScrollTimer?.invalidate(); nativeScrollTimer = nil
         refreshNativeScroll()
-        guard preferences.uuScrollSpeedPercent < 100, !terminating else { return }
+        guard remoteStability.isConnected, activeDeviceConfiguration.uuScrollSpeedPercent < 100, !terminating else { return }
         let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.refreshNativeScroll() }
         }
@@ -644,7 +773,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func refreshNativeScroll() {
-        let enabled = preferences.uuScrollSpeedPercent < 100 && !terminating
+        let enabled = remoteStability.isConnected && activeDeviceConfiguration.uuScrollSpeedPercent < 100 && !terminating
         let companion = enabled && NSWorkspace.shared.runningApplications.contains {
             $0.bundleIdentifier == UUNativeScroll.companionBundleID
         }
@@ -652,7 +781,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             nativeScroll.stop()
             return
         }
-        nativeScroll.setPercent(preferences.uuScrollSpeedPercent)
+        nativeScroll.setPercent(activeDeviceConfiguration.uuScrollSpeedPercent)
         if !nativeScroll.start() { nativeScroll.stop() }
     }
 
@@ -819,7 +948,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let screen = screen ?? floatingSwitcher.actionScreen ?? NSScreen.main else { return }
         let area = floatingSwitcher.actionScreen == screen
             ? DesktopToolbarLayout.workspace(presence: floatingSwitcher.presence, toolbar: floatingSwitcher.reservedToolbarFrame,
-                                             in: screen.visibleFrame, side: preferences.toolbarSide)
+                                             in: screen.visibleFrame, side: toolbarPreferences.toolbarSide)
             : screen.visibleFrame
         notice.show(title, detail: detail, in: area)
     }
@@ -851,7 +980,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let screen = floatingSwitcher.actionScreen else { return }
         dismissToolPanels()
         settingsWindow?.orderOut(nil)
-        appLauncher.show(anchor: floatingSwitcher.toolbarFrame, screen: screen, side: preferences.toolbarSide)
+        appLauncher.show(anchor: floatingSwitcher.toolbarFrame, screen: screen, side: toolbarPreferences.toolbarSide)
         floatingSwitcher.setActivePanel(.runningApplications)
     }
     private func showResolution() {
@@ -881,13 +1010,13 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         overlay.setFrame(frame, display: true)
         overlay.makeKeyAndOrderFront(nil)
-        (overlay.contentView as? NativeGlassView)?.attach(to: preferences.toolbarSide)
-        (overlay.contentView as? NativeGlassView)?.reveal(from: preferences.toolbarSide)
+        (overlay.contentView as? NativeGlassView)?.attach(to: toolbarPreferences.toolbarSide)
+        (overlay.contentView as? NativeGlassView)?.reveal(from: toolbarPreferences.toolbarSide)
         floatingSwitcher.setActivePanel(.resolution)
     }
     private func resolutionPanelFrame(in screen: NSScreen) -> CGRect {
         // Full edge height on every dock, like the 应用面板; content scrolls inside.
-        DesktopToolbarLayout.resolutionPanel(to: floatingSwitcher.toolbarFrame, in: screen.visibleFrame, side: preferences.toolbarSide, presetCount: preferences.customPresets.count)
+        DesktopToolbarLayout.resolutionPanel(to: floatingSwitcher.toolbarFrame, in: screen.visibleFrame, side: toolbarPreferences.toolbarSide, presetCount: preferences.customPresets.count)
     }
     private func resolutionContentHeightChanged(_ height: CGFloat) {
         guard abs((resolutionContentHeight ?? 0) - height) > 0.5 else { return }
@@ -899,7 +1028,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard window.frame != frame else { window.alphaValue = 1; return }
         window.setFrame(frame, display: false)
         window.contentView = makeResolutionContent()
-        (window.contentView as? NativeGlassView)?.attach(to: preferences.toolbarSide)
+        (window.contentView as? NativeGlassView)?.attach(to: toolbarPreferences.toolbarSide)
         window.display()
         window.alphaValue = 1
     }
@@ -949,7 +1078,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // An expanded toolbar floats above 设置; keep the window (and its sheets) beside it, in the
         // same area 铺满 uses (the visible frame minus the toolbar only while it is docked and expanded).
         let area = SettingsWindowLayout.spacedFromToolbar(WindowControlPerformer.layoutArea(screen),
-                                                          visible: screen.visibleFrame, side: preferences.toolbarSide)
+                                                          visible: screen.visibleFrame, side: toolbarPreferences.toolbarSide)
         DialogLimit.settingsArea = area
         let target = SettingsWindowLayout.clampedFrame(window.frame, in: area, chrome: chrome)
         let contentSize = window.contentRect(forFrameRect: target).size
@@ -965,7 +1094,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let workspaceEnabled = floatingSwitcher.isExpanded && !applying && !terminating && trusted
         workspaceLayout.setEnabled(workspaceEnabled)
         // The Dock change (and its re-fit) lands first, so auto-fill uses the final visible area.
-        autoFill.setEnabled(preferences.autoFillWindowsOnRemote && toolbarPresence.context == .connected && !terminating && trusted
+        autoFill.setEnabled(activeDeviceConfiguration.autoFillWindowsOnRemote && remoteStability.isConnected && !terminating && trusted
                             && connectionDockTask == nil)
         if panelModel.copySaved != copySaved { panelModel.copySaved = copySaved }
         if panelModel.adjustment != adjustment { panelModel.adjustment = adjustment }
@@ -983,7 +1112,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if settingsWindow?.isVisible == true { fitSettingsWindow() }
         item?.menu?.item(withTag: 2)?.isEnabled = !applying && !terminating
         if appLauncher.isVisible, let screen = floatingSwitcher.actionScreen {
-            appLauncher.update(anchor: floatingSwitcher.toolbarFrame, screen: screen, side: preferences.toolbarSide)
+            appLauncher.update(anchor: floatingSwitcher.toolbarFrame, screen: screen, side: toolbarPreferences.toolbarSide)
         }
         if let window = resolutionWindow, window.isVisible, let screen = window.screen ?? NSScreen.main {
             let frame = resolutionPanelFrame(in: screen)
@@ -1026,6 +1155,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
     private func applyManually(dismissPanel: Bool = true) {
         guard !applying, !terminating else { return }
+        displayDiagnosticsTask?.cancel()
         automaticPolicy.manualAdjustment()
         if !automaticPolicy.ownsResolution { automaticRestorePoint = nil }
         applyGeneration += 1
@@ -1039,6 +1169,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let result = await self.engine.apply(self.adjustment.dimensions)
             guard generation == self.applyGeneration else { return }
             self.status = result
+            if result.detail == nil, let applied = result.applied { self.startDisplayDiagnostics(applied, reason: "manual_apply") }
             if dismissPanel, result.detail == nil {
                 self.dismissToolPanels()
             }
@@ -1050,6 +1181,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
     @objc private func recover() {
         guard !applying, !terminating else { return }
+        displayDiagnosticsTask?.cancel()
         automaticPolicy.manualOverride()
         automaticRestorePoint = nil
         applyGeneration += 1
@@ -1069,33 +1201,14 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func saveAutomaticPreferences(_ next: Preferences) {
         do {
             try JSONEncoder().encode(next).write(to: root.appendingPathComponent("preferences.json"), options: .atomic)
-            let wasReady = preferences.autoResolutionEnabled
-            let isReady = next.autoResolutionEnabled
-            let monitoringChanged = preferences.needsRemoteConnectionMonitoring != next.needsRemoteConnectionMonitoring
-            let dockModeChanged = preferences.connectionDockMode != next.connectionDockMode
-            let toolbarChanged = ToolbarPresence.shows(toolbarPresence.context, preferences: preferences)
-                != ToolbarPresence.shows(toolbarPresence.context, preferences: next)
+            let previousToolbarVisible = ToolbarPresence.shows(toolbarPresence.context, preferences: toolbarPreferences)
             preferences = next
-            connectionToolbarPolicy.setEnabled(next.toolbarWhenConnected)
-            if toolbarChanged {
-                // Flipping the switch for the current state takes effect now (and replaces any queued expansion).
+            connectionToolbarPolicy.setEnabled(toolbarPreferences.toolbarWhenConnected)
+            if previousToolbarVisible != ToolbarPresence.shows(toolbarPresence.context, preferences: toolbarPreferences) {
                 _ = connectionToolbarPolicy.takeAction(busy: false)
                 applyToolbarSetting()
             }
-            if wasReady != isReady {
-                automaticPolicy = AutomaticResolutionPolicy()
-                automaticPolicy.setEnabled(isReady)
-                automaticPolicy.connectionChanged(remoteStability.isConnected)
-            }
-            automaticPolicy.setEnabled(isReady)
-            automaticPolicy.restoreOnDisconnect = next.autoRestoreOnDisconnect
-            connectionDockPolicy.setEnabled(next.connectionDockMode != .keep)
-            // Changing the mode mid-session takes effect now; 保持现状 gives back anything still owed.
-            if dockModeChanged, remoteStability.isConnected || dockSession.owesRestore { syncConnectionDock() }
-            if !next.autoResolutionEnabled { automaticRestorePoint = nil }
-            if monitoringChanged {
-                startRemoteMonitor()
-            }
+            syncDeviceConfiguration()
             renderMenu()
             runAutomaticResolutionIfNeeded()
         } catch { showNotice("设置保存失败", detail: error.localizedDescription) }
@@ -1106,6 +1219,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         remoteStability = RemoteSessionStability()
         remoteDeviceID = nil
         lastMatchedDeviceID = nil
+        appliedDeviceConfiguration = nil
+        appliedConfigurationEnabled = nil
+        awaitingConfirmedDisconnect = false
         // Detection restarts from scratch; a session that is still there reconfirms within the 5 s grace.
         remoteToolbarTransition(connected: false)
         connectionToolbarPolicy.setEnabled(preferences.toolbarWhenConnected)
@@ -1122,14 +1238,30 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 stableModeTask?.cancel(); stableModeTask = nil
                 Task { [engine] in await engine.noteRemoteActivity() }
             }
-            if !snapshot.active.contains(.uu), !snapshot.unknown.contains(.uu) { deviceCollection.disconnected() }
-            let oldDeviceID = lastMatchedDeviceID
+            awaitingConfirmedDisconnect = snapshot.active.isEmpty && remoteStability.isConnected
             // Other providers never inherit a UU-specific rule.
-            remoteDeviceID = snapshot.active == [.uu] ? snapshot.uuDevice?.id : nil
+            // Keep a matched identity during a transient unknown sample, but never
+            // carry a UU profile into a different provider's connection.
+            if snapshot.active == [.uu] {
+                remoteDeviceID = snapshot.uuDevice?.id
+            } else if snapshot.active.isEmpty && snapshot.unknown.contains(.uu) {
+                remoteDeviceID = lastMatchedDeviceID
+            } else {
+                remoteDeviceID = nil
+            }
             if let transition = remoteStability.observe(snapshot, at: now) {
                 if transition == .disconnected {
+                    deviceCollection.disconnected()
                     lastMatchedDeviceID = nil
+                    remoteDeviceID = nil
                     panelModel.identifyHint = nil
+                }
+                if transition == .connected {
+                    let configuration = activeDeviceConfiguration
+                    automaticPolicy.setEnabled(configuration.autoResolutionEnabled)
+                    automaticPolicy.restoreOnDisconnect = configuration.autoRestoreOnDisconnect
+                    connectionDockPolicy.setEnabled(configuration.connectionDockMode != .keep)
+                    connectionToolbarPolicy.setEnabled(configuration.toolbarWhenConnected)
                 }
                 automaticPolicy.connectionChanged(transition == .connected)
                 connectionDockPolicy.connectionChanged(transition == .connected)
@@ -1137,11 +1269,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 if transition == .disconnected { syncConnectionDock() }
                 startTouchScroll()
                 let providers = snapshot.active.map(\.rawValue).sorted().joined(separator: ",")
-                Task { [engine] in await engine.log("remote_signal", "\(transition) providers=\(providers) uptime=\(now)") }
-            }
-            // Include nil → device so a late identify (after connect) still auto-applies.
-            if preferences.deviceResolutionEnabled, oldDeviceID != remoteDeviceID, remoteDeviceID != nil {
-                automaticPolicy.controllerChanged()
+                let configuration = transition == .disconnected ? (appliedDeviceConfiguration ?? activeDeviceConfiguration) : activeDeviceConfiguration
+                let configurationEnabled = transition == .disconnected ? (appliedConfigurationEnabled ?? activeConfigurationEnabled) : activeConfigurationEnabled
+                let target = preferences.customPresets.first { $0.id == configuration.autoResolutionPresetID }?.dimensions(.standard).label ?? "none"
+                let decision = "configurationEnabled=\(configurationEnabled) deviceIdentified=\(remoteDeviceID != nil) resolutionEnabled=\(configuration.autoResolutionEnabled) target=\(target) restore=\(automaticPolicy.restoreOnDisconnect) busy=\(applying)"
+                Task { [engine] in await engine.log("remote_signal", "\(transition) providers=\(providers) uptime=\(now) \(decision)") }
             }
             if let remoteDeviceID { lastMatchedDeviceID = remoteDeviceID }
             if let device = snapshot.uuDevice {
@@ -1149,6 +1281,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 deviceCollection.remember(device, in: &next)
                 if next != preferences { saveAutomaticPreferences(next) }
             }
+            panelModel.connectedDeviceID = remoteStability.isConnected ? remoteDeviceID : nil
+            syncDeviceConfiguration()
             updateIdentifyHint(from: snapshot)
             runAutomaticResolutionIfNeeded()
             return snapshot.confirmationDelay(remoteStability.confirmationDelay(at: now))
@@ -1156,10 +1290,15 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func updateIdentifyHint(from snapshot: RemoteSessionSnapshot) {
+        // A recognized device intentionally inheriting defaults needs no setup warning.
+        if snapshot.uuDevice != nil {
+            panelModel.identifyHint = nil
+            return
+        }
         let device = snapshot.uuDevice
         let deviceHasPreset: Bool = {
             guard let id = device?.id,
-                  let presetID = preferences.remoteDevices.first(where: { $0.id == id })?.presetID,
+                  let presetID = preferences.configuration(for: id).autoResolutionPresetID,
                   preferences.customPresets.contains(where: { $0.id == presetID }) else { return false }
             return true
         }()
@@ -1168,7 +1307,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             status: snapshot.uuIdentifyStatus,
             device: device,
             deviceHasPreset: deviceHasPreset,
-            defaultResolutionEnabled: preferences.defaultResolutionEnabled,
+            defaultResolutionEnabled: preferences.configuration(for: nil).autoResolutionEnabled,
             hasDefaultPreset: hasDefault,
             exhausted: snapshot.uuIdentifyExhausted,
             deviceResolutionEnabled: preferences.deviceResolutionEnabled
@@ -1235,7 +1374,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         switch action {
         case .apply:
-            guard let preset = preferences.automaticPreset(for: remoteDeviceID) else {
+            displayDiagnosticsTask?.cancel()
+            guard let preset = preferences.customPresets.first(where: { $0.id == activeDeviceConfiguration.autoResolutionPresetID }) else {
+                Task { [engine] in await engine.log("automatic_apply_skipped", "reason=no_selected_preset") }
                 automaticPolicy.applied(success: false)
                 runPendingToolbarExpansion()
                 return
@@ -1249,6 +1390,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if status.detail == nil, status.applied == dimensions, preferences.selectedCustomID == preset.id {
                 Task { [engine] in await engine.log("automatic_apply_skipped", dimensions.label) }
                 automaticPolicy.applied(success: true)
+                startDisplayDiagnostics(dimensions, reason: "already_applied")
                 renderMenu()
                 runPendingToolbarExpansion()
                 return
@@ -1272,6 +1414,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 floatingSwitcher.redock()
                 let success = result.detail == nil && result.applied == dimensions
                 automaticPolicy.applied(success: success)
+                if success { startDisplayDiagnostics(dimensions, reason: "automatic_apply") }
                 if !success {
                     restoreAutomaticSelection()
                     automaticRestorePoint = nil
@@ -1281,6 +1424,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 runAutomaticResolutionIfNeeded()
             }
         case .restore:
+            displayDiagnosticsTask?.cancel()
             applying = true
             status.title = "正在还原屏幕…"
             renderMenu()
@@ -1327,7 +1471,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard !terminating else { return }
         if connectionDockTask != nil { connectionDockSyncAgain = true; return }
         // Nothing to do (保持现状 and nothing owed): don't start a task, which would pause auto-fill.
-        guard dockSession.needsDock(for: remoteStability.isConnected ? preferences.connectionDockMode : .keep) else { return }
+        guard dockSession.needsDock(for: remoteStability.isConnected ? activeDeviceConfiguration.connectionDockMode : .keep) else { return }
         connectionDockTask = Task { @MainActor [weak self] in
             guard let self else { return }
             renderMenu() // holds auto-fill until the Dock work is done
@@ -1340,7 +1484,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func performConnectionDockSync() async {
-        let mode = remoteStability.isConnected ? preferences.connectionDockMode : .keep
+        let mode = remoteStability.isConnected ? activeDeviceConfiguration.connectionDockMode : .keep
         guard dockSession.needsDock(for: mode) else { return }
         let bridge = DockAutohideBridge.shared
         do {
@@ -1397,7 +1541,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// ON = expanded bar, OFF = fully hidden (no ball), for the setting that applies right now.
     private func applyToolbarSetting() {
         guard !terminating else { return }
-        if ToolbarPresence.shows(toolbarPresence.context, preferences: preferences) { floatingSwitcher.showExpanded() }
+        if ToolbarPresence.shows(toolbarPresence.context, preferences: toolbarPreferences) { floatingSwitcher.showExpanded() }
         else { floatingSwitcher.setEnabled(false) }
         renderMenu()
     }
@@ -1425,10 +1569,12 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func enterToolbarContext(_ context: ToolbarPresence.Context) {
+        if context == .disconnected { sessionToolbarConfiguration = nil }
+        floatingSwitcher.configure(preferences: toolbarPreferences)
         connectionToolbarPolicy.connectionChanged(context == .connected)
         // Connected + 远程连接时显示: the monitor's runAutomaticResolutionIfNeeded expands it once
         // connection-time display work has finished (runPendingToolbarExpansion).
-        if context == .connected && preferences.toolbarWhenConnected { renderMenu() } else { applyToolbarSetting() }
+        if context == .connected && toolbarPreferences.toolbarWhenConnected { renderMenu() } else { applyToolbarSetting() }
     }
 
     private func restoreAutomaticSelection() {

@@ -89,6 +89,7 @@ struct SettingsView: View {
                minHeight: SettingsWindowLayout.minimumSize.height, idealHeight: SettingsWindowLayout.preferredSize.height)
         .onGeometryChange(for: Bool.self) { SettingsWindowLayout.isNarrow(contentWidth: $0.size.width) } action: { narrow = $0 }
         .environment(\.settingsNarrow, narrow)
+        .scrollIndicators(.hidden)
         .disabled(model.terminating || model.applying)
         .sheet(item: $draft, content: specEditor)
         .alert("删除「\(pendingDeletion?.name ?? "")」？", isPresented: Binding(
@@ -147,8 +148,7 @@ struct SettingsView: View {
             sidebarRow("常规", symbol: "gearshape", page: .general)
             sidebarRow("分辨率", symbol: "display", page: .resolution)
             sidebarRow("快捷操作", symbol: "sidebar.right", page: .floating)
-            sidebarRow("连接自动化", symbol: "link", page: .connection)
-            sidebarRow("触控", symbol: "hand.point.up.left", page: .touch)
+            sidebarRow("连接自动化", symbol: "gearshape.2", page: .connection)
             sidebarRow(FeedbackCopy.page, symbol: "info.circle", page: .about)
             Spacer()
 
@@ -346,40 +346,11 @@ struct SettingsView: View {
     }
 
     private var connectionSettings: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("连接自动化").font(.system(size: DesignTokens.fontTitle, weight: .semibold))
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    AutomaticResolutionSettings(model: model)
-
-                }
-            }
-        }
-        .padding(pagePadding).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        DeviceListSettings(model: model)
+            .padding(pagePadding)
     }
 
-    // MARK: - Touch Settings
-
-    private var touchSettings: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            Text("触控").font(.system(size: DesignTokens.fontTitle, weight: .semibold))
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    Self.settingCard {
-                        Self.settingRow("单指滚动", symbol: "hand.draw") {
-                            Toggle("单指滚动", isOn: Binding(
-                                get: { model.preferences.uuTouchScrollEnabled },
-                                set: { model.onUUTouchScrollToggle($0) }
-                            )).labelsHidden().toggleStyle(.switch)
-                        }
-                        .help("单指滑动即滚动，按住约 0.8 秒再拖为拖动")
-                    }
-                    UUScrollSpeedSettings(model: model)
-                }
-            }
-        }
-        .padding(pagePadding).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
+    private var touchSettings: some View { connectionSettings }
 
     private var aboutSettings: some View {
         VStack(spacing: 0) {
@@ -420,6 +391,8 @@ struct SettingsView: View {
                 FeedbackSettings(model: feedback, showsCheckUpdate: review == nil)
                     .frame(maxWidth: .infinity)
                     .padding(.top, DesignTokens.spacingXl)
+                GitHubStarSettings(allowsNetwork: review == nil)
+                    .padding(.top, 16)
             }
             .frame(maxWidth: 480)
 
@@ -551,7 +524,7 @@ struct SettingsView: View {
                                     }
                                 }
                             ))
-                            .toggleStyle(.switch)
+                            .toggleStyle(StableBlueSwitchStyle())
                             .labelsHidden()
                         }
                         .padding(.horizontal, 14)
@@ -568,42 +541,15 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
 
                     VStack(spacing: 0) {
-                        Self.settingRow("远程连接时显示", symbol: "sidebar.right") {
-                            Toggle("远程连接时显示", isOn: Binding(
-                                get: { model.preferences.toolbarWhenConnected },
-                                set: { model.onToolbarWhenConnectedToggle($0) }
-                            ))
-                            .toggleStyle(.switch)
-                            .labelsHidden()
-                        }
-
-                        Divider()
-                            .padding(.leading, 54)
-
                         Self.settingRow("未连接时显示", symbol: "display") {
                             Toggle("未连接时显示", isOn: Binding(
                                 get: { model.preferences.toolbarWhenDisconnected },
                                 set: { model.onToolbarWhenDisconnectedToggle($0) }
                             ))
-                            .toggleStyle(.switch)
+                            .toggleStyle(StableBlueSwitchStyle())
                             .labelsHidden()
                         }
 
-                        Divider()
-                            .padding(.leading, 54)
-
-                        Self.wideControlRow("停靠位置", symbol: "arrow.up.and.down.and.arrow.left.and.right", narrow: narrow, controlWidth: 240) {
-                            Picker("停靠位置", selection: Binding(
-                                get: { model.preferences.toolbarSide },
-                                set: { model.onToolbarSide($0) }
-                            )) {
-                                ForEach(ToolbarSide.allCases, id: \.self) { side in
-                                    Text(side.title).tag(side)
-                                }
-                            }
-                            .pickerStyle(.segmented)
-                            .labelsHidden()
-                        }
                     }
                     .background(DesignTokens.Colors.card, in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous))
                 }
@@ -736,7 +682,7 @@ struct SettingsView: View {
                 Toggle("显示布局按钮", isOn: Binding(
                     get: { model.preferences.showWindowControls },
                     set: { model.onWindowControlsToggle($0) }
-                )).labelsHidden().toggleStyle(.switch).controlSize(.small)
+                )).labelsHidden().toggleStyle(StableBlueSwitchStyle()).controlSize(.small)
                     .help("显示布局按钮")
             }
         }
@@ -784,7 +730,7 @@ struct SettingsView: View {
                                 onBegin: { draggedOperationID = operation.id }, onEnd: { draggedOperationID = nil })
                 .frame(width: 18, height: 32)
             operationHeading(title: title, symbol: symbol, subtitle: subtitle)
-            Toggle(title, isOn: enabled).labelsHidden().toggleStyle(.switch).controlSize(.mini)
+            Toggle(title, isOn: enabled).labelsHidden().toggleStyle(StableBlueSwitchStyle()).controlSize(.mini)
                 .frame(width: 32, height: 32)
             if case .shortcut(let shortcut) = operation {
                 Button {

@@ -9,7 +9,10 @@ final class ConnectionDockTests: XCTestCase {
     func testDefaultIsKeepAndDoesNotNeedMonitoring() {
         var p = Preferences()
         XCTAssertEqual(p.connectionDockMode, .keep)
-        p.toolbarWhenConnected = false; p.autoRestoreOnDisconnect = false
+        // New installs enable 默认配置 · 分辨率规格, which alone needs monitoring.
+        XCTAssertTrue(p.autoResolutionEnabled && p.hasAutomaticDefault)
+        XCTAssertTrue(p.needsRemoteConnectionMonitoring)
+        p.toolbarWhenConnected = false; p.autoRestoreOnDisconnect = false; p.autoResolutionEnabled = false
         XCTAssertFalse(p.needsRemoteConnectionMonitoring)
         p.connectionDockMode = .autoHide
         XCTAssertTrue(p.needsRemoteConnectionMonitoring)

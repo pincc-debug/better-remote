@@ -32,11 +32,20 @@ final class RecommendedPresetTests: XCTestCase {
         var p = Preferences()
         XCTAssertEqual(p.autoResolutionPresetID, CustomPreset.recommendedLandscapeID)
         XCTAssertTrue(p.hasAutomaticDefault)
-        XCTAssertFalse(p.autoResolutionEnabled)
+        XCTAssertTrue(p.autoResolutionEnabled)
+        XCTAssertEqual(p.configuration(for: nil).selectedResolutionID, CustomPreset.recommendedLandscapeID)
+        XCTAssertEqual(CustomPreset.factorySpecs().first { $0.id == CustomPreset.recommendedLandscapeID }?.title,
+                       "手机横屏（保留操作栏）")
+        p.setAutomaticResolutionEnabled(false)
+        XCTAssertEqual(p.autoResolutionPresetID, CustomPreset.recommendedLandscapeID)
         p.setAutomaticResolutionEnabled(true)
         XCTAssertEqual(p.autoResolutionPresetID, CustomPreset.recommendedLandscapeID)
         let reloaded = try JSONDecoder().decode(Preferences.self, from: JSONEncoder().encode(p))
         XCTAssertEqual(reloaded.autoResolutionPresetID, CustomPreset.recommendedLandscapeID)
+        XCTAssertTrue(reloaded.autoResolutionEnabled)
+        // Existing prefs files that never stored the key keep resolution off.
+        let legacy = try JSONDecoder().decode(Preferences.self, from: Data(#"{"seededFactorySpecs":true}"#.utf8))
+        XCTAssertFalse(legacy.autoResolutionEnabled)
     }
 
     func testSavedListAndSelectionAreLeftAlone() throws {

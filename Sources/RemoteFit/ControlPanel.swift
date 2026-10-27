@@ -35,6 +35,11 @@ struct VisualEffectBlurView: NSViewRepresentable {
 @MainActor
 final class ControlPanelModel: ObservableObject {
     @Published var preferences = Preferences()
+    @Published var connectedDeviceID: String?
+    var onDeviceViewed: (String) -> Void = { _ in }
+    var onDeviceName: (String, String) -> Void = { _, _ in }
+    var onDeviceConfigurationEnabled: (String, Bool) -> Void = { _, _ in }
+    var onDeviceConfiguration: (String?, DeviceConfiguration) -> Void = { _, _ in }
     @Published var status = "正在检测…"
     @Published var detail: String?
     @Published var identifyHint: UUIdentifyHint?

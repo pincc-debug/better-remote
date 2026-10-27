@@ -18,7 +18,7 @@ final class RemoteDeviceTests: XCTestCase {
         p.customPresets = [.init(id: "default", name: "默认", width: 1200, height: 800),
                            .init(id: "phone", name: "手机", width: 800, height: 1200)]
         p.autoResolutionPresetID = "default"
-        p.remember(phone)
+        p.remoteDevices = [phone]
         XCTAssertNil(p.remoteDevices.first?.presetID)
         XCTAssertEqual(p.automaticPreset(for: phone.id)?.id, "default")
         p.remoteDevices[0].presetID = "phone"
@@ -26,7 +26,10 @@ final class RemoteDeviceTests: XCTestCase {
         XCTAssertEqual(p.remoteDevices.count, 1)
         XCTAssertEqual(p.automaticPreset(for: phone.id)?.id, "phone")
         let decoded = try JSONDecoder().decode(Preferences.self, from: JSONEncoder().encode(p))
-        XCTAssertEqual(decoded.remoteDevices, p.remoteDevices)
+        XCTAssertEqual(decoded.remoteDevices[0].id, p.remoteDevices[0].id)
+        XCTAssertEqual(decoded.remoteDevices[0].name, "新名称")
+        XCTAssertEqual(decoded.remoteDevices[0].configuration?.autoResolutionPresetID, "phone")
+        XCTAssertNil(decoded.remoteDevices[0].presetID)
         XCTAssertEqual(p.automaticPreset(for: nil)?.id, "default")
         p.customPresets.removeAll { $0.id == "phone" }
         XCTAssertEqual(p.automaticPreset(for: phone.id)?.id, "default")
@@ -40,7 +43,7 @@ final class RemoteDeviceTests: XCTestCase {
         p.customPresets = [.init(id: "default", name: "默认", width: 1200, height: 800),
                            .init(id: "phone", name: "手机", width: 800, height: 1200)]
         p.autoResolutionPresetID = "default"
-        p.remember(phone)
+        p.remoteDevices = [phone]
         p.remoteDevices[0].presetID = "phone"
         p.deviceResolutionEnabled = false
         p.remember(tablet)
@@ -48,7 +51,8 @@ final class RemoteDeviceTests: XCTestCase {
         let decoded = try JSONDecoder().decode(Preferences.self, from: JSONEncoder().encode(p))
         XCTAssertFalse(decoded.deviceResolutionEnabled)
         XCTAssertEqual(decoded.remoteDevices.count, 2)
-        XCTAssertEqual(decoded.remoteDevices[0].presetID, "phone")
+        XCTAssertEqual(decoded.remoteDevices[0].configuration?.autoResolutionPresetID, "phone")
+        XCTAssertFalse(decoded.remoteDevices[0].configuration?.autoResolutionEnabled ?? true)
         p.deviceResolutionEnabled = true
         XCTAssertEqual(p.automaticPreset(for: phone.id)?.id, "phone")
     }
@@ -57,7 +61,7 @@ final class RemoteDeviceTests: XCTestCase {
         var p = Preferences()
         p.autoResolutionEnabled = true
         p.defaultResolutionEnabled = false
-        p.remember(phone)
+        p.remoteDevices = [phone]
         XCTAssertNil(p.automaticPreset(for: nil))
         XCTAssertNil(p.automaticPreset(for: phone.id))
         p.remoteDevices[0].presetID = p.customPresets[0].id
@@ -90,6 +94,21 @@ final class RemoteDeviceTests: XCTestCase {
         collection.remember(phone, in: &p)
         XCTAssertEqual(p.remoteDevices.count, 1)
         XCTAssertNil(p.remoteDevices[0].presetID)
+    }
+
+    func testOfflineDeletionIsFreshOnNextConnection() {
+        var preferences = Preferences()
+        var collection = RemoteDeviceCollection()
+        collection.remember(phone, in: &preferences)
+        preferences.renameDevice(phone.id, to: "旧名字")
+        preferences.remoteDevices[0].configurationEnabled = false
+        collection.remove(phone.id, from: &preferences, suppressRediscovery: false)
+        XCTAssertFalse(collection.isRemoved(phone.id))
+        collection.remember(phone, in: &preferences)
+        XCTAssertEqual(preferences.remoteDevices.count, 1)
+        XCTAssertEqual(preferences.remoteDevices[0].displayName, phone.name)
+        XCTAssertTrue(preferences.remoteDevices[0].appliesConfiguration)
+        XCTAssertEqual(preferences.remoteDevices[0].configuration, preferences.configuration(for: nil))
     }
 
     func testControllerHandoffCannotOverrideManualChoice() {

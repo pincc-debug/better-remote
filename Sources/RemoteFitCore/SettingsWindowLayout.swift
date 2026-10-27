@@ -11,7 +11,7 @@ public enum SettingsWindowLayout {
     public static let screenMargin: CGFloat = 12
     /// Below this content width the sidebar collapses to icons and wide controls wrap.
     public static let narrowThreshold: CGFloat = 560
-    public static let regularSidebarWidth: CGFloat = 160
+    public static let regularSidebarWidth: CGFloat = 180
     public static let compactSidebarWidth: CGFloat = 56
 
     public static func isNarrow(contentWidth: CGFloat) -> Bool { contentWidth < narrowThreshold }

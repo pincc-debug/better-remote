@@ -126,11 +126,12 @@ public struct Preferences: Codable, Equatable, Sendable {
     public var toolbarSide: ToolbarSide = .right
     public var selectedCustomID: String?
     public var seededFactorySpecs: Bool = true
-    public var autoResolutionEnabled: Bool = false
+    /// New installs select 手机横屏（保留操作栏） in 默认配置 · 分辨率规格. Decode keeps saved on/off (missing key → off).
+    public var autoResolutionEnabled: Bool = true
     public var remoteDevices: [RemoteDevice] = []
     public var deviceResolutionEnabled: Bool = true
     public var defaultResolutionEnabled: Bool = true
-    /// New installs (and a fresh preferences file) target 手机横屏（保留操作栏） for 连接时切换; saved choices are decoded as-is.
+    /// New installs (and a fresh preferences file) target 手机横屏（保留操作栏）; saved choices are decoded as-is.
     public var autoResolutionPresetID: String? = CustomPreset.recommendedLandscapeID
     /// 连接自动化 · 连接时的程序坞. Replaces the 0.8.145-and-earlier 「连接时显示」 toggle (on → 始终显示).
     public var connectionDockMode: ConnectionDockMode = .keep
@@ -247,6 +248,13 @@ public struct Preferences: Codable, Equatable, Sendable {
         }
         if autoResolutionPresetID != nil && !customPresets.contains(where: { $0.id == autoResolutionPresetID }) {
             autoResolutionPresetID = nil
+        }
+        migrateDeviceConfigurations()
+        for index in remoteDevices.indices {
+            if let id = remoteDevices[index].configuration?.autoResolutionPresetID,
+               !customPresets.contains(where: { $0.id == id }) {
+                remoteDevices[index].configuration?.autoResolutionPresetID = nil
+            }
         }
     }
 }

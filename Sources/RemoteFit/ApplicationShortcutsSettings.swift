@@ -26,7 +26,7 @@ struct ApplicationShortcutsSettings: View {
                 Toggle("显示应用快捷操作", isOn: Binding(
                     get: { model.preferences.applicationShortcutsEnabled },
                     set: { _ = save(model.preferences.applicationShortcuts, enabled: $0) }
-                )).labelsHidden().toggleStyle(.switch).controlSize(.small)
+                )).labelsHidden().toggleStyle(StableBlueSwitchStyle()).controlSize(.small)
                     .help("显示应用快捷操作")
             }
             ForEach(model.preferences.applicationShortcuts) { group in

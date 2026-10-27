@@ -129,11 +129,13 @@ public struct AutomaticResolutionPolicy: Sendable {
     private var manuallyAdjusted = false
     private var pendingApply = false
     private var pendingRestore = false
+    private var pendingRelease = false
     public init() {}
 
     public mutating func setEnabled(_ value: Bool) {
         guard enabled != value else { return }
         enabled = value
+        if value { pendingRelease = false }
         pendingApply = value && connected
         if !value { ownsResolution = false }
     }
@@ -149,17 +151,31 @@ public struct AutomaticResolutionPolicy: Sendable {
     }
     public mutating func nextAction(busy: Bool) -> Action? {
         guard !busy else { return nil }
+        if pendingRelease {
+            pendingRelease = false
+            if ownsResolution && !manuallyAdjusted { return .restore }
+        }
         if pendingRestore && !connected && restoreOnDisconnect { pendingRestore = false; return .restore }
         if enabled && pendingApply && connected { pendingApply = false; return .apply }
         return nil
     }
     public mutating func applied(success: Bool) {
-        ownsResolution = success && enabled
+        ownsResolution = success && (enabled || pendingRelease)
         pendingRestore = !connected && restoreOnDisconnect
     }
     public mutating func restored(success: Bool) {
         if success { ownsResolution = false }
     }
+    /// A device opts out while connected. Restore only a resolution we applied,
+    /// never a later manual adjustment; also handles an apply already in flight.
+    public mutating func suspendConfiguration() {
+        enabled = false
+        pendingApply = false
+        pendingRestore = false
+        restoreOnDisconnect = false
+        pendingRelease = !manuallyAdjusted
+    }
+
     /// Changing the in-session resolution does not discard the pre-connection restore point.
     public mutating func manualAdjustment() {
         manuallyAdjusted = true
@@ -167,6 +183,7 @@ public struct AutomaticResolutionPolicy: Sendable {
         if !connected { manualOverride() }
     }
     public mutating func manualOverride() {
+        pendingRelease = false
         manuallyAdjusted = true
         pendingApply = false
         pendingRestore = false
