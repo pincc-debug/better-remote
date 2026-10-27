@@ -3,7 +3,7 @@ import Foundation
 public enum DisplayTransition {
     /// Hand mirrors (if any; a headless Mac has none) to a fresh source to a fresh source while keeping the previous source alive for rollback.
     public static func targets(source: DisplayState, dimensions: Dimensions,
-                               physical: [DisplayState], retiring: DisplayState? = nil) throws -> [DisplayState] {
+                               physical: [DisplayState], retiring: DisplayState? = nil, selectedMode: DisplayMode? = nil) throws -> [DisplayState] {
         let ids = physical.map(\.id) + [source.id] + (retiring.map { [$0.id] } ?? [])
         guard CustomPreset.isSupported(dimensions), !source.physical, source.mirror == 0,
               Set(ids).count == ids.count,
@@ -14,8 +14,12 @@ public enum DisplayTransition {
         var next = source
         next.main = true; next.x = 0; next.y = 0; next.mirror = 0
         next.skipMode = false; next.skipOrigin = false
-        next.mode = .init(width: dimensions.width, height: dimensions.height,
+        next.mode = selectedMode ?? .init(width: dimensions.width, height: dimensions.height,
                           pixelWidth: dimensions.width * 2, pixelHeight: dimensions.height * 2, refresh: 60)
+        guard VirtualDisplayReadiness.isCompatible(next.mode, dimensions: dimensions, scale: 2) ||
+              VirtualDisplayReadiness.isCompatible(next.mode, dimensions: dimensions, scale: 1) else {
+            throw FitError.message("目标显示模式与规格不符。")
+        }
         var targets: [DisplayState] = []
         if var old = retiring {
             // Demote the old main display into the new mirror set. Keeping it as

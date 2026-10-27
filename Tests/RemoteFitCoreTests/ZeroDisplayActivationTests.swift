@@ -14,18 +14,16 @@ final class ZeroDisplayActivationTests: XCTestCase {
         XCTAssertEqual(p, .noDisplayOnline)
         XCTAssertGreaterThan(p.createAttempts, 1)
         XCTAssertGreaterThan(Double(p.readyPolls) * p.readyPollInterval, 3.0)
-        XCTAssertTrue(p.acceptInitialModeMismatch)
         XCTAssertTrue(p.wakeDisplays)
         // Zero displays is a valid activation base, not a conflict.
         XCTAssertEqual(ActivationBase.verdict([]), .ok)
     }
 
-    /// Any online display (built-in, external, foreign virtual screen) keeps the strict path.
-    func testOnlineDisplaysKeepStrictBehaviour() {
+    /// Any online display (built-in, external, foreign virtual screen) keeps the normal creation budget.
+    func testOnlineDisplaysKeepNormalCreationBudget() {
         XCTAssertEqual(ZeroDisplayActivation.policy(live: [display(1)]), .standard)
         XCTAssertEqual(ZeroDisplayActivation.policy(live: [display(1), display(2, vendor: 25001)]), .standard)
         XCTAssertEqual(ZeroDisplayActivation.standard.createAttempts, 1)
-        XCTAssertFalse(ZeroDisplayActivation.standard.acceptInitialModeMismatch)
     }
 
     /// The transition for a zero-display Mac is just the virtual source as main.

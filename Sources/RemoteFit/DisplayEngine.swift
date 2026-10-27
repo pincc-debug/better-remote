@@ -14,7 +14,8 @@ actor DisplayEngine {
     let root: URL
     let executable: String
     var virtualDisplay: RFVirtualDisplay?
-    var applied: Dimensions?
+    var applied: Dimensions? { didSet { if applied == nil { appliedMode = nil } } }
+    private var appliedMode: DisplayMode?
     var recovered = false
     var pendingRestore = false
     var shuttingDown = false
@@ -134,21 +135,31 @@ actor DisplayEngine {
             IOPMAssertionRelease(id)
         }
     }
-    private func readySource(id: UInt32, dimensions: Dimensions, policy: ZeroDisplayActivation = .standard) throws -> DisplayState {
-        for _ in 0..<max(1, policy.readyPolls) {
-            if let source = try snapshot().first(where: { $0.id == id }) {
-                if source.mode.pixelWidth != dimensions.width * 2 || source.mode.pixelHeight != dimensions.height * 2 {
-                    guard policy.acceptInitialModeMismatch else { throw FitError.message("虚拟屏幕初始分辨率不匹配") }
-                    // No other display online: commit sets the HiDPI target and verification re-applies it.
-                    log("display_initial_mode_deferred", "id=\(source.id) initial=\(source.mode.pixelWidth)x\(source.mode.pixelHeight) target=\(dimensions.label)")
+    private func readySource(id: UInt32, dimensions: Dimensions, policy: ZeroDisplayActivation = .standard) throws -> ReadyVirtualDisplay {
+        var lastProbe: VirtualDisplayProbe?
+        var loggedModes: Data?
+        do {
+            let ready = try VirtualDisplayReadiness.wait(dimensions: dimensions, policy: policy, sample: {
+                let data = try ProcessRunner.run(executable, ["--worker", "probe-virtual", String(id)], timeout: 12)
+                let probe = try JSONDecoder().decode(VirtualDisplayProbe.self, from: data)
+                lastProbe = probe
+                let modes = try encoder.encode(probe.modes)
+                if modes != loggedModes {
+                    loggedModes = modes
+                    log("display_mode_probe", "id=\(id) target=\(dimensions.label) actual=\(Self.layout(probe.source.map { [$0] } ?? [])) modes=\(String(decoding: modes, as: UTF8.self))")
                 }
-                log("display_created", "id=\(source.id) uuid=\(source.uuid ?? "nil") initial=\(source.mode.width)×\(source.mode.height) target=\(dimensions.label)")
-                return source
-            }
-            Thread.sleep(forTimeInterval: policy.readyPollInterval)
+                return probe
+            }, pause: { Thread.sleep(forTimeInterval: $0) })
+            let density = ready.mode.pixelWidth == dimensions.width * 2 ? "hidpi" : "standard"
+            log("display_mode_selected", "id=\(id) density=\(density) mode=\(String(decoding: try encoder.encode(ready.mode), as: UTF8.self))")
+            log("display_created", "id=\(id) uuid=\(ready.source.uuid ?? "nil") target=\(dimensions.label)")
+            return ready
+        } catch {
+            log("display_mode_unavailable", "id=\(id) target=\(dimensions.label) online=\(lastProbe?.source != nil) reason=\(error.localizedDescription)")
+            throw error
         }
-        throw FitError.message("虚拟屏幕未就绪。")
     }
+
     private func verifyTransition(_ targets: [DisplayState], sourceID: UInt32, disappearingID: UInt32? = nil) throws {
         let expectedIDs = Set(targets.map(\.id))
         var consecutiveMatches = 0
@@ -160,7 +171,10 @@ actor DisplayEngine {
             }
             if DisplayTransition.matches(live, targets: targets, sourceID: sourceID) {
                 consecutiveMatches += 1
-                if consecutiveMatches >= 2 { return }
+                if consecutiveMatches >= 2 {
+                    log("display_mode_verified", "source=\(sourceID) actual=\(Self.layout(live))")
+                    return
+                }
             } else {
                 consecutiveMatches = 0
                 if attempt == 3 || attempt == 7 {
@@ -232,16 +246,17 @@ actor DisplayEngine {
         do {
             virtualDisplay = try createDisplay(dimensions, policy: policy)
             guard let sourceID = virtualDisplay?.displayID else { throw FitError.message("无法创建虚拟屏幕。") }
-            let source = try readySource(id: sourceID, dimensions: dimensions, policy: policy)
+            let ready = try readySource(id: sourceID, dimensions: dimensions, policy: policy)
             let mirrorable = HeadlessPlaceholder.mirrorable(saved)
             if mirrorable.count != saved.count {
                 log("headless_placeholder_skipped", "ids=\(saved.filter(HeadlessPlaceholder.isPlaceholder).map(\.id))")
             }
-            let targets = try DisplayTransition.targets(source: source, dimensions: dimensions, physical: mirrorable)
+            let targets = try DisplayTransition.targets(source: ready.source, dimensions: dimensions, physical: mirrorable, selectedMode: ready.mode)
             if injectFailure { throw FitError.message("测试：模拟屏幕切换失败") }
             try commit(targets)
             try verifyTransition(targets, sourceID: sourceID)
             applied = dimensions
+            appliedMode = ready.mode
             lastDisplayWork = ProcessInfo.processInfo.systemUptime
             log("activated", "\(dimensions.label) seconds=\(String(format: "%.3f", ProcessInfo.processInfo.systemUptime - start))")
         } catch {
@@ -271,8 +286,8 @@ actor DisplayEngine {
             // Keep the current desktop until the new capture identity is ready.
             candidate = try createDisplay(dimensions)
             guard let candidateID = candidate?.displayID else { throw FitError.message("无法创建虚拟屏幕。") }
-            let source = try readySource(id: candidateID, dimensions: dimensions)
-            let targets = try DisplayTransition.targets(source: source, dimensions: dimensions, physical: physical, retiring: oldSource)
+            let ready = try readySource(id: candidateID, dimensions: dimensions)
+            let targets = try DisplayTransition.targets(source: ready.source, dimensions: dimensions, physical: physical, retiring: oldSource, selectedMode: ready.mode)
             candidateTarget = targets.first(where: { $0.id == candidateID })
             if injectFailure { throw FitError.message("测试：模拟屏幕切换失败") }
             attemptedSwitch = true
@@ -285,6 +300,7 @@ actor DisplayEngine {
             retiredOld = true
             try verifyTransition(targets.filter { $0.id != previousID }, sourceID: candidateID, disappearingID: previousID)
             applied = dimensions
+            appliedMode = ready.mode
             log("display_handoff", "old=\(previousID) new=\(candidateID) physical_restore=false")
             log("display_replacement_complete", dimensions.label)
         } catch {
@@ -294,15 +310,16 @@ actor DisplayEngine {
             if !retiredOld {
                 do {
                     if attemptedSwitch, let candidateTarget {
-                        let rollback = try DisplayTransition.targets(source: oldSource, dimensions: previous, physical: physical, retiring: candidateTarget)
+                        let rollback = try DisplayTransition.targets(source: oldSource, dimensions: previous, physical: physical, retiring: candidateTarget, selectedMode: oldSource.mode)
                         try commit(rollback)
                         try verifyTransition(rollback, sourceID: previousID)
                     }
                     let disappearingID = candidate?.displayID
                     candidate = nil
-                    let rollback = try DisplayTransition.targets(source: oldSource, dimensions: previous, physical: physical)
+                    let rollback = try DisplayTransition.targets(source: oldSource, dimensions: previous, physical: physical, selectedMode: oldSource.mode)
                     try verifyTransition(rollback, sourceID: previousID, disappearingID: disappearingID)
                     applied = previous
+                    appliedMode = oldSource.mode
                     recoveredInPlace = true
                     log("display_replacement_rolled_back", "\(previous.label) source_retained=true")
                 } catch { log("display_handoff_recovery_failed", error.localizedDescription) }
@@ -457,7 +474,8 @@ actor DisplayEngine {
         guard ready.detail == nil else { return ready }
         do {
             if applied != dimensions { try activate(dimensions) }
-            return report("已应用 · \(dimensions.label)")
+            let standard = appliedMode.map { $0.pixelWidth == $0.width } ?? false
+            return report("已应用 · \(dimensions.label)" + (standard ? " · 标准清晰度" : ""))
         } catch {
             log("error", error.localizedDescription)
             return report(applied != nil ? "切换未完成" : (hasSession() ? "待还原屏幕" : "应用未完成"), detail: error.localizedDescription)

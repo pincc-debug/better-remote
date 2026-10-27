@@ -11,16 +11,14 @@ public struct ZeroDisplayActivation: Equatable, Sendable {
     public var createRetryDelay: TimeInterval
     public var readyPolls: Int
     public var readyPollInterval: TimeInterval
-    /// Let commit/verification set the target mode instead of failing on the initial mode.
-    public var acceptInitialModeMismatch: Bool
     /// Ask the power manager to wake the display pipeline before creating the display.
     public var wakeDisplays: Bool
 
     public static let standard = ZeroDisplayActivation(createAttempts: 1, createRetryDelay: 0, readyPolls: 20,
-                                                       readyPollInterval: 0.15, acceptInitialModeMismatch: false,
+                                                       readyPollInterval: 0.15,
                                                        wakeDisplays: false)
     public static let noDisplayOnline = ZeroDisplayActivation(createAttempts: 5, createRetryDelay: 0.5, readyPolls: 60,
-                                                              readyPollInterval: 0.15, acceptInitialModeMismatch: true,
+                                                              readyPollInterval: 0.15,
                                                               wakeDisplays: true)
 
     /// `live` is the snapshot taken right before creating the virtual display (after any

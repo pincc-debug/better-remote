@@ -31,6 +31,15 @@ enum DisplayWorker {
                                 mirror: CGDisplayMirrorsDisplay(id), mode: mode(m))
         }
     }
+    static func probeVirtualDisplay(_ id: UInt32) throws -> VirtualDisplayProbe {
+        guard let source = try snapshot().first(where: { $0.id == id }), !source.physical else {
+            return .init(source: nil, modes: [])
+        }
+        let options = [kCGDisplayShowDuplicateLowResolutionModes: true] as CFDictionary
+        var modes = (CGDisplayCopyAllDisplayModes(id, options) as? [CGDisplayMode]) ?? []
+        if let current = CGDisplayCopyDisplayMode(id) { modes.insert(current, at: 0) }
+        return .init(source: source, modes: modes.filter { $0.ioFlags & UInt32(kDisplayModeValidFlag) != 0 }.map(mode))
+    }
     static func check(_ result: CGError, _ stage: String) throws {
         guard result == .success else { throw FitError.message("\(stage)失败（\(result.rawValue)）") }
     }
@@ -58,7 +67,7 @@ enum DisplayWorker {
             // Preserve the requested refresh variant (for example 59.94 vs 60 Hz).
             let exactID = matching.first { Int($0.ioDisplayModeID) == d.mode.modeID }
             guard let selected = exactID ?? matching.min(by: { abs($0.refreshRate - d.mode.refresh) < abs($1.refreshRate - d.mode.refresh) }) else {
-                throw FitError.message("当前显示器不支持目标模式 \(d.mode.width)×\(d.mode.height) HiDPI 超清渲染。")
+                throw FitError.message("当前显示器不支持 \(d.mode.width)×\(d.mode.height) 目标模式。")
             }
             return (d, selected)
         }
@@ -103,6 +112,9 @@ enum DisplayWorker {
             switch command {
             case "snapshot":
                 result = try JSONEncoder().encode(snapshot())
+            case "probe-virtual":
+                guard args.count == 2, let id = UInt32(args[1]) else { throw FitError.message("缺少显示器 ID") }
+                result = try JSONEncoder().encode(probeVirtualDisplay(id))
             case "commit":
                 let request = try JSONDecoder().decode(CommitRequest.self, from: FileHandle.standardInput.readDataToEndOfFile())
                 let changed = try commit(request.targets)
