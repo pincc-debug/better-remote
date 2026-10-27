@@ -18,9 +18,28 @@ xcrun stapler validate "$DMG" >/dev/null || { echo "error: $DMG is not notarized
 SIG_ATTRS="$("$SIGN_UPDATE" "$DMG")"
 echo "$SIG_ATTRS" | grep -q 'sparkle:edSignature=' || { echo "error: sign_update failed" >&2; exit 1; }
 
-# Chinese release notes: the README section for this version.
-NOTES="$(awk -v v="## $VERSION" '($0==v || index($0,v" ")==1){f=1;next} /^## /{if(f)exit} f' README.md \
-    | sed -n 's/^- //p' | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's|.*|<li>&</li>|' | tr -d '\n')"
+# Chinese release notes: README section for this version (## or ### heading).
+# Keep literal <a>…</a> inside CDATA (do not entity-escape < >). Only bare & → &amp;.
+NOTES="$(awk -v ver="$VERSION" '
+function hlevel(s) {
+  if (match(s, /^#+/)) return RLENGTH
+  return 0
+}
+{
+  if (!f) {
+    if ($0 == "## " ver || $0 == "### " ver || index($0, "## " ver " ") == 1 || index($0, "### " ver " ") == 1) {
+      f = 1
+      lvl = hlevel($0)
+      next
+    }
+    next
+  }
+  l = hlevel($0)
+  if (l > 0 && l <= lvl) exit
+  print
+}
+' README.md \
+    | sed -n 's/^- //p' | sed -e 's/&/\&amp;/g' -e 's|.*|<li>&</li>|' | tr -d '\n')"
 [ -n "$NOTES" ] || NOTES="<li>问题修复与体验改进。</li>"
 PUBDATE="$(LC_ALL=C date -u '+%a, %d %b %Y %H:%M:%S +0000')"
 
