@@ -8,7 +8,7 @@ BUILD="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP/Contents/Info
 MIN_OS="$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$APP/Contents/Info.plist")"
 DMG="$PWD/dist/Better Remote-$VERSION.dmg"
 ASSET="Better-Remote-$VERSION.dmg"
-URL="https://github.com/pincc-debug/better-remote-releases/releases/download/v$VERSION/$ASSET"
+URL="https://github.com/pincc-debug/better-remote/releases/download/v$VERSION/$ASSET"
 APPCAST="${BETTER_REMOTE_APPCAST:-$PWD/dist/appcast.xml}"
 SIGN_UPDATE="$(find "$PWD/.build/artifacts" -path '*/bin/sign_update' -type f | head -1)"
 [ -x "$SIGN_UPDATE" ] || { echo "error: sign_update not found; run swift build first" >&2; exit 1; }

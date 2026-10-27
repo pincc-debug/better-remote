@@ -18,7 +18,7 @@ Better Remote 是独立开源工具，与任何远程软件无产品主副、附
 
 默认不采集个人信息；仅在你主动提交意见反馈时才会上传，且上传内容不含隐私数据。
 
-本仓库同时提供源码与安装包发布（[Releases](https://github.com/pincc-debug/better-remote-releases/releases)）。许可证为 [MIT](LICENSE)，贡献方式见 [CONTRIBUTING.md](CONTRIBUTING.md)。官网：https://betterremote.pincc.dev
+本仓库同时提供源码与安装包发布（[Releases](https://github.com/pincc-debug/better-remote/releases)）。许可证为 [MIT](LICENSE)，贡献方式见 [CONTRIBUTING.md](CONTRIBUTING.md)。官网：https://betterremote.pincc.dev
 
 ---
 
@@ -91,13 +91,13 @@ https://github.com/user-attachments/assets/7c1b78d7-e8d3-4902-a371-f555cc6897a5
 
 <div align="center">
 
-<a href="https://github.com/pincc-debug/better-remote-releases/releases/latest/download/Better-Remote.dmg">
+<a href="https://github.com/pincc-debug/better-remote/releases/latest/download/Better-Remote.dmg">
   <img src="https://img.shields.io/badge/⬇%EF%B8%8F%20下载最新版-Better%20Remote.dmg-2ea44f?style=for-the-badge" alt="下载最新版 Better Remote" height="42">
 </a>
 
 <br><br>
 
-**[下载最新版 Better Remote](https://github.com/pincc-debug/better-remote-releases/releases/latest/download/Better-Remote.dmg)** · 免费 · macOS 14 及以上
+**[下载最新版 Better Remote](https://github.com/pincc-debug/better-remote/releases/latest/download/Better-Remote.dmg)** · 免费 · macOS 14 及以上
 
 官网：https://betterremote.pincc.dev
 
@@ -117,8 +117,8 @@ https://github.com/user-attachments/assets/7c1b78d7-e8d3-4902-a371-f555cc6897a5
 需要 macOS 14+ 与 Swift / Xcode 工具链。
 
 ```bash
-git clone https://github.com/pincc-debug/better-remote-releases.git
-cd better-remote-releases
+git clone https://github.com/pincc-debug/better-remote.git
+cd better-remote
 swift build
 swift test
 ```
@@ -164,7 +164,7 @@ Better Remote 本身不是远程软件，它是在你远程的时候，让电脑
 
 - 新增快捷操作「清理桌面」，点一下最小化所有窗口
 
-完整安装包与说明见 [Releases](https://github.com/pincc-debug/better-remote-releases/releases)。
+完整安装包与说明见 [Releases](https://github.com/pincc-debug/better-remote/releases)。
 
 ---
 

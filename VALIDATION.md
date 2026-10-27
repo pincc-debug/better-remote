@@ -115,7 +115,7 @@
 - 重启后 4 秒空闲采样没有 processPaths / proc_name / AXUIElementCopy 调用；CPU 瞬时读数 0.0%。系统 Event Tap 列表无 Better Remote PID；两块物理屏保持 120 Hz / 60 Hz，无镜像。本次未建立真实手机远程连接，不能据此声称漂移已彻底解决或给出整机性能改善百分比。
 - 原始测试、构建、阻塞采样和空闲采样存于 `.build/performance-0.8.116/`。源代码仅在本地提交，不推送源码仓库。
 
-- 发布完成：Apple notarization `df21c0a0-fd0f-4059-b344-d7313c884dfb` 状态 Accepted；app/DMG 装订、Gatekeeper 和镜像校验通过。EdDSA 签名后上传 `Better-Remote-0.8.116.dmg`，Release `https://github.com/pincc-debug/better-remote-releases/releases/tag/v0.8.116` 已公开并设为 latest。更新源提交 `fead3fabd8be95edba7e826950ae9b970b710ee3`，保留旧版条目；新版说明仅为“优化操作体验，使用更流畅。”。
+- 发布完成：Apple notarization `df21c0a0-fd0f-4059-b344-d7313c884dfb` 状态 Accepted；app/DMG 装订、Gatekeeper 和镜像校验通过。EdDSA 签名后上传 `Better-Remote-0.8.116.dmg`，Release `https://github.com/pincc-debug/better-remote/releases/tag/v0.8.116` 已公开并设为 latest。更新源提交 `fead3fabd8be95edba7e826950ae9b970b710ee3`，保留旧版条目；新版说明仅为“优化操作体验，使用更流畅。”。
 
 ---
 

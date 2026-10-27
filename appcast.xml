@@ -11,7 +11,7 @@
       <sparkle:shortVersionString>0.8.162</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
       <description><![CDATA[<h3>0.8.162 更新内容</h3><ul><li>关于页可检查更新、看帮助、反馈问题</li><li>用 UU 远程时不再误弹退出确认</li></ul>]]></description>
-      <enclosure url="https://github.com/pincc-debug/better-remote-releases/releases/download/v0.8.162/Better-Remote-0.8.162.dmg" type="application/octet-stream" sparkle:edSignature="bJUBOfTrTIVzm3zUCPLMGSq8/I8RGLaL010iddvD9qN53feC/M3D6t585vUbFqGbUIMgbWnsR5sPZlNFp4zqDg==" length="8002026" />
+      <enclosure url="https://github.com/pincc-debug/better-remote/releases/download/v0.8.162/Better-Remote-0.8.162.dmg" type="application/octet-stream" sparkle:edSignature="bJUBOfTrTIVzm3zUCPLMGSq8/I8RGLaL010iddvD9qN53feC/M3D6t585vUbFqGbUIMgbWnsR5sPZlNFp4zqDg==" length="8002026" />
     </item>
     <item>
       <title>0.8.160</title>
@@ -20,7 +20,7 @@
       <sparkle:shortVersionString>0.8.160</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
       <description><![CDATA[<h3>0.8.160 更新内容</h3><ul><li>新增快捷操作「清理桌面」，点一下最小化所有窗口</li></ul>]]></description>
-      <enclosure url="https://github.com/pincc-debug/better-remote-releases/releases/download/v0.8.160/Better-Remote-0.8.160.dmg" type="application/octet-stream" sparkle:edSignature="+jbFkW0TZzEv5o8JLXyvKN9Svd12Lzw6HomW4KsuYPrlPi0Oq9Ci/+FidRW/f7hsDse5hQVpjHD/45Aq5SlWBA==" length="7641879" />
+      <enclosure url="https://github.com/pincc-debug/better-remote/releases/download/v0.8.160/Better-Remote-0.8.160.dmg" type="application/octet-stream" sparkle:edSignature="+jbFkW0TZzEv5o8JLXyvKN9Svd12Lzw6HomW4KsuYPrlPi0Oq9Ci/+FidRW/f7hsDse5hQVpjHD/45Aq5SlWBA==" length="7641879" />
     </item>
   </channel>
 </rss>

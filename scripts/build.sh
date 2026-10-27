@@ -48,7 +48,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <key>CFBundleIconName</key><string>AppIcon</string>
 <key>NSAppleEventsUsageDescription</key><string>需要你允许 Better Remote 控制“系统事件”，才能切换程序坞</string>
 <key>NSHumanReadableCopyright</key><string>Better Remote</string>
-<key>SUFeedURL</key><string>https://raw.githubusercontent.com/pincc-debug/better-remote-releases/main/appcast.xml</string>
+<key>SUFeedURL</key><string>https://raw.githubusercontent.com/pincc-debug/better-remote/main/appcast.xml</string>
 <key>SUPublicEDKey</key><string>__SU_PUBLIC_ED_KEY__</string>
 <key>SUEnableAutomaticChecks</key><true/>
 <key>SUScheduledCheckInterval</key><integer>10800</integer>

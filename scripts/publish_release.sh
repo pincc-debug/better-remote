@@ -4,7 +4,7 @@
 # Usage: scripts/publish_release.sh "<release notes>"   (run after notarize.sh and release_appcast.sh)
 set -euo pipefail
 cd "$(dirname "$0")/.."
-REPO="${BETTER_REMOTE_RELEASE_REPO:-pincc-debug/better-remote-releases}"
+REPO="${BETTER_REMOTE_RELEASE_REPO:-pincc-debug/better-remote}"
 APP="$PWD/dist/Better Remote.app"
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
 NOTES="${1:?usage: $0 \"<release notes>\"}"
