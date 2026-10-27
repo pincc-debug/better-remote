@@ -56,6 +56,7 @@ final class ControlPanelModel: ObservableObject {
     var onAutoFillWindowsToggle: (Bool) -> Void = { _ in }
     var onWindowControlsToggle: (Bool) -> Void = { _ in }
     var onUUTouchScrollToggle: (Bool) -> Void = { _ in }
+    var onUUScrollSpeedPercent: (Int) -> Void = { _ in }
     var onAutoRestoreToggle: (Bool) -> Void = { _ in }
     var onScale: (Int) -> Void = { _ in }
     var onPresetScale: (String, Int) -> Void = { _, _ in }
