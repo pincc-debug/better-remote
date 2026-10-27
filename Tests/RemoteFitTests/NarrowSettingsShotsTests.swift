@@ -66,6 +66,21 @@ final class NarrowSettingsShotsTests: XCTestCase {
         }
     }
 
+    func testRenderUUScrollSettings() throws {
+        guard let folder else { throw XCTSkip("BR_SETTINGS_SHOTS not set") }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let model = sampleModel()
+        for percent in [5, 100] {
+            model.preferences.uuScrollSpeedPercent = percent
+            for width in [760.0, 360.0] {
+                _ = try render(SettingsView(model: model, page: .touch)
+                    .environment(\.settingsReview, SettingsReviewOverrides(version: "0.8.162 · 滚动试用"))
+                    .frame(width: width, height: 720), size: CGSize(width: width, height: 720),
+                    to: "uu-scroll-simple-\(percent)-\(Int(width))")
+            }
+        }
+    }
+
     func testRenderDeviceResolutionSettings() throws {
         guard let folder else { throw XCTSkip("BR_SETTINGS_SHOTS not set") }
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

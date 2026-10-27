@@ -30,6 +30,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/BetterRemote" "$APP/Contents/MacOS/BetterRemote"
 cp "$PWD/Sources/RemoteFitCore/Resources/device-templates.json" "$APP/Contents/Resources/device-templates.json"
 cp "$PWD/Sources/RemoteFitCore/Resources/shortcut-presets.json" "$APP/Contents/Resources/shortcut-presets.json"
+cp "$PWD/THIRD_PARTY_NOTICES.md" "$APP/Contents/Resources/THIRD_PARTY_NOTICES.md"
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

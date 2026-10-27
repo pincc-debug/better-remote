@@ -363,14 +363,19 @@ struct SettingsView: View {
     private var touchSettings: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("触控").font(.system(size: DesignTokens.fontTitle, weight: .semibold))
-            Self.settingCard {
-                Self.settingRow("单指滚动", symbol: "hand.draw") {
-                    Toggle("单指滚动", isOn: Binding(
-                        get: { model.preferences.uuTouchScrollEnabled },
-                        set: { model.onUUTouchScrollToggle($0) }
-                    )).labelsHidden().toggleStyle(.switch)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Self.settingCard {
+                        Self.settingRow("单指滚动", symbol: "hand.draw") {
+                            Toggle("单指滚动", isOn: Binding(
+                                get: { model.preferences.uuTouchScrollEnabled },
+                                set: { model.onUUTouchScrollToggle($0) }
+                            )).labelsHidden().toggleStyle(.switch)
+                        }
+                        .help("单指滑动即滚动，按住约 0.8 秒再拖为拖动")
+                    }
+                    UUScrollSpeedSettings(model: model)
                 }
-                .help("单指滑动即滚动，按住约 0.8 秒再拖为拖动")
             }
         }
         .padding(pagePadding).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

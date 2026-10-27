@@ -39,6 +39,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let floatingSwitcher = FloatingSwitcher()
     private let touchScroll = UUTouchScroll()
     private var touchScrollRetry: Timer?
+    private let nativeScroll = UUNativeScroll()
+    private var nativeScrollTimer: Timer?
     private let windowController = WindowController()
     private let notice = TransientNotice()
     private lazy var workspaceLayout = WorkspaceLayoutController(windows: windowController)
@@ -128,6 +130,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // touchScroll.isOwnWindow defaults to a thread-safe WindowServer hit test (runs on the tap thread).
         startTouchScroll()
         configurePanel()
+        startNativeScroll()
         floatingSwitcher.configure(preferences: preferences)
         applyToolbarSetting()
         // SIGTERM follows the same restore-before-exit path as the menu item.
@@ -178,6 +181,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         notice.dismiss()
         touchScrollRetry?.invalidate(); touchScrollRetry = nil
         touchScroll.stop()
+        nativeScrollTimer?.invalidate(); nativeScrollTimer = nil
+        nativeScroll.stop()
         remoteMonitor.stop()
         workspaceLayout.cancel()
         windowActionTask?.cancel()
@@ -215,6 +220,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         status = .init(title: "桌面还原未完成", detail: failure)
         NSApplication.shared.reply(toApplicationShouldTerminate: false)
         startRemoteMonitor()
+        startNativeScroll()
         renderMenu()
     }
     private func save() {
@@ -494,6 +500,18 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if enabled, !AXIsProcessTrusted() { ShortcutPermissions.shared.prepare { [weak self] in self?.startTouchScroll() } }
             startTouchScroll()
         }
+        panelModel.onUUScrollSpeedPercent = { [weak self] value in
+            guard let self else { return }
+            let percent = UUScrollScaling.clampedPercent(value)
+            guard percent != preferences.uuScrollSpeedPercent else { return }
+            preferences.uuScrollSpeedPercent = percent
+            nativeScroll.setPercent(percent)
+            save()
+            startNativeScroll()
+            if percent < 100, !AXIsProcessTrusted() {
+                ShortcutPermissions.shared.prepare { [weak self] in self?.refreshNativeScroll() }
+            }
+        }
         panelModel.onWindowControlsToggle = { [weak self] enabled in
             guard let self else { return }
             preferences.showWindowControls = enabled
@@ -609,6 +627,33 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func retryTouchScroll() {
         guard !terminating, preferences.uuTouchScrollEnabled, remoteStability.isConnected, AXIsProcessTrusted(), touchScroll.start() else { return }
         touchScrollRetry?.invalidate(); touchScrollRetry = nil
+    }
+
+    /// Source-filtered wheel scaling also works when connection automation is disabled.
+    /// Keep the watchdog off at original speed. It retries authorization and notices
+    /// the standalone companion starting/stopping, without polling processes on the tap thread.
+    private func startNativeScroll() {
+        nativeScrollTimer?.invalidate(); nativeScrollTimer = nil
+        refreshNativeScroll()
+        guard preferences.uuScrollSpeedPercent < 100, !terminating else { return }
+        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshNativeScroll() }
+        }
+        nativeScrollTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+
+    private func refreshNativeScroll() {
+        let enabled = preferences.uuScrollSpeedPercent < 100 && !terminating
+        let companion = enabled && NSWorkspace.shared.runningApplications.contains {
+            $0.bundleIdentifier == UUNativeScroll.companionBundleID
+        }
+        guard enabled, !companion, AXIsProcessTrusted() else {
+            nativeScroll.stop()
+            return
+        }
+        nativeScroll.setPercent(preferences.uuScrollSpeedPercent)
+        if !nativeScroll.start() { nativeScroll.stop() }
     }
 
     private func performWindowAction(_ action: FloatingAction) {
