@@ -5,22 +5,13 @@
     <language>zh-CN</language>
 <!-- ITEMS -->
     <item>
-      <title>0.8.162</title>
-      <pubDate>Mon, 26 Oct 2026 08:48:46 +0000</pubDate>
-      <sparkle:version>183</sparkle:version>
-      <sparkle:shortVersionString>0.8.162</sparkle:shortVersionString>
+      <title>0.8.163</title>
+      <pubDate>Tue, 27 Oct 2026 08:04:08 +0000</pubDate>
+      <sparkle:version>184</sparkle:version>
+      <sparkle:shortVersionString>0.8.163</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <description><![CDATA[<h3>0.8.162 更新内容</h3><ul><li>关于页可检查更新、看帮助、反馈问题</li><li>用 UU 远程时不再误弹退出确认</li></ul>]]></description>
-      <enclosure url="https://github.com/pincc-debug/better-remote/releases/download/v0.8.162/Better-Remote-0.8.162.dmg" type="application/octet-stream" sparkle:edSignature="bJUBOfTrTIVzm3zUCPLMGSq8/I8RGLaL010iddvD9qN53feC/M3D6t585vUbFqGbUIMgbWnsR5sPZlNFp4zqDg==" length="8002026" />
-    </item>
-    <item>
-      <title>0.8.160</title>
-      <pubDate>Sat, 24 Oct 2026 09:17:26 +0000</pubDate>
-      <sparkle:version>179</sparkle:version>
-      <sparkle:shortVersionString>0.8.160</sparkle:shortVersionString>
-      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-      <description><![CDATA[<h3>0.8.160 更新内容</h3><ul><li>新增快捷操作「清理桌面」，点一下最小化所有窗口</li></ul>]]></description>
-      <enclosure url="https://github.com/pincc-debug/better-remote/releases/download/v0.8.160/Better-Remote-0.8.160.dmg" type="application/octet-stream" sparkle:edSignature="+jbFkW0TZzEv5o8JLXyvKN9Svd12Lzw6HomW4KsuYPrlPi0Oq9Ci/+FidRW/f7hsDse5hQVpjHD/45Aq5SlWBA==" length="7641879" />
+      <description><![CDATA[<h3>0.8.163 更新内容</h3><ul><li>触控设置可调节 UU 滚动速度（<a href="https://github.com/Dameon020">@Dameon020</a> Rixin）</li></ul>]]></description>
+      <enclosure url="https://github.com/pincc-debug/better-remote/releases/download/v0.8.163/Better-Remote-0.8.163.dmg" type="application/octet-stream" sparkle:edSignature="UjBBJI96/mjcs+oQ0M3MsAsQYv0tmjqLDUiZLxx5v4BYDsGItaYb3eKvkDSG2N4cPKsLAJ8iITPAPN10DWAKBg==" length="8081908" />
     </item>
   </channel>
 </rss>
