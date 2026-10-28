@@ -73,7 +73,7 @@ struct GlassDropdown<ID: Hashable & Sendable>: View {
                 GlassDropdownMenu(items: items, state: previewState, select: { _ in }, hover: { _ in })
                     .frame(width: max(minWidth, GlassDropdownController<ID>.menuWidth(items)))
                     .background(DesignTokens.Colors.surfaceElevated, in: RoundedRectangle(cornerRadius: DesignTokens.radiusLg, style: .continuous))
-                    .shadow(color: .black.opacity(Double(DesignTokens.toolbarShadowOpacity)), radius: DesignTokens.toolbarShadowRadius)
+                    .shadow(color: .black.opacity(Double(DesignTokens.dropdownShadowOpacity)), radius: DesignTokens.dropdownShadowRadius)
                     .offset(y: DesignTokens.controlHeight + DesignTokens.spacingXs)
                     .fixedSize(horizontal: false, vertical: true)
             }

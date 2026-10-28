@@ -48,6 +48,8 @@ private final class ToolbarButton: NSButton {
     private let caption = NSTextField(labelWithString: "")
     private let labelled: Bool
     private let glyphSize: CGFloat
+    /// Optional glyph centre (from the top); the horizontal footer uses the labelled buttons' centre.
+    var glyphCenterY: CGFloat? { didSet { if oldValue != glyphCenterY { needsLayout = true } } }
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { false }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -57,12 +59,11 @@ private final class ToolbarButton: NSButton {
         glyphSize = largeIcon ? 30 : (showsCaption ? 24 : 20)
         super.init(frame: .zero)
         title = ""; isBordered = false; focusRingType = .none
-        glyph.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?
-            .withSymbolConfiguration(.init(pointSize: largeIcon ? 28 : (showsCaption ? 23 : 18), weight: .medium))
+        glyph.image = IconArt.nsImage(symbol, pointSize: largeIcon ? 28 : (showsCaption ? 23 : 18), weight: .medium)
         glyph.contentTintColor = DesignTokens.NS.textPrimary
         glyph.imageScaling = .scaleProportionallyDown
         caption.stringValue = name
-        caption.font = .systemFont(ofSize: 10.5, weight: .medium)
+        caption.font = .systemFont(ofSize: 11, weight: .medium)
         caption.textColor = DesignTokens.NS.textSecondary
         caption.alignment = .center
         caption.lineBreakMode = .byTruncatingTail
@@ -77,8 +78,7 @@ private final class ToolbarButton: NSButton {
     /// Swaps symbol and caption in place (铺满 ⇄ 还原); no state background.
     func update(symbol: String, name: String) {
         guard caption.stringValue != name else { return }
-        glyph.image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?
-            .withSymbolConfiguration(.init(pointSize: labelled ? 23 : 18, weight: .medium))
+        glyph.image = IconArt.nsImage(symbol, pointSize: labelled ? 23 : 18, weight: .medium)
         caption.stringValue = name; toolTip = name; setAccessibilityLabel(name)
         updateColors()
     }
@@ -125,7 +125,8 @@ private final class ToolbarButton: NSButton {
     }
     override func layout() {
         super.layout()
-        glyph.frame = CGRect(x: (bounds.width - glyphSize) / 2, y: labelled ? 9 : (bounds.height - glyphSize) / 2, width: glyphSize, height: glyphSize)
+        let glyphY = glyphCenterY.map { $0 - glyphSize / 2 } ?? (labelled ? 9 : (bounds.height - glyphSize) / 2)
+        glyph.frame = CGRect(x: (bounds.width - glyphSize) / 2, y: glyphY, width: glyphSize, height: glyphSize)
         caption.frame = CGRect(x: 2, y: 38, width: bounds.width - 4, height: 14)
     }
     override func draw(_ dirtyRect: NSRect) {
@@ -235,7 +236,9 @@ private struct LayoutFlyoutView: View {
                 row(Array(arrangeItems[start..<min(start + 4, arrangeItems.count)]))
             }
         }
-        .padding(.horizontal, 14).padding(.vertical, 12)
+        // Uniform 12pt inset; 4 × 64 + 3 × 8 + 24 = 304 wide, so every row (the lone last one too) shares one grid.
+        .padding(12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
     private func row(_ items: [(LayoutChoice, String, LayoutGlyph.Region)]) -> some View {
         HStack(spacing: 8) {
@@ -298,8 +301,8 @@ private struct ApplicationShortcutFlyoutView: View {
             ForEach(items.indices, id: \.self) { index in
                 Button { pick(index) } label: {
                     VStack(spacing: 4) {
-                        Image(systemName: items[index].symbol).font(.system(size: 21, weight: .medium)).frame(height: 26)
-                        Text(items[index].name).font(.system(size: 10.5, weight: .medium)).foregroundStyle(.secondary).lineLimit(1)
+                        IconArt.image(items[index].symbol, pointSize: 21, weight: .medium).font(.system(size: 21, weight: .medium)).frame(height: 26)
+                        Text(items[index].name).font(.system(size: 11, weight: .medium)).foregroundStyle(.secondary).lineLimit(1)
                     }
                     .frame(width: tile.width, height: tile.height)
                     .contentShape(RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous))
@@ -328,9 +331,9 @@ private struct TileHover: ViewModifier {
     @State private var id = UUID().uuidString
     func body(content: Content) -> some View {
         content
-            // Pressed 8% only while held; hover only from genuine pointer movement.
+            // Hover 8% (same as the toolbar), pressed 12% while held; hover only from genuine pointer movement.
             .overlay(RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous)
-                .fill(Color.primary.opacity(pressed ? 0.08 : (hovering ? 0.06 : 0))))
+                .fill(Color.primary.opacity(pressed ? 0.12 : (hovering ? 0.08 : 0))))
             .pointerHover(id) { hovering = $0 }
     }
 }
@@ -446,6 +449,8 @@ private final class ToolbarContent: NSView {
             let y = (bounds.height - height) / 2
             for (index, button) in footerButtons.enumerated() {
                 button.frame = CGRect(x: footerX + 8 + CGFloat(index) * DesktopToolbarLayout.footerStep, y: y, width: DesktopToolbarLayout.footerButtonHeight, height: height)
+                // Labelled glyphs sit at y 9 + 24/2 = 21; centre the footer glyphs on the same line.
+                button.glyphCenterY = 21
             }
             let left = DesktopToolbarLayout.customInset; let right = footerX - DesktopToolbarLayout.customInset
             clip.frame = CGRect(x: left, y: y, width: max(1, right - left), height: height)
@@ -460,6 +465,7 @@ private final class ToolbarContent: NSView {
             pedestal.frame = CGRect(x: 12, y: footerY + 2, width: bounds.width - 24, height: 1)
             for (index, button) in footerButtons.enumerated() {
                 button.frame = CGRect(x: 8, y: footerY + 6 + CGFloat(index) * DesktopToolbarLayout.footerStep, width: width, height: DesktopToolbarLayout.footerButtonHeight)
+                button.glyphCenterY = nil
             }
             let top = DesktopToolbarLayout.customInset; let bottom = footerY - DesktopToolbarLayout.customInset
             clip.frame = CGRect(x: 8, y: top, width: width, height: max(1, bottom - top))
@@ -487,7 +493,10 @@ final class FloatingSwitcher: NSObject {
     var isTransitioning: Bool { toolbarTransitionTask != nil }
     private var preferredCenterY: CGFloat?
     private var preferredCenterX: CGFloat?
-    private static let glassPadding: CGFloat = 6
+    /// Transparent margin around the glass: room for the 14pt soft shadow so the window does not clip it.
+    private static let glassPadding: CGFloat = 16
+    /// Outside-click region kept at the previous 6pt margin around the bar.
+    private var toolbarHitFrame: CGRect { toolbarFrame.insetBy(dx: -6, dy: -6) }
     private var toolbar: ToolbarContent?
     private var buttons: [String: ToolbarButton] = [:]
     private var activePanel: FloatingAction?
@@ -501,7 +510,7 @@ final class FloatingSwitcher: NSObject {
     var onArrange: (WindowArrangement) -> Void = { _ in }
 
     private var scrollOffset: CGFloat = 0
-    private static let layoutSize = CGSize(width: 300, height: 296)
+    private static let layoutSize = CGSize(width: 304, height: 288)
     private static var windowPanelSize: CGSize { layoutSize }
     private var windowPanel: NSPanel?
     private func toggleWindowControls(from button: NSView) {
@@ -531,6 +540,7 @@ final class FloatingSwitcher: NSObject {
         container.addSubview(layouts)
         flyout.contentView = NativeGlassView(content: container, cornerRadius: DesignTokens.radiusXl, frame: CGRect(origin: .zero, size: frame.size),
                                              contentBackdrop: DesignTokens.NS.glassBackdrop)
+        (flyout.contentView as? NativeGlassView)?.setHairline(DesignTokens.NS.toolbarHairline, omitting: nil)
         flyout.setFrame(frame, display: true)
         flyout.orderFrontRegardless()
         windowPanel = flyout
@@ -597,7 +607,9 @@ final class FloatingSwitcher: NSObject {
         // on all four edges. The bar gets a 1 px hairline instead, never on the docked edge or a join.
         panel.hasShadow = false
         toolbarShadowHost?.layer?.shadowOpacity = joined ? 0 : DesignTokens.toolbarShadowOpacity
-        toolbarGlass?.setHairline(expanded && !joined ? DesignTokens.NS.toolbarHairline : nil, omitting: preferences.toolbarSide)
+        // Joined: the bar keeps its hairline except on the edge it shares with the panel (the panel draws its own, minus that edge).
+        let joinEdge: ToolbarSide = switch preferences.toolbarSide { case .left: .right; case .right: .left; case .top: .bottom; case .bottom: .top }
+        toolbarGlass?.setHairline(expanded ? DesignTokens.NS.toolbarHairline : nil, omitting: joined ? joinEdge : preferences.toolbarSide)
     }
     private weak var toolbarShadowHost: NSView?
     func setEnabled(_ value: Bool) {
@@ -668,10 +680,10 @@ final class FloatingSwitcher: NSObject {
 
     private func dismissIfOutside() {
         let point = NSEvent.mouseLocation
-        if let applicationPanel, applicationPanel.isVisible, !applicationPanel.frame.contains(point), !panel.frame.contains(point) { hideApplicationShortcuts() }
-        if let windowPanel, windowPanel.isVisible, !windowPanel.frame.contains(point), !panel.frame.contains(point) { hideWindowControls() }
+        if let applicationPanel, applicationPanel.isVisible, !applicationPanel.frame.contains(point), !toolbarHitFrame.contains(point) { hideApplicationShortcuts() }
+        if let windowPanel, windowPanel.isVisible, !windowPanel.frame.contains(point), !toolbarHitFrame.contains(point) { hideWindowControls() }
         guard activePanel != nil else { return }
-        if !panel.frame.contains(point), companionFrame?()?.contains(point) != true { onDismissPanels() }
+        if !toolbarHitFrame.contains(point), companionFrame?()?.contains(point) != true { onDismissPanels() }
     }
     @objc private func appChanged(_ notification: Notification) {
         if notification.name == NSWorkspace.didActivateApplicationNotification { refreshFillState(after: 0.15) }
@@ -1031,6 +1043,7 @@ final class FloatingSwitcher: NSObject {
         container.addSubview(items)
         flyout.contentView = NativeGlassView(content: container, cornerRadius: DesignTokens.radiusXl, frame: CGRect(origin: .zero, size: frame.size),
                                              contentBackdrop: DesignTokens.NS.glassBackdrop)
+        (flyout.contentView as? NativeGlassView)?.setHairline(DesignTokens.NS.toolbarHairline, omitting: nil)
         flyout.setFrame(frame, display: true)
         flyout.invalidateShadow()
         applicationPanel = flyout

@@ -200,6 +200,17 @@ struct SettingsView: View {
         .background(DesignTokens.Colors.pageBackground.opacity(0.5))
     }
 
+    @ViewBuilder
+    private func sidebarGlyph(_ symbol: String, selected: Bool) -> some View {
+        if symbol == "gearshape.2" {
+            // 连接自动化: icons-v1/sb-automation.svg, drawn a little larger than the 15pt symbol.
+            Image(nsImage: IconArt.automationImage(side: 22, semibold: selected)).renderingMode(.template)
+        } else {
+            Image(systemName: symbol)
+                .font(.system(size: DesignTokens.fontEmphasis, weight: selected ? .semibold : .regular))
+        }
+    }
+
     private func sidebarRow(_ title: String, symbol: String, page target: SettingsPage) -> some View {
         let isSelected = page == target
         return Button {
@@ -208,8 +219,7 @@ struct SettingsView: View {
             }
         } label: {
             HStack(spacing: 9) {
-                Image(systemName: symbol)
-                    .font(.system(size: DesignTokens.fontEmphasis, weight: isSelected ? .semibold : .regular))
+                sidebarGlyph(symbol, selected: isSelected)
                     .foregroundStyle(isSelected ? DesignTokens.Colors.accent : .secondary)
                     .frame(width: 20)
                 if !narrow {
@@ -283,7 +293,7 @@ struct SettingsView: View {
                         }
                     }
                     .padding(4)
-                    .background(DesignTokens.Colors.card, in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous))
+                    .cardSurface()
                 }
 
 
@@ -313,6 +323,10 @@ struct SettingsView: View {
     }
 
     private func presetRow(_ preset: CustomPreset) -> some View {
+        HoverRevealRow(id: "spec:\(preset.id)") { hovering in presetRowContent(preset, hovering: hovering) }
+    }
+
+    private func presetRowContent(_ preset: CustomPreset, hovering: Bool) -> some View {
         let applied = Self.activeSelection(in: model) == preset.id
         return HStack(spacing: 12) {
             ScreenGlyph(dimensions: preset.dimensions(.standard), selected: applied, maximumWidth: 20, maximumHeight: 16, strokeOpacity: applied ? 0.85 : 0.55)
@@ -331,8 +345,11 @@ struct SettingsView: View {
             Button(role: .destructive) { pendingDeletion = .preset(id: preset.id, name: preset.title) } label: {
                 Image(systemName: "trash").frame(width: 28, height: 32).contentShape(Rectangle())
             }.buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("删除\(preset.title)")
+            // Slot stays laid out; only opacity / hit testing switch, so nothing shifts on hover.
+            .opacity(hovering ? 1 : 0).allowsHitTesting(hovering)
         }
         .padding(.horizontal, 12).padding(.vertical, 8)
+        .contentShape(Rectangle())
         .background(applied ? DesignTokens.Colors.accent.opacity(0.07) : Color.clear,
                     in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous))
         .accessibilityAddTraits(applied ? .isSelected : [])
@@ -467,7 +484,7 @@ struct SettingsView: View {
 
     static func settingCard<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 0) { content() }
-            .background(DesignTokens.Colors.card, in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous))
+            .cardSurface()
     }
 
     // MARK: - General Settings
@@ -488,7 +505,7 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.segmented).labelsHidden()
                 }
-                .background(DesignTokens.Colors.card, in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd))
+                .cardSurface()
 
                 // Section 1: System Behavior
                 VStack(alignment: .leading, spacing: 10) {
@@ -499,7 +516,7 @@ struct SettingsView: View {
                     VStack(spacing: 0) {
                         // Launch at login
                         HStack(spacing: 12) {
-                            Self.settingIcon("bolt.badge.clock")
+                            Self.settingIcon("power.circle")
 
                             Text("开机启动")
                                 .font(.system(size: DesignTokens.fontBody, weight: .medium))
@@ -531,7 +548,7 @@ struct SettingsView: View {
                         .padding(.vertical, 10)
 
                     }
-                    .background(DesignTokens.Colors.card, in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous))
+                    .cardSurface()
                 }
 
                 // Section 2: Screen Floating Toolbar
@@ -551,7 +568,7 @@ struct SettingsView: View {
                         }
 
                     }
-                    .background(DesignTokens.Colors.card, in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous))
+                    .cardSurface()
                 }
 
                 // Section 3: Permissions
@@ -580,12 +597,12 @@ struct SettingsView: View {
                         } else {
                             Text("已授权")
                                 .font(.system(size: DesignTokens.fontBody, weight: .medium))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(DesignTokens.Colors.textSecondary)
                         }
                     }
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-                    .background(DesignTokens.Colors.card, in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous))
+                    .cardSurface()
                 }
             }
             .padding(pagePadding)
@@ -695,7 +712,7 @@ struct SettingsView: View {
     }
 
     private func actionIcon(_ symbol: String) -> some View {
-        Image(systemName: symbol)
+        IconArt.image(symbol, pointSize: DesignTokens.fontEmphasis, weight: .medium)
             .font(.system(size: DesignTokens.fontEmphasis, weight: .medium))
             .foregroundStyle(.primary)
             .frame(width: 24, height: 26)
@@ -756,7 +773,7 @@ struct SettingsView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
         .frame(minHeight: 42)
-        .background(DesignTokens.Colors.card, in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous))
+        .cardSurface()
         .background {
             GeometryReader { geometry in
                 Color.clear
@@ -999,7 +1016,7 @@ struct RecommendedPresetsView: View {
                     ForEach(presets) { preset in
                         let alreadyAdded = model.preferences.namedShortcuts.contains { $0.name == preset.name }
                         HStack(spacing: 12) {
-                            Image(systemName: preset.icon.rawValue)
+                            IconArt.image(preset.icon.rawValue, pointSize: DesignTokens.fontEmphasis, weight: .medium)
                                 .font(.system(size: DesignTokens.fontEmphasis, weight: .medium))
                                 .frame(width: 32, height: 32)
                                 .background(DesignTokens.Colors.secondaryFill, in: RoundedRectangle(cornerRadius: DesignTokens.radiusSm))
@@ -1033,7 +1050,7 @@ struct RecommendedPresetsView: View {
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
-                        .background(DesignTokens.Colors.card, in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd))
+                        .cardSurface()
                     }
                     if presets.isEmpty {
                         Text(loadError ?? "暂无快捷操作预设")
@@ -1211,6 +1228,14 @@ struct DeviceTemplatesView: View {
                 Button("添加") { model.onSaveCustom(entry.preset) }.buttonStyle(DSSecondaryButtonStyle()).controlSize(.small)
             }
         }
-        .padding(12).background(DesignTokens.Colors.card, in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous))
+        .padding(12).cardSurface()
     }
+}
+
+/// Row that reports pointer hover (app-wide `PointerHover` owner) to its content.
+private struct HoverRevealRow<Content: View>: View {
+    let id: String
+    @ViewBuilder let content: (Bool) -> Content
+    @State private var hovering = false
+    var body: some View { content(hovering).pointerHover(id) { hovering = $0 } }
 }

@@ -52,7 +52,7 @@ final class TransientNotice {
         let visibleDetail = detail?.isEmpty == false && detail != title ? detail : nil
         let titleWidth = (title as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 14, weight: .medium)]).width
         let detailWidth = ((visibleDetail ?? "") as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 12)]).width
-        let width = min(420, max(1, area.width - 32), max(180, ceil(max(titleWidth, detailWidth)) + 58))
+        let width = min(420, max(1, area.width - 32), max(180, ceil(max(titleWidth, detailWidth)) + 76))
         let content = NoticeContent(title: title, detail: visibleDetail)
             .frame(width: width)
         let host = NSHostingView(rootView: content)

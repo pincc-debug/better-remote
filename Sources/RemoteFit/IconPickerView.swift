@@ -103,7 +103,7 @@ struct IconPickerView: View {
         }
         .padding(.horizontal, 9)
         .padding(.vertical, 6)
-        .background(DesignTokens.Colors.card, in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous))
+        .cardSurface()
     }
 
     // MARK: - Empty State
@@ -168,7 +168,7 @@ struct IconPickerView: View {
                     choose(icon)
                 } label: {
                     VStack(spacing: 2) {
-                        Image(systemName: icon.rawValue)
+                        IconArt.image(icon.rawValue, pointSize: DesignTokens.fontEmphasis, weight: isSelected ? .semibold : .regular)
                             .font(.system(size: DesignTokens.fontEmphasis, weight: isSelected ? .semibold : .regular))
                             .foregroundStyle(isSelected ? DesignTokens.Colors.accent : Color.primary)
                             .frame(height: 20)

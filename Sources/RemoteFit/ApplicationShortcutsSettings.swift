@@ -29,6 +29,8 @@ struct ApplicationShortcutsSettings: View {
                 )).labelsHidden().toggleStyle(StableBlueSwitchStyle()).controlSize(.small)
                     .help("显示应用快捷操作")
             }
+            // Same right inset as the switches inside cards (settingRow pads 14).
+            .padding(.trailing, 14)
             ForEach(model.preferences.applicationShortcuts) { group in
                 applicationCard(group)
             }
@@ -102,7 +104,7 @@ struct ApplicationShortcutsSettings: View {
                 ShortcutFlowLayout(spacing: 8) {
                     ForEach(group.shortcuts) { shortcut in
                         Button { editing = EditDraft(bundleID: group.id, shortcut: shortcut) } label: {
-                            Label(shortcut.name, systemImage: shortcut.icon.rawValue)
+                            Label { Text(shortcut.name) } icon: { IconArt.image(shortcut.icon.rawValue, pointSize: DesignTokens.fontCaption, weight: .medium) }
                                 .font(.system(size: DesignTokens.fontCaption, weight: .medium)).lineLimit(1).frame(minHeight: 24)
                         }
                         .buttonStyle(DSSecondaryButtonStyle()).controlSize(.small)
@@ -136,7 +138,7 @@ struct ApplicationShortcutsSettings: View {
             }
         }
         .padding(10)
-        .background(DesignTokens.Colors.card, in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous))
+        .cardSurface()
     }
 
     private func addShortcut(to group: ApplicationShortcuts) {

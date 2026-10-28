@@ -119,7 +119,7 @@ struct DeviceListSettings: View {
         .padding(14)
         .frame(maxWidth: .infinity)
         .frame(height: 220)
-        .background(DesignTokens.Colors.card, in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous))
+        .cardSurface()
     }
 }
 
@@ -333,7 +333,7 @@ struct StableBlueSwitchStyle: ToggleStyle {
             withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.14)) { configuration.isOn.toggle() }
         } label: {
             ZStack(alignment: configuration.isOn ? .trailing : .leading) {
-                Capsule().fill(configuration.isOn ? Color(red: 0.05, green: 0.48, blue: 1) : Color.secondary.opacity(0.35))
+                Capsule().fill(configuration.isOn ? DesignTokens.Colors.accent : Color.secondary.opacity(0.35))
                 Circle().fill(Color.white).frame(width: 15, height: 15).padding(2)
             }
             .frame(width: 32, height: 19)

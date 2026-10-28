@@ -50,8 +50,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <string>zh-Hans</string>
 <string>en</string>
 </array>
-<key>CFBundleShortVersionString</key><string>0.9.0</string>
-<key>CFBundleVersion</key><string>192</string>
+<key>CFBundleShortVersionString</key><string>0.9.1</string>
+<key>CFBundleVersion</key><string>193</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
 <key>LSUIElement</key><true/>
 <key>NSHighResolutionCapable</key><true/>

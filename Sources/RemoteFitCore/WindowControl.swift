@@ -95,17 +95,6 @@ public enum WindowSnap: String, CaseIterable, Sendable {
         }
     }
 
-    public var symbol: String {
-        switch self {
-        case .fill: "rectangle.inset.filled"
-        case .left: "rectangle.lefthalf.inset.filled"
-        case .right: "rectangle.righthalf.inset.filled"
-        case .top: "rectangle.tophalf.inset.filled"
-        case .bottom: "rectangle.bottomhalf.inset.filled"
-        case .center: "rectangle.center.inset.filled"
-        }
-    }
-
     /// `area` is the visible frame (menu bar and Dock excluded) of the window's screen.
     public func frame(current: CGRect, in area: CGRect) -> CGRect {
         let halfWidth = (area.width / 2).rounded(.down), halfHeight = (area.height / 2).rounded(.down)

@@ -85,7 +85,6 @@ final class ControlPanelModel: ObservableObject {
     var onDeleteCustom: (String) -> Void = { _ in }
     var onRecover: () -> Void = {}
     var onQuit: () -> Void = {}
-    var onDetails: () -> Void = {}
     var onSettings: () -> Void = {}
     var onNewCustom: () -> Void = {}
     var onIdentifyHintAction: (UUIdentifyHint.Action) -> Void = { _ in }

@@ -42,7 +42,7 @@ public enum FloatingAction: String, Codable, CaseIterable, Sendable {
         case .centerWindow: "macwindow"
         case .fillWindow: ShortcutIcon.fillWindow.rawValue
         case .minimizeWindow: ShortcutIcon.minimizeWindow.rawValue
-        case .showDesktop: "menubar.dock.rectangle"
+        case .showDesktop: "rectangle.on.rectangle.slash"
         }
     }
 }

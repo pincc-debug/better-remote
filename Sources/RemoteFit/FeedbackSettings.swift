@@ -265,7 +265,9 @@ private struct FeedbackFormView: View {
                 .font(.system(size: DesignTokens.fontEmphasis, weight: .semibold))
                 .foregroundStyle(DesignTokens.Colors.textPrimary)
 
-            TextField(FeedbackCopy.placeholder, text: $model.message, axis: .vertical)
+            TextField(text: $model.message,
+                      prompt: Text(FeedbackCopy.placeholder).font(.system(size: DesignTokens.fontBody, weight: .regular)).foregroundStyle(Color.primary.opacity(0.32)),
+                      axis: .vertical) { Text(FeedbackCopy.placeholder) }
                 .textFieldStyle(.plain)
                 .font(.system(size: DesignTokens.fontBody))
                 .lineLimit(4...8)
@@ -295,7 +297,7 @@ private struct FeedbackFormView: View {
                         if model.sending {
                             ProgressView()
                                 .controlSize(.small)
-                                .tint(.white)
+                                .tint(.secondary)
                         } else {
                             Text(FeedbackCopy.send)
                         }

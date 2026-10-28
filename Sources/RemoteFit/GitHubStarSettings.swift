@@ -123,7 +123,7 @@ struct GitHubStarSettings: View {
                 }
             }
             .padding(14)
-            .background(DesignTokens.Colors.card, in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd))
+            .cardSurface()
         }
         .buttonStyle(.plain)
         .disabled(model.working || model.starred)

@@ -117,7 +117,8 @@ final class NativeGlassView: NSView {
         let view = hairline ?? HairlineEdgeView(frame: bounds)
         view.color = color
         view.omitted = side
-        view.cornerRadius = attachedCorners == nil ? cornerRadius : 0
+        view.cornerRadius = cornerRadius
+        view.roundedCorners = attachedCorners
         if hairline == nil {
             addSubview(view, positioned: .above, relativeTo: surface)
             pin(view, to: self)
@@ -188,7 +189,8 @@ final class NativeGlassView: NSView {
 
     override func layout() {
         super.layout()
-        hairline?.cornerRadius = attachedCorners == nil ? cornerRadius : 0
+        hairline?.cornerRadius = cornerRadius
+        hairline?.roundedCorners = attachedCorners
         if #available(macOS 26.0, *), let glass = surface as? NSGlassEffectView {
             glass.cornerRadius = attachedCorners == nil ? cornerRadius : 0
         } else {
@@ -223,6 +225,8 @@ final class HairlineEdgeView: NSView {
     var color: NSColor = .clear { didSet { needsDisplay = true } }
     var omitted: ToolbarSide? { didSet { needsDisplay = true } }
     var cornerRadius: CGFloat = 0 { didSet { if oldValue != cornerRadius { needsDisplay = true } } }
+    /// Corners that stay rounded when attached (nil: all four), matching the glass layer's maskedCorners.
+    var roundedCorners: CACornerMask? { didSet { if oldValue != roundedCorners { needsDisplay = true } } }
     override var isOpaque: Bool { false }
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
     override func viewDidChangeEffectiveAppearance() { super.viewDidChangeEffectiveAppearance(); needsDisplay = true }
@@ -246,11 +250,28 @@ final class HairlineEdgeView: NSView {
         let radius = max(0, cornerRadius - width / 2)
         NSGraphicsContext.saveGraphicsState()
         NSBezierPath(rect: Self.clip(bounds, omitting: omitted, lineWidth: width)).addClip()
-        let path = NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius)
+        let path = roundedCorners.map { Self.path(rect, radius: radius, corners: $0) } ?? NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius)
         path.lineWidth = width
         effectiveAppearance.performAsCurrentDrawingAppearance { color.setStroke() }
         path.stroke()
         NSGraphicsContext.restoreGraphicsState()
+    }
+    /// Rounded rect with only `corners` rounded (non-flipped view: MinY is the bottom edge, as in CALayer).
+    static func path(_ rect: CGRect, radius: CGFloat, corners: CACornerMask) -> NSBezierPath {
+        func r(_ corner: CACornerMask) -> CGFloat { corners.contains(corner) ? radius : 0 }
+        let bl = r(.layerMinXMinYCorner), br = r(.layerMaxXMinYCorner), tr = r(.layerMaxXMaxYCorner), tl = r(.layerMinXMaxYCorner)
+        let path = NSBezierPath()
+        path.move(to: CGPoint(x: rect.minX + bl, y: rect.minY))
+        path.line(to: CGPoint(x: rect.maxX - br, y: rect.minY))
+        if br > 0 { path.appendArc(withCenter: CGPoint(x: rect.maxX - br, y: rect.minY + br), radius: br, startAngle: 270, endAngle: 360) }
+        path.line(to: CGPoint(x: rect.maxX, y: rect.maxY - tr))
+        if tr > 0 { path.appendArc(withCenter: CGPoint(x: rect.maxX - tr, y: rect.maxY - tr), radius: tr, startAngle: 0, endAngle: 90) }
+        path.line(to: CGPoint(x: rect.minX + tl, y: rect.maxY))
+        if tl > 0 { path.appendArc(withCenter: CGPoint(x: rect.minX + tl, y: rect.maxY - tl), radius: tl, startAngle: 90, endAngle: 180) }
+        path.line(to: CGPoint(x: rect.minX, y: rect.minY + bl))
+        if bl > 0 { path.appendArc(withCenter: CGPoint(x: rect.minX + bl, y: rect.minY + bl), radius: bl, startAngle: 180, endAngle: 270) }
+        path.close()
+        return path
     }
 }
 

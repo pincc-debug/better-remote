@@ -24,6 +24,7 @@ struct UUScrollSpeedSettings: View {
                         Self.hapticTick()
                     }
                 ), in: 1...100, step: 1)
+                    .tint(DesignTokens.Colors.accent)
                     .accessibilityLabel("UU 滚动速度")
                     .accessibilityValue("原速的 \(percent)%")
                 HStack {

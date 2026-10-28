@@ -35,9 +35,12 @@ public enum DesignTokens {
     public static let dropdownMinWidth: CGFloat = 160
 
     // MARK: - Floating toolbar shadow (drawn by the layer, not the window server)
-    public static let toolbarShadowOpacity: Float = 0.18
-    public static let toolbarShadowRadius: CGFloat = 4
-    public static let toolbarShadowOffsetY: CGFloat = -1.5
+    public static let toolbarShadowOpacity: Float = 0.22
+    public static let toolbarShadowRadius: CGFloat = 14
+    public static let toolbarShadowOffsetY: CGFloat = -2
+    /// Glass dropdown keeps the earlier, tighter shadow.
+    public static let dropdownShadowOpacity: Float = 0.18
+    public static let dropdownShadowRadius: CGFloat = 4
     /// Blur of `NS.legibilityShadow` under toolbar glyphs and captions.
     public static let legibilityShadowRadius: CGFloat = 1.5
 
@@ -69,7 +72,7 @@ public enum DesignTokens {
         public static let buttonActiveBorder = NSColor(calibratedWhite: 1, alpha: 0.32)
 
         public static let textPrimary = NSColor.labelColor
-        public static let textSecondary = adaptive("textSecondary", light: NSColor(calibratedWhite: 0, alpha: 0.80), dark: NSColor(calibratedWhite: 1, alpha: 0.90))
+        public static let textSecondary = adaptive("textSecondary", light: NSColor(calibratedWhite: 0, alpha: 0.85), dark: NSColor(calibratedWhite: 1, alpha: 0.90))
         public static let textTertiary = NSColor.tertiaryLabelColor
     }
 
@@ -96,6 +99,8 @@ public enum DesignTokens {
         public static let accentFill = accent.opacity(0.12)
         /// Card on a panel or page background: white (light) / card grey (dark), no stroke.
         public static let card = Color(nsColor: adaptive("card", light: .white, dark: NSColor(calibratedWhite: 1, alpha: 0.07)))
+        /// Card edge: primary 8% in light (white card on a light page), none in dark.
+        public static let cardEdge = Color(nsColor: adaptive("cardEdge", light: NSColor(calibratedWhite: 0, alpha: 0.08), dark: .clear))
         /// Secondary button / unselected control fill: black 4% (light) / white 6% (dark).
         public static let secondaryFill = Color(nsColor: adaptive("secondaryFill", light: NSColor(calibratedWhite: 0, alpha: 0.04), dark: NSColor(calibratedWhite: 1, alpha: 0.06)))
         public static let secondaryFillPressed = Color(nsColor: adaptive("secondaryFillPressed", light: NSColor(calibratedWhite: 0, alpha: 0.09), dark: NSColor(calibratedWhite: 1, alpha: 0.12)))
@@ -130,12 +135,11 @@ struct DSPrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: DesignTokens.fontBody, weight: .medium))
-            .foregroundStyle(Color.white)
+            .foregroundStyle(isEnabled ? Color.white : Color.secondary)
             .padding(.horizontal, DesignTokens.spacingMd)
             .frame(minHeight: DesignTokens.controlHeight)
-            .background(DesignTokens.Colors.accent.opacity(configuration.isPressed ? 0.8 : 1),
+            .background(isEnabled ? DesignTokens.Colors.accent.opacity(configuration.isPressed ? 0.8 : 1) : DesignTokens.Colors.secondaryFill,
                         in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous))
-            .opacity(isEnabled ? 1 : 0.45)
             .contentShape(Rectangle())
     }
 }
@@ -188,4 +192,10 @@ struct OverflowEdgeFade: ViewModifier {
 
 extension View {
     func overflowEdgeFade() -> some View { modifier(OverflowEdgeFade()) }
+    /// `Colors.card` fill plus the light-only 0.5pt `cardEdge` stroke.
+    func cardSurface(radius: CGFloat = DesignTokens.radiusMd) -> some View {
+        background(DesignTokens.Colors.card, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous)
+                .strokeBorder(DesignTokens.Colors.cardEdge, lineWidth: 0.5).allowsHitTesting(false))
+    }
 }

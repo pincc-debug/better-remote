@@ -83,8 +83,7 @@ struct ResolutionPanelView: View {
                                     .padding(.vertical, DesignTokens.spacingSm)
                                     .padding(.horizontal, DesignTokens.spacingXs)
                                     .frame(maxWidth: .infinity, minHeight: Self.cardHeight)
-                                    .background(DesignTokens.Colors.card,
-                                                in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous))
+                                    .cardSurface()
                                     // Selected: one cue only, a 2pt brand stroke (plus the blue screen glyph).
                                     .overlay(
                                         RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous)
@@ -169,7 +168,7 @@ struct ResolutionPanelView: View {
                             .font(.system(size: DesignTokens.fontBody, weight: .medium))
                             .foregroundStyle(DesignTokens.Colors.textPrimary)
                             .frame(maxWidth: .infinity, minHeight: 36)
-                            .contentShape(Capsule())
+                            .contentShape(RoundedRectangle(cornerRadius: DesignTokens.radiusLg, style: .continuous))
                     }
                     .buttonStyle(RestoreButtonStyle(hovering: isHoveringRestore))
                     .pointerHover("resolution:restore") { isHoveringRestore = $0 }
@@ -218,12 +217,12 @@ struct ResolutionPanelView: View {
     }
 }
 
-/// Full-width secondary capsule: black 4% (dark white 6%), darker on hover / press, no stroke.
+/// Full-width secondary button (radius 14): black 4% (dark white 6%), darker on hover / press, no stroke.
 private struct RestoreButtonStyle: ButtonStyle {
     let hovering: Bool
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .background(configuration.isPressed || hovering ? DesignTokens.Colors.secondaryFillPressed : DesignTokens.Colors.secondaryFill,
-                        in: Capsule())
+                        in: RoundedRectangle(cornerRadius: DesignTokens.radiusLg, style: .continuous))
     }
 }

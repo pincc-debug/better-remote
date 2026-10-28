@@ -276,6 +276,7 @@ final class AppLauncher: NSObject {
         panel = overlay
         overlay.setFrame(frame, display: true)
         (overlay.contentView as? NativeGlassView)?.attach(to: side)
+        (overlay.contentView as? NativeGlassView)?.setHairline(DesignTokens.NS.toolbarHairline, omitting: side)
         overlay.makeKeyAndOrderFront(nil)
         (overlay.contentView as? NativeGlassView)?.reveal(from: side)
         overlay.makeFirstResponder(nil)
@@ -287,6 +288,7 @@ final class AppLauncher: NSObject {
         presentationScreen = screen
         model.side = side
         (panel?.contentView as? NativeGlassView)?.attach(to: side)
+        (panel?.contentView as? NativeGlassView)?.setHairline(DesignTokens.NS.toolbarHairline, omitting: side)
         updateFrame()
     }
 
