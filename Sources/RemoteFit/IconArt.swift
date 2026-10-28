@@ -27,8 +27,23 @@ enum IconArt {
         return NSImage(systemSymbolName: displaySymbol(name), accessibilityDescription: nil)?.withSymbolConfiguration(config)
     }
 
-    /// SwiftUI image; `pointSize` is the font size the call site already uses.
-    static func image(_ name: String, pointSize: CGFloat, weight: Font.Weight = .regular) -> Image {
+    /// SwiftUI icon; `pointSize` is the font size the call site already uses. Toolbar actions with style-B art
+    /// draw it (same art and colours as the toolbar) from 14pt up; smaller inline icons stay single-colour.
+    /// `selectedInCard`: selected inside a light card (blue line + blue 20% fill).
+    @ViewBuilder
+    static func image(_ name: String, pointSize: CGFloat, weight: Font.Weight = .regular, selectedInCard: Bool = false) -> some View {
+        if pointSize >= BIcons.minimumPointSize, BIcons.key(for: name) != nil {
+            BIconImage(symbol: name, side: (pointSize * bArtScale).rounded(), style: selectedInCard ? .selectedInCard : .normal)
+        } else {
+            symbolImage(name, pointSize: pointSize, weight: weight)
+        }
+    }
+
+    /// B art fills its 24-unit grid; this keeps it at about the footprint of the symbol it replaces in rows.
+    static let bArtScale: CGFloat = 1.2
+
+    /// Single-colour image (template), honouring the caller's foreground style.
+    static func symbolImage(_ name: String, pointSize: CGFloat, weight: Font.Weight = .regular) -> Image {
         if name == customCopy, let image = nsImage(name, pointSize: pointSize, weight: nsWeight(weight)) {
             return Image(nsImage: image).renderingMode(.template)
         }

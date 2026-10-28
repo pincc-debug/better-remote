@@ -48,6 +48,9 @@ private final class ToolbarButton: NSButton {
     private let caption = NSTextField(labelWithString: "")
     private let labelled: Bool
     private let glyphSize: CGFloat
+    private let pointSize: CGFloat
+    /// The action's symbol; nil once a real app icon is set.
+    private var symbol: String?
     /// Optional glyph centre (from the top); the horizontal footer uses the labelled buttons' centre.
     var glyphCenterY: CGFloat? { didSet { if oldValue != glyphCenterY { needsLayout = true } } }
     override var isFlipped: Bool { true }
@@ -57,9 +60,11 @@ private final class ToolbarButton: NSButton {
     init(symbol: String, name: String, showsCaption: Bool = true, largeIcon: Bool = false) {
         labelled = showsCaption
         glyphSize = largeIcon ? 30 : (showsCaption ? 24 : 20)
+        pointSize = largeIcon ? 28 : (showsCaption ? 23 : 18)
+        self.symbol = symbol
         super.init(frame: .zero)
         title = ""; isBordered = false; focusRingType = .none
-        glyph.image = IconArt.nsImage(symbol, pointSize: largeIcon ? 28 : (showsCaption ? 23 : 18), weight: .medium)
+        refreshGlyph()
         glyph.contentTintColor = DesignTokens.NS.textPrimary
         glyph.imageScaling = .scaleProportionallyDown
         caption.stringValue = name
@@ -74,11 +79,11 @@ private final class ToolbarButton: NSButton {
         setAccessibilityElement(true); setAccessibilityRole(.button); setAccessibilityLabel(name)
     }
     required init?(coder: NSCoder) { nil }
-    func setGlyph(_ image: NSImage) { glyph.image = image; updateColors() }
+    func setGlyph(_ image: NSImage) { symbol = nil; glyph.image = image; updateColors() }
     /// Swaps symbol and caption in place (铺满 ⇄ 还原); no state background.
     func update(symbol: String, name: String) {
         guard caption.stringValue != name else { return }
-        glyph.image = IconArt.nsImage(symbol, pointSize: labelled ? 23 : 18, weight: .medium)
+        self.symbol = symbol
         caption.stringValue = name; toolTip = name; setAccessibilityLabel(name)
         updateColors()
     }
@@ -105,7 +110,15 @@ private final class ToolbarButton: NSButton {
         super.viewDidChangeEffectiveAppearance()
         updateColors()
     }
+    /// Style-B art (baked colours: white on the blue selection) when the symbol has it, else the template symbol.
+    private func refreshGlyph() {
+        guard let symbol else { return }
+        let dark = effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+        glyph.image = BIcons.image(symbol, side: pointSize, style: selected ? .onAccent : .normal, dark: dark)
+            ?? IconArt.nsImage(symbol, pointSize: pointSize, weight: .medium)
+    }
     private func updateColors() {
+        refreshGlyph()
         glyph.contentTintColor = glyph.image?.isTemplate == false ? nil : (selected ? .white : DesignTokens.NS.textPrimary)
         caption.textColor = selected ? .white : DesignTokens.NS.textSecondary
         // Glass is mostly clear now: a soft halo keeps glyphs and captions readable over any background.
@@ -257,13 +270,16 @@ private struct LayoutFlyoutView: View {
     }
 }
 
-/// Rounded-rect outline (1.5pt) with filled regions: the front window in 70% accent, the rest 30% gray.
+/// Rounded-rect outline (1.5pt). The block the current window goes to: blue line + blue 24% fill (style B);
+/// the other blocks are outline only.
 private struct LayoutGlyph: View {
     enum Region {
         case all([CGRect])
         case split(front: CGRect, others: [CGRect])
     }
     let region: Region
+    static let currentFillOpacity: Double = 0.24
+    static let cellStroke: CGFloat = 1.2
     var body: some View {
         ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: DesignTokens.radiusSm, style: .continuous)
@@ -273,7 +289,10 @@ private struct LayoutGlyph: View {
                 ForEach(Array(cells.enumerated()), id: \.offset) { _, cell in
                     let r = CGRect(x: inner.minX + cell.0.minX * inner.width, y: inner.minY + cell.0.minY * inner.height,
                                    width: cell.0.width * inner.width, height: cell.0.height * inner.height).insetBy(dx: 1, dy: 1)
-                    RoundedRectangle(cornerRadius: 1.5).fill(cell.1 ? DesignTokens.Colors.accent.opacity(0.7) : DesignTokens.Colors.glyphInactive)
+                    RoundedRectangle(cornerRadius: 1.5)
+                        .fill(cell.1 ? Color(nsColor: .systemBlue).opacity(Self.currentFillOpacity) : Color.clear)
+                        .overlay(RoundedRectangle(cornerRadius: 1.5)
+                            .strokeBorder(cell.1 ? Color(nsColor: .systemBlue) : Color.primary.opacity(0.6), lineWidth: Self.cellStroke))
                         .frame(width: r.width, height: r.height).offset(x: r.minX, y: r.minY)
                 }
             }
@@ -609,7 +628,7 @@ final class FloatingSwitcher: NSObject {
         toolbarShadowHost?.layer?.shadowOpacity = joined ? 0 : DesignTokens.toolbarShadowOpacity
         // Joined: the bar keeps its hairline except on the edge it shares with the panel (the panel draws its own, minus that edge).
         let joinEdge: ToolbarSide = switch preferences.toolbarSide { case .left: .right; case .right: .left; case .top: .bottom; case .bottom: .top }
-        toolbarGlass?.setHairline(expanded ? DesignTokens.NS.toolbarHairline : nil, omitting: joined ? joinEdge : preferences.toolbarSide)
+        toolbarGlass?.setHairline(expanded ? DesignTokens.NS.toolbarSurfaceHairline : nil, omitting: joined ? joinEdge : preferences.toolbarSide)
     }
     private weak var toolbarShadowHost: NSView?
     func setEnabled(_ value: Bool) {
@@ -1060,7 +1079,7 @@ final class FloatingSwitcher: NSObject {
     }
     /// Expanded bar as built by `rebuild`, without a panel, for offscreen review renders only.
     /// `hairline: false` reproduces the previous edge treatment minus the window-server rim (not capturable offscreen).
-    static func reviewToolbar(preferences: Preferences, in visible: CGRect, hairline: Bool, backdrop: NSColor = DesignTokens.NS.glassBackdrop) -> NSView {
+    static func reviewToolbar(preferences: Preferences, in visible: CGRect, hairline: Bool, backdrop: NSColor = DesignTokens.NS.toolbarSurfaceBackdrop) -> NSView {
         let side = preferences.toolbarSide
         let count = preferences.enabledOperations.count
         let grid = DesktopToolbarLayout.grid(in: visible, count: count, side: side, windowControls: preferences.showWindowControls)
@@ -1092,7 +1111,7 @@ final class FloatingSwitcher: NSObject {
         container.addSubview(surface)
         if hairline {
             let edge = HairlineEdgeView(frame: surface.frame)
-            edge.color = DesignTokens.NS.toolbarHairline
+            edge.color = DesignTokens.NS.toolbarSurfaceHairline
             edge.omitted = side
             edge.cornerRadius = DesignTokens.radiusXl
             container.addSubview(edge)
@@ -1145,7 +1164,8 @@ final class FloatingSwitcher: NSObject {
         container.setFrameOrigin(.zero)
         let glass = NativeGlassView(content: content, cornerRadius: cornerRadius,
                                     frame: CGRect(origin: CGPoint(x: padding, y: padding), size: content.bounds.size),
-                                    contentBackdrop: improvesContrast ? DesignTokens.NS.glassBackdrop : nil)
+                                    contentBackdrop: improvesContrast ? DesignTokens.NS.toolbarSurfaceBackdrop : nil,
+                                    lightBlurAlpha: DesignTokens.NS.toolbarLightBlurAlpha)
         toolbarGlass = glass
         glass.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(glass)

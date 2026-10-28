@@ -168,7 +168,8 @@ struct IconPickerView: View {
                     choose(icon)
                 } label: {
                     VStack(spacing: 2) {
-                        IconArt.image(icon.rawValue, pointSize: DesignTokens.fontEmphasis, weight: isSelected ? .semibold : .regular)
+                        IconArt.image(icon.rawValue, pointSize: DesignTokens.fontEmphasis, weight: isSelected ? .semibold : .regular,
+                                      selectedInCard: isSelected)
                             .font(.system(size: DesignTokens.fontEmphasis, weight: isSelected ? .semibold : .regular))
                             .foregroundStyle(isSelected ? DesignTokens.Colors.accent : Color.primary)
                             .frame(height: 20)

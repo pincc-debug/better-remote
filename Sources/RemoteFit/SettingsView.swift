@@ -423,10 +423,17 @@ struct SettingsView: View {
 
     // MARK: - Shared setting rows (same look as 常规)
 
+    @ViewBuilder
     static func settingIcon(_ symbol: String) -> some View {
-        Image(systemName: symbol)
-            .font(.system(size: DesignTokens.fontEmphasis)).foregroundStyle(DesignTokens.Colors.icon)
-            .frame(width: 28, height: 28)
+        if BIcons.key(for: symbol) != nil {
+            // Toolbar actions (铺满, 程序坞, 布局 …) use the same style-B art and colours as the toolbar.
+            IconArt.image(symbol, pointSize: DesignTokens.fontEmphasis)
+                .frame(width: 28, height: 28)
+        } else {
+            Image(systemName: symbol)
+                .font(.system(size: DesignTokens.fontEmphasis)).foregroundStyle(DesignTokens.Colors.icon)
+                .frame(width: 28, height: 28)
+        }
     }
 
     static func settingRow<Accessory: View>(_ title: String, symbol: String, @ViewBuilder accessory: () -> Accessory) -> some View {

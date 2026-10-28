@@ -142,7 +142,7 @@ struct ShortcutEditor: View {
             HStack(spacing: 10) {
                 Text("图标")
                     .font(.system(size: DesignTokens.fontBody, weight: .medium))
-                IconArt.image(icon.rawValue, pointSize: DesignTokens.fontEmphasis)
+                IconArt.image(icon.rawValue, pointSize: DesignTokens.fontEmphasis, selectedInCard: true)
                     .font(.system(size: DesignTokens.fontEmphasis))
                     .foregroundStyle(DesignTokens.Colors.accent)
                     .frame(width: 24)

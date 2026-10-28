@@ -64,6 +64,14 @@ public enum DesignTokens {
         public static let pedestalBorder = adaptive("pedestalBorder", light: NSColor(calibratedWhite: 0, alpha: 0.08), dark: NSColor(calibratedWhite: 1, alpha: 0.08))
         /// Expanded toolbar edge: 1 px hairline, black 9% (light) / white 15% (dark); none on the docked side.
         public static let toolbarHairline = adaptive("toolbarHairline", light: NSColor(calibratedWhite: 0, alpha: 0.09), dark: NSColor(calibratedWhite: 1, alpha: 0.15))
+        /// Light mode only: opacity of the blur layer behind the toolbar and its joined resolution / app panels
+        /// (`.sidebar` on macOS 26, `.popover` on 14–25), so more of the desktop shows through. Dark is unchanged.
+        public static let toolbarLightBlurAlpha: CGFloat = 0.70
+        /// Light-mode hairline alpha (black) for the toolbar and its joined panels. Dark stays white 15%.
+        public static let toolbarLightHairlineAlpha: CGFloat = 0.12
+        public static let toolbarSurfaceHairline = adaptive("toolbarSurfaceHairline", light: NSColor(calibratedWhite: 0, alpha: toolbarLightHairlineAlpha), dark: NSColor(calibratedWhite: 1, alpha: 0.15))
+        /// Tint inside the toolbar and its joined panels: none in light (the faded blur carries the surface), black 14% in dark.
+        public static let toolbarSurfaceBackdrop = adaptive("toolbarSurfaceBackdrop", light: .clear, dark: NSColor(calibratedWhite: 0, alpha: 0.14))
 
         public static let buttonNormal = adaptive("buttonNormal", light: NSColor(calibratedWhite: 0, alpha: 0.025), dark: NSColor(calibratedWhite: 1, alpha: 0.025))
         public static let buttonNormalBorder = adaptive("buttonNormalBorder", light: NSColor(calibratedWhite: 0, alpha: 0.025), dark: NSColor(calibratedWhite: 1, alpha: 0.025))

@@ -1010,7 +1010,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         overlay.setFrame(frame, display: true)
         overlay.makeKeyAndOrderFront(nil)
         (overlay.contentView as? NativeGlassView)?.attach(to: toolbarPreferences.toolbarSide)
-        (overlay.contentView as? NativeGlassView)?.setHairline(DesignTokens.NS.toolbarHairline, omitting: toolbarPreferences.toolbarSide)
+        (overlay.contentView as? NativeGlassView)?.setHairline(DesignTokens.NS.toolbarSurfaceHairline, omitting: toolbarPreferences.toolbarSide)
         (overlay.contentView as? NativeGlassView)?.reveal(from: toolbarPreferences.toolbarSide)
         floatingSwitcher.setActivePanel(.resolution)
     }
@@ -1029,7 +1029,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         window.setFrame(frame, display: false)
         window.contentView = makeResolutionContent()
         (window.contentView as? NativeGlassView)?.attach(to: toolbarPreferences.toolbarSide)
-        (window.contentView as? NativeGlassView)?.setHairline(DesignTokens.NS.toolbarHairline, omitting: toolbarPreferences.toolbarSide)
+        (window.contentView as? NativeGlassView)?.setHairline(DesignTokens.NS.toolbarSurfaceHairline, omitting: toolbarPreferences.toolbarSide)
         window.display()
         window.alphaValue = 1
     }

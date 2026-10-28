@@ -12,10 +12,14 @@ final class NativeGlassView: NSView {
     private let cornerRadius: CGFloat
     private let contentBackdrop: NSColor?
     private let clear: Bool
+    /// When set, light mode fades only the blur layer to this opacity; the content sits above it at full strength.
+    private let lightBlurAlpha: CGFloat?
     private var contentConstraints: [NSLayoutConstraint] = []
 
-    init(content: NSView, cornerRadius: CGFloat, frame: NSRect = .zero, clear: Bool = false, contentBackdrop: NSColor? = nil) {
+    init(content: NSView, cornerRadius: CGFloat, frame: NSRect = .zero, clear: Bool = false, contentBackdrop: NSColor? = nil,
+         lightBlurAlpha: CGFloat? = nil) {
         embedded = content
+        self.lightBlurAlpha = lightBlurAlpha
         self.cornerRadius = cornerRadius
         self.contentBackdrop = contentBackdrop
         self.clear = clear
@@ -87,15 +91,22 @@ final class NativeGlassView: NSView {
                 embedded.removeFromSuperview()
                 glass.contentView = embedded
                 if let container = embedded.superview { contentConstraints = pin(embedded, to: container) }
-            } else if !isDark, embedded.superview !== lightBlur {
-                NSLayoutConstraint.deactivate(contentConstraints)
-                glass.contentView = nil
-                embedded.removeFromSuperview()
-                lightBlur.addSubview(embedded)
-                contentConstraints = pin(embedded, to: lightBlur)
+            } else if !isDark {
+                // A faded blur must not fade its content, so the content then becomes the blur's sibling above it.
+                if lightBlurAlpha != nil, embedded.superview !== self {
+                    glass.contentView = nil
+                    placeAboveBlur(lightBlur)
+                } else if lightBlurAlpha == nil, embedded.superview !== lightBlur {
+                    NSLayoutConstraint.deactivate(contentConstraints)
+                    glass.contentView = nil
+                    embedded.removeFromSuperview()
+                    lightBlur.addSubview(embedded)
+                    contentConstraints = pin(embedded, to: lightBlur)
+                }
             }
             surface.isHidden = !isDark
             lightBlur.isHidden = isDark
+            lightBlur.alphaValue = isDark ? 1 : (lightBlurAlpha ?? 1)
         }
         effectiveAppearance.performAsCurrentDrawingAppearance {
             embedded.layer?.backgroundColor = contentBackdrop?.cgColor
@@ -104,8 +115,26 @@ final class NativeGlassView: NSView {
             glass.style = clear ? .clear : .regular
         } else if let blur = surface as? NSVisualEffectView {
             blur.material = isDark ? .hudWindow : .popover
+            if let lightBlurAlpha {
+                if isDark, embedded.superview !== blur {
+                    NSLayoutConstraint.deactivate(contentConstraints)
+                    embedded.removeFromSuperview()
+                    blur.addSubview(embedded)
+                    contentConstraints = pin(embedded, to: blur)
+                } else if !isDark, embedded.superview !== self {
+                    placeAboveBlur(blur)
+                }
+                blur.alphaValue = isDark ? 1 : lightBlurAlpha
+            }
         }
         needsDisplay = true
+    }
+
+    private func placeAboveBlur(_ blur: NSView) {
+        NSLayoutConstraint.deactivate(contentConstraints)
+        embedded.removeFromSuperview()
+        addSubview(embedded, positioned: .above, relativeTo: blur)
+        contentConstraints = pin(embedded, to: self)
     }
 
     private var attachedCorners: CACornerMask?
@@ -308,5 +337,7 @@ private func filledHost<Content: View>(_ content: Content, background: NSColor, 
     host.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
     host.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
     guard let cornerRadius else { return host }
-    return NativeGlassView(content: host, cornerRadius: cornerRadius, contentBackdrop: DesignTokens.NS.glassBackdrop)
+    // Joined resolution / app panels: same light treatment as the toolbar body.
+    return NativeGlassView(content: host, cornerRadius: cornerRadius, contentBackdrop: DesignTokens.NS.toolbarSurfaceBackdrop,
+                           lightBlurAlpha: DesignTokens.NS.toolbarLightBlurAlpha)
 }
