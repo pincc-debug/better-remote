@@ -103,7 +103,7 @@ struct DeviceListSettings: View {
                         Button("删除设备", role: .destructive) { deletingDeviceID = id }
                     }
                 } label: {
-                    Text("⋮").font(.system(size: 20, weight: .semibold))
+                    Image(systemName: "ellipsis").font(.system(size: DesignTokens.fontBody, weight: .semibold))
                         .foregroundStyle(.secondary).frame(width: 24, height: 28)
                         .contentShape(Rectangle())
                 }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
@@ -229,7 +229,7 @@ struct DeviceConfigurationSettings: View {
                 if let device {
                     section("设备") {
                         VStack(spacing: 0) {
-                            SettingsView.wideControlRow("设备名称", symbol: "pencil", narrow: narrow, controlWidth: 300) {
+                            SettingsView.wideControlRow("设备名称", symbol: "tag", narrow: narrow, controlWidth: 300) {
                                 TextField(device.name, text: $nameDraft)
                                     .textFieldStyle(.plain)
                                     .font(.system(size: DesignTokens.fontBody))
@@ -261,7 +261,7 @@ struct DeviceConfigurationSettings: View {
                         }
                         if configuration.selectedResolutionID != nil {
                             Divider().padding(.leading, 54)
-                            toggle("断开后恢复原分辨率", symbol: "arrow.counterclockwise", key: \.autoRestoreOnDisconnect)
+                            toggle("断开后恢复原分辨率", symbol: FloatingAction.restoreDisplay.symbol, key: \.autoRestoreOnDisconnect)
                         }
                     }
                 }

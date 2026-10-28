@@ -168,10 +168,8 @@ struct IconPickerView: View {
                     choose(icon)
                 } label: {
                     VStack(spacing: 2) {
-                        IconArt.image(icon.rawValue, pointSize: DesignTokens.fontEmphasis, weight: isSelected ? .semibold : .regular,
-                                      selectedInCard: isSelected)
-                            .font(.system(size: DesignTokens.fontEmphasis, weight: isSelected ? .semibold : .regular))
-                            .foregroundStyle(isSelected ? DesignTokens.Colors.accent : Color.primary)
+                        // Selected stays coloured; the accent background and stroke mark it.
+                        IconArt.image(icon.rawValue, pointSize: DesignTokens.fontEmphasis)
                             .frame(height: 20)
                         Text(icon.title)
                             .font(.system(size: DesignTokens.fontCaption))
@@ -180,12 +178,12 @@ struct IconPickerView: View {
                     }
                     .frame(maxWidth: .infinity, minHeight: 46)
                     .background(
-                        DesignTokens.Colors.secondaryFill,
+                        isSelected ? DesignTokens.Colors.accent.opacity(IconArt.selectionFillOpacity) : DesignTokens.Colors.secondaryFill,
                         in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous)
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous)
-                            .strokeBorder(isSelected ? DesignTokens.Colors.accent : Color.clear, lineWidth: DesignTokens.selectedStroke)
+                            .strokeBorder(isSelected ? DesignTokens.Colors.accent : Color.clear, lineWidth: IconArt.selectionStroke)
                     )
                     .contentShape(Rectangle())
                 }

@@ -95,15 +95,13 @@ final class TransientNotice {
     }
 }
 
-private struct NoticeContent: View {
+struct NoticeContent: View {
     let title: String
     let detail: String?
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "info.circle")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(DesignTokens.Colors.textSecondary)
+            IconArt.blueImage("info.circle", pointSize: 16, weight: .medium)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)

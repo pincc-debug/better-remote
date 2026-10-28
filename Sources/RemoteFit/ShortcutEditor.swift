@@ -102,13 +102,7 @@ struct ShortcutEditor: View {
 
             Spacer()
 
-            Button(action: onCancel) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 18))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 28, height: 28)
-                    .contentShape(Rectangle())
-            }
+            Button(action: onCancel) { IconArt.closeGlyph() }
             .buttonStyle(.plain)
             .help("关闭，不保存修改")
             .accessibilityLabel("关闭")
@@ -142,9 +136,7 @@ struct ShortcutEditor: View {
             HStack(spacing: 10) {
                 Text("图标")
                     .font(.system(size: DesignTokens.fontBody, weight: .medium))
-                IconArt.image(icon.rawValue, pointSize: DesignTokens.fontEmphasis, selectedInCard: true)
-                    .font(.system(size: DesignTokens.fontEmphasis))
-                    .foregroundStyle(DesignTokens.Colors.accent)
+                IconArt.image(icon.rawValue, pointSize: DesignTokens.fontEmphasis)
                     .frame(width: 24)
                 Text(icon.title)
                     .font(.system(size: DesignTokens.fontBody))

@@ -4,7 +4,8 @@ import SwiftUI
 /// Icon style B (分层彩色, icon-style-compare/assets/svg-b): the icons-v1 outline shapes on a 24-unit grid with
 /// 1.5-unit round strokes in the label colour, plus one semantic part per icon in a system accent colour
 /// (stroke + a 20–28% fill of the same colour). Colours resolve per appearance; on the blue selection
-/// everything turns white, and a selection inside a light card is blue line + blue 20% fill.
+/// everything turns white. A selection inside a card, row or picker keeps these colours (the background and
+/// stroke mark it).
 enum BIcons {
     enum Role { case fg, blue, orange, green }
     enum Style {
@@ -12,8 +13,6 @@ enum BIcons {
         case normal
         /// On the blue selection fill: every layer white, fills keep their 10–28% opacity.
         case onAccent
-        /// Selected inside a light card: every line blue, every fill blue 20%.
-        case selectedInCard
     }
     /// Immutable once built (paths are never mutated after `path(_:)` returns).
     enum Geo: @unchecked Sendable {
@@ -44,8 +43,6 @@ enum BIcons {
 
     /// No layer fill may exceed this (spec: accent fills 20–28%).
     static let maxFillOpacity: CGFloat = 0.28
-    /// Fill used by `.selectedInCard`.
-    static let cardSelectionFillOpacity: CGFloat = 0.20
     /// Inline icons smaller than this stay single-colour outline (SF Symbols / template art).
     static let minimumPointSize: CGFloat = 14
 
@@ -66,6 +63,8 @@ enum BIcons {
         "rectangle.split.2x2": "window-layout",
         "display.2": "displays",
         "gearshape": "settings",
+        "gearshape.2": "automation",
+        "arrow.uturn.backward.circle": "reset",
         "chevron.right.2": "collapse", "chevron.down.2": "collapse", "chevron.left.2": "collapse", "chevron.up.2": "collapse",
     ]
 
@@ -102,7 +101,7 @@ enum BIcons {
                 for layer in layers {
                     let path = layer.geo.path
                     if let fill = layer.fill {
-                        let opacity = style == .selectedInCard ? cardSelectionFillOpacity : min(layer.fillOpacity, maxFillOpacity)
+                        let opacity = min(layer.fillOpacity, maxFillOpacity)
                         let base = color(fill, style).cgColor
                         context.addPath(path)
                         context.setFillColor(base.copy(alpha: base.alpha * opacity) ?? base)
@@ -129,7 +128,6 @@ enum BIcons {
     static func color(_ role: Role, _ style: Style) -> NSColor {
         switch style {
         case .onAccent: return .white
-        case .selectedInCard: return .systemBlue
         case .normal:
             switch role {
             case .fg: return DesignTokens.NS.textPrimary
@@ -146,8 +144,15 @@ enum BIcons {
         return .custom(path)
     }
 
-    // Generated from icon-style-compare/b_icons.py (arcs and quadratics converted to cubics); do not hand-edit shapes.
+    // Generated from icon-style-compare/b_icons.py (automation / reset from svg-b/automation-gears.svg, reset.svg) (arcs and quadratics converted to cubics); do not hand-edit shapes.
     static let art: [String: [BLayer]] = [
+        "automation": [
+            BLayer(path { p in p.move(to: P(20.14, 5.98)); p.addLine(to: P(21.13, 6.21)); p.addLine(to: P(21.13, 7.79)); p.addLine(to: P(20.14, 8.02)); p.addLine(to: P(19.45, 9.21)); p.addLine(to: P(19.74, 10.18)); p.addLine(to: P(18.38, 10.97)); p.addLine(to: P(17.69, 10.23)); p.addLine(to: P(16.31, 10.23)); p.addLine(to: P(15.62, 10.97)); p.addLine(to: P(14.26, 10.18)); p.addLine(to: P(14.55, 9.21)); p.addLine(to: P(13.86, 8.02)); p.addLine(to: P(12.87, 7.79)); p.addLine(to: P(12.87, 6.21)); p.addLine(to: P(13.86, 5.98)); p.addLine(to: P(14.55, 4.79)); p.addLine(to: P(14.26, 3.82)); p.addLine(to: P(15.62, 3.03)); p.addLine(to: P(16.31, 3.77)); p.addLine(to: P(17.69, 3.77)); p.addLine(to: P(18.38, 3.03)); p.addLine(to: P(19.74, 3.82)); p.addLine(to: P(19.45, 4.79)); p.closeSubpath() }, stroke: .fg, strokeOpacity: 0.5, width: 1.25, fill: .fg, fillOpacity: 0.1),
+            BLayer(path { p in p.move(to: P(14.95, 13.19)); p.addLine(to: P(16.43, 13.51)); p.addLine(to: P(16.43, 15.49)); p.addLine(to: P(14.95, 15.81)); p.addLine(to: P(14.27, 17.43)); p.addLine(to: P(15.1, 18.7)); p.addLine(to: P(13.7, 20.1)); p.addLine(to: P(12.43, 19.27)); p.addLine(to: P(10.81, 19.95)); p.addLine(to: P(10.49, 21.43)); p.addLine(to: P(8.51, 21.43)); p.addLine(to: P(8.19, 19.95)); p.addLine(to: P(6.57, 19.27)); p.addLine(to: P(5.3, 20.1)); p.addLine(to: P(3.9, 18.7)); p.addLine(to: P(4.73, 17.43)); p.addLine(to: P(4.05, 15.81)); p.addLine(to: P(2.57, 15.49)); p.addLine(to: P(2.57, 13.51)); p.addLine(to: P(4.05, 13.19)); p.addLine(to: P(4.73, 11.57)); p.addLine(to: P(3.9, 10.3)); p.addLine(to: P(5.3, 8.9)); p.addLine(to: P(6.57, 9.73)); p.addLine(to: P(8.19, 9.05)); p.addLine(to: P(8.51, 7.57)); p.addLine(to: P(10.49, 7.57)); p.addLine(to: P(10.81, 9.05)); p.addLine(to: P(12.43, 9.73)); p.addLine(to: P(13.7, 8.9)); p.addLine(to: P(15.1, 10.3)); p.addLine(to: P(14.27, 11.57)); p.closeSubpath() }, stroke: .fg, strokeOpacity: 1, width: 1.5, fill: .fg, fillOpacity: 0.14),
+            BLayer(.circle(9.5, 14.5, r: 2.4), stroke: .blue, strokeOpacity: 1, width: 1.5, fill: .blue, fillOpacity: 0.25)],
+        "reset": [
+            BLayer(.circle(12, 12, r: 9), stroke: .fg, strokeOpacity: 1, width: 1.5, fill: .blue, fillOpacity: 0.2),
+            BLayer(path { p in p.move(to: P(15.25, 16.25)); p.addLine(to: P(15.25, 11.5)); p.addCurve(to: P(12, 8.25), control1: P(15.25, 9.7051), control2: P(13.7949, 8.25)); p.addCurve(to: P(8.75, 11.5), control1: P(10.2051, 8.25), control2: P(8.75, 9.7051)); p.addLine(to: P(8.75, 13.5)); p.move(to: P(7, 11.9)); p.addLine(to: P(8.75, 14)); p.addLine(to: P(10.5, 11.9)) }, stroke: .blue, strokeOpacity: 1, width: 1.5, fill: nil, fillOpacity: 1)],
         "spotlight": [
             BLayer(.circle(10.5, 10.5, r: 6.75), stroke: .blue, strokeOpacity: 1, width: 1.5, fill: .blue, fillOpacity: 0.22),
             BLayer(path { p in p.move(to: P(15.4, 15.4)); p.addLine(to: P(20.25, 20.25)) }, stroke: .fg, strokeOpacity: 1, width: 1.5, fill: nil, fillOpacity: 1)],

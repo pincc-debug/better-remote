@@ -27,16 +27,100 @@ enum IconArt {
         return NSImage(systemSymbolName: displaySymbol(name), accessibilityDescription: nil)?.withSymbolConfiguration(config)
     }
 
-    /// SwiftUI icon; `pointSize` is the font size the call site already uses. Toolbar actions with style-B art
-    /// draw it (same art and colours as the toolbar) from 14pt up; smaller inline icons stay single-colour.
-    /// `selectedInCard`: selected inside a light card (blue line + blue 20% fill).
+    // MARK: - Colour (icon-color-rules.md)
+
+    /// Symbols drawn whole systemBlue instead of palette(label, systemBlue): no second palette layer on macOS
+    /// (palette self-check, 136 red-only), plus four whose second layer reads wrong as blue.
+    static let wholeBlueSymbols: Set<String> = [
+        "airplane", "app", "arrow.clockwise", "arrow.counterclockwise", "arrow.down", "arrow.down.right.and.arrow.up.left",
+        "arrow.down.to.line", "arrow.left", "arrow.right", "arrow.right.to.line", "arrow.triangle.2.circlepath", "arrow.up",
+        "arrow.up.and.down.and.arrow.left.and.right", "arrow.up.left.and.arrow.down.right", "arrow.up.to.line", "arrow.uturn.backward",
+        "arrow.uturn.forward", "aspectratio", "at", "backward.fill", "bell.fill", "bold", "bolt", "bookmark.fill", "bubble.left",
+        "calendar", "camera", "car.fill", "cart.fill", "chart.bar.fill", "checkmark", "chevron.down", "chevron.down.2", "chevron.left",
+        "chevron.left.2", "chevron.left.forwardslash.chevron.right", "chevron.right", "chevron.right.2", "chevron.up", "chevron.up.2",
+        "chevron.up.chevron.down", "circle.grid.3x3.fill", "circle.lefthalf.filled", "clipboard", "clock.fill", "cloud.fill", "command",
+        "cpu", "creditcard.fill", "cup.and.saucer", "curlybraces", "cursorarrow", "doc.fill", "drop.fill", "ellipsis", "envelope.fill",
+        "eye.fill", "figure.walk", "flag.fill", "flame.fill", "flashlight.on.fill", "folder.fill", "forward.fill", "gamecontroller.fill",
+        "gearshape", "gearshape.2", "gift.fill", "globe", "hammer.fill", "hand.raised.fill", "hand.thumbsup.fill", "headphones",
+        "heart.fill", "house.fill", "italic", "key.fill", "keyboard", "leaf.fill", "line.3.horizontal", "link", "location.fill",
+        "lock.fill", "lock.open.fill", "magnifyingglass", "map.fill", "message.fill", "mic", "minus", "moon.fill", "music.note", "number",
+        "option", "paintbrush.fill", "paperclip", "pause.fill", "pencil", "person.fill", "phone.fill", "photo.fill", "pin.fill",
+        "play.fill", "plus", "plus.forwardslash.minus", "power", "printer.fill", "rectangle.split.1x2", "rectangle.split.1x2.fill",
+        "rectangle.split.2x1", "rectangle.split.2x1.fill", "rectangle.split.2x2", "rectangle.split.2x2.fill", "rectangle.split.3x1.fill",
+        "rectangle.stack.fill", "return", "scissors", "sidebar.left", "sidebar.right", "slider.horizontal.3", "sparkles", "square.dashed",
+        "square.grid.2x2", "star", "star.fill", "stop.fill", "sun.max.fill", "sun.min.fill", "tag", "tag.fill", "terminal.fill",
+        "textformat", "trash", "trash.fill", "video.fill", "viewfinder", "wifi", "xmark",
+        "hand.draw", "hand.tap.fill", "lightbulb.fill", "speaker.wave.1.fill",
+    ]
+    static func isWholeBlue(_ name: String) -> Bool {
+        wholeBlueSymbols.contains(name) || wholeBlueSymbols.contains(displaySymbol(name))
+    }
+    /// Selected cell / card / row: accent 12% background plus a 1pt accent stroke; the icon keeps its colours.
+    static let selectionFillOpacity: CGFloat = 0.12
+    static let selectionStroke: CGFloat = 1
+    /// First palette layer (same label colour as the B art lines) and the accent layer.
+    static let labelColor = Color(nsColor: DesignTokens.NS.textPrimary)
+    static let blue = Color(nsColor: .systemBlue)
+
+    /// SwiftUI icon; `pointSize` is the font size the call site already uses. From 14pt up the icon is coloured
+    /// (B art when the action has it, else the SF Symbol as palette label + systemBlue, or whole systemBlue);
+    /// smaller inline icons stay single-colour and honour the caller's foreground style.
+    /// A selected icon in a card, row or picker keeps its colours: selection is the background and stroke.
     @ViewBuilder
-    static func image(_ name: String, pointSize: CGFloat, weight: Font.Weight = .regular, selectedInCard: Bool = false) -> some View {
-        if pointSize >= BIcons.minimumPointSize, BIcons.key(for: name) != nil {
-            BIconImage(symbol: name, side: (pointSize * bArtScale).rounded(), style: selectedInCard ? .selectedInCard : .normal)
+    static func image(_ name: String, pointSize: CGFloat, weight: Font.Weight = .regular) -> some View {
+        if pointSize >= BIcons.minimumPointSize {
+            coloredImage(name, pointSize: pointSize, weight: weight)
         } else {
             symbolImage(name, pointSize: pointSize, weight: weight)
         }
+    }
+
+    /// Always coloured, whatever the size (callers below 14pt use `image` or `blueImage` instead).
+    @ViewBuilder
+    static func coloredImage(_ name: String, pointSize: CGFloat, weight: Font.Weight = .regular) -> some View {
+        if BIcons.key(for: name) != nil {
+            BIconImage(symbol: name, side: (pointSize * bArtScale).rounded(), style: .normal)
+        } else if isWholeBlue(name) {
+            symbolImage(name, pointSize: pointSize, weight: weight)
+                .font(.system(size: pointSize, weight: weight)).foregroundStyle(blue)
+        } else {
+            symbolImage(name, pointSize: pointSize, weight: weight)
+                .symbolRenderingMode(.palette)
+                .font(.system(size: pointSize, weight: weight)).foregroundStyle(labelColor, blue)
+        }
+    }
+
+    /// Whole systemBlue single-colour icon (app chips, about pills, the notice bar).
+    static func blueImage(_ name: String, pointSize: CGFloat, weight: Font.Weight = .regular) -> some View {
+        symbolImage(name, pointSize: pointSize, weight: weight)
+            .font(.system(size: pointSize, weight: weight)).foregroundStyle(blue)
+    }
+
+    /// The one close glyph for sheets, pickers and cards: 13pt medium `xmark` on a 28×28 secondaryFill circle.
+    static func closeGlyph() -> some View {
+        Image(systemName: "xmark")
+            .font(.system(size: DesignTokens.fontBody, weight: .medium))
+            .frame(width: closeDiameter, height: closeDiameter)
+            .background(DesignTokens.Colors.secondaryFill, in: Circle())
+            .contentShape(Circle())
+    }
+    static let closeDiameter: CGFloat = 28
+
+    /// AppKit counterpart of `coloredImage` for an SF Symbol without B art (toolbar actions). Colours are baked for
+    /// `dark` (not a template); nil when the symbol does not exist.
+    static func coloredNSImage(_ name: String, pointSize: CGFloat, weight: NSFont.Weight, dark: Bool) -> NSImage? {
+        guard name != customCopy else { return nil }
+        var palette: [NSColor] = []
+        let resolve = {
+            let colors: [NSColor] = isWholeBlue(name) ? [.systemBlue] : [DesignTokens.NS.textPrimary, .systemBlue]
+            palette = colors.map { NSColor(cgColor: $0.cgColor) ?? $0 }
+        }
+        if let appearance = NSAppearance(named: dark ? .darkAqua : .aqua) { appearance.performAsCurrentDrawingAppearance(resolve) } else { resolve() }
+        let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: weight)
+            .applying(NSImage.SymbolConfiguration(paletteColors: palette))
+        guard let image = NSImage(systemSymbolName: displaySymbol(name), accessibilityDescription: nil)?.withSymbolConfiguration(config) else { return nil }
+        image.isTemplate = false
+        return image
     }
 
     /// B art fills its 24-unit grid; this keeps it at about the footprint of the symbol it replaces in rows.
@@ -87,50 +171,6 @@ enum IconArt {
             for path in [front, back] {
                 path.transform(using: transform)
                 path.lineWidth = strokeUnits(weight) * scale
-                path.lineCapStyle = .round; path.lineJoinStyle = .round
-                NSColor.black.setStroke(); path.stroke()
-            }
-            return true
-        }
-        image.isTemplate = true
-        return image
-    }
-
-    // MARK: - Sidebar 连接自动化 (icons-v1/sb-automation.svg)
-
-    private enum Segment {
-        case move(CGFloat, CGFloat), line(CGFloat, CGFloat), arc(CGFloat, CGFloat, CGFloat, CGFloat, CGFloat), close
-    }
-    private static let gears: [[Segment]] = [
-        [.move(9.422,4.199), .line(10.364,2.971), .arc(8.75,8.75,6.0,-74.396,-45.601), .line(12.355,5.893), .arc(8.75,8.75,4.6,-38.397,-21.596), .line(14.561,7.258), .arc(8.75,8.75,6.0,-14.400,14.400), .line(13.027,10.443), .arc(8.75,8.75,4.6,21.596,38.397), .line(12.948,13.037), .arc(8.75,8.75,6.0,45.601,74.396), .line(9.422,13.301), .arc(8.75,8.75,4.6,81.600,98.400), .line(7.136,14.529), .arc(8.75,8.75,6.0,105.604,134.399), .line(5.145,11.607), .arc(8.75,8.75,4.6,141.603,158.404), .line(2.939,10.242), .arc(8.75,8.75,6.0,165.600,194.400), .line(4.473,7.057), .arc(8.75,8.75,4.6,-158.404,-141.603), .line(4.552,4.463), .arc(8.75,8.75,6.0,-134.399,-105.604), .line(8.078,4.199), .arc(8.75,8.75,4.6,-98.400,-81.600), .close],
-        [.move(15.667,13.785), .line(15.85,12.422), .arc(16.9,16.9,4.6,-103.196,-76.804), .line(18.133,13.785), .arc(16.9,16.9,3.35,-68.405,-51.594), .line(20.253,13.751), .arc(16.9,16.9,4.6,-43.203,-16.804), .line(20.214,16.411), .arc(16.9,16.9,3.35,-8.394,8.394), .line(21.304,18.23), .arc(16.9,16.9,4.6,16.804,43.203), .line(18.981,19.525), .arc(16.9,16.9,3.35,51.594,68.405), .line(17.95,21.378), .arc(16.9,16.9,4.6,76.804,103.196), .line(15.667,20.015), .arc(16.9,16.9,3.35,111.595,128.406), .line(13.547,20.049), .arc(16.9,16.9,4.6,136.797,163.196), .line(13.586,17.389), .arc(16.9,16.9,3.35,171.606,188.394), .line(12.496,15.57), .arc(16.9,16.9,4.6,-163.196,-136.797), .line(14.819,14.275), .arc(16.9,16.9,3.35,-128.406,-111.595), .close],
-    ]
-
-    /// Two-gear template drawn on the 24 grid; `side` is the drawn square in points.
-    static func automationImage(side: CGFloat, semibold: Bool) -> NSImage {
-        let image = NSImage(size: NSSize(width: side, height: side), flipped: true) { rect in
-            let scale = rect.width / 24
-            var paths: [NSBezierPath] = []
-            for gear in gears {
-                let path = NSBezierPath()
-                for segment in gear {
-                    switch segment {
-                    case .move(let x, let y): path.move(to: NSPoint(x: x, y: y))
-                    case .line(let x, let y): path.line(to: NSPoint(x: x, y: y))
-                    case .arc(let cx, let cy, let r, let from, let to):
-                        // y-down artboard: increasing angle is visually clockwise (SVG sweep 1).
-                        path.appendArc(withCenter: NSPoint(x: cx, y: cy), radius: r, startAngle: from, endAngle: to, clockwise: false)
-                    case .close: path.close()
-                    }
-                }
-                paths.append(path)
-            }
-            paths.append(NSBezierPath(ovalIn: NSRect(x: 8.75 - 1.8, y: 8.75 - 1.8, width: 3.6, height: 3.6)))
-            paths.append(NSBezierPath(ovalIn: NSRect(x: 16.9 - 1.1, y: 16.9 - 1.1, width: 2.2, height: 2.2)))
-            let transform = AffineTransform(scale: scale)
-            for path in paths {
-                path.transform(using: transform)
-                path.lineWidth = (semibold ? 1.75 : 1.5) * scale
                 path.lineCapStyle = .round; path.lineJoinStyle = .round
                 NSColor.black.setStroke(); path.stroke()
             }

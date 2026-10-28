@@ -146,7 +146,7 @@ struct SettingsView: View {
                 .accessibilityLabel("Better Remote")
 
             sidebarRow("常规", symbol: "gearshape", page: .general)
-            sidebarRow("分辨率", symbol: "display", page: .resolution)
+            sidebarRow("分辨率", symbol: "display.2", page: .resolution)
             sidebarRow("快捷操作", symbol: "sidebar.right", page: .floating)
             sidebarRow("连接自动化", symbol: "gearshape.2", page: .connection)
             sidebarRow(FeedbackCopy.page, symbol: "info.circle", page: .about)
@@ -200,15 +200,10 @@ struct SettingsView: View {
         .background(DesignTokens.Colors.pageBackground.opacity(0.5))
     }
 
-    @ViewBuilder
+    /// Coloured at 15pt (B art for 常规 / 分辨率 / 连接自动化, palette or whole systemBlue otherwise);
+    /// selection is the row background and never turns the icon white.
     private func sidebarGlyph(_ symbol: String, selected: Bool) -> some View {
-        if symbol == "gearshape.2" {
-            // 连接自动化: icons-v1/sb-automation.svg, drawn a little larger than the 15pt symbol.
-            Image(nsImage: IconArt.automationImage(side: 22, semibold: selected)).renderingMode(.template)
-        } else {
-            Image(systemName: symbol)
-                .font(.system(size: DesignTokens.fontEmphasis, weight: selected ? .semibold : .regular))
-        }
+        IconArt.coloredImage(symbol, pointSize: DesignTokens.fontEmphasis)
     }
 
     private func sidebarRow(_ title: String, symbol: String, page target: SettingsPage) -> some View {
@@ -299,7 +294,7 @@ struct SettingsView: View {
 
                 if let detail = model.detail {
                     HStack(spacing: 8) {
-                        Image(systemName: "info.circle.fill")
+                        Image(systemName: "info.circle")
                             .foregroundStyle(DesignTokens.Colors.accent)
                         Text(detail)
                             .font(.system(size: DesignTokens.fontCaption))
@@ -423,17 +418,11 @@ struct SettingsView: View {
 
     // MARK: - Shared setting rows (same look as 常规)
 
-    @ViewBuilder
+    /// 15pt setting-row icon, coloured: the toolbar's style-B art for its actions (铺满, 程序坞, 布局 …), else the
+    /// SF Symbol as palette label + systemBlue (or whole systemBlue).
     static func settingIcon(_ symbol: String) -> some View {
-        if BIcons.key(for: symbol) != nil {
-            // Toolbar actions (铺满, 程序坞, 布局 …) use the same style-B art and colours as the toolbar.
-            IconArt.image(symbol, pointSize: DesignTokens.fontEmphasis)
-                .frame(width: 28, height: 28)
-        } else {
-            Image(systemName: symbol)
-                .font(.system(size: DesignTokens.fontEmphasis)).foregroundStyle(DesignTokens.Colors.icon)
-                .frame(width: 28, height: 28)
-        }
+        IconArt.coloredImage(symbol, pointSize: DesignTokens.fontEmphasis)
+            .frame(width: 28, height: 28)
     }
 
     static func settingRow<Accessory: View>(_ title: String, symbol: String, @ViewBuilder accessory: () -> Accessory) -> some View {
@@ -566,7 +555,7 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
 
                     VStack(spacing: 0) {
-                        Self.settingRow("未连接时显示", symbol: "display") {
+                        Self.settingRow("未连接时显示", symbol: "sidebar.right") {
                             Toggle("未连接时显示", isOn: Binding(
                                 get: { model.preferences.toolbarWhenDisconnected },
                                 set: { model.onToolbarWhenDisconnectedToggle($0) }
@@ -771,7 +760,7 @@ struct SettingsView: View {
                     builtinIconSaveError = false
                     editingBuiltinIcon = BuiltinIconDraft(action: action)
                 } label: {
-                    Image(systemName: "pencil")
+                    Image(systemName: "rectangle.2.swap")
                         .font(.system(size: DesignTokens.fontBody)).frame(width: 22, height: 32).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain).foregroundStyle(.secondary)
@@ -1005,12 +994,7 @@ struct RecommendedPresetsView: View {
                         .font(.system(size: DesignTokens.fontEmphasis, weight: .semibold))
                 }
                 Spacer()
-                Button(action: close) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: DesignTokens.fontBody, weight: .medium))
-                        .frame(width: 28, height: 28)
-                        .background(DesignTokens.Colors.secondaryFill, in: Circle())
-                }
+                Button(action: close) { IconArt.closeGlyph() }
                 .buttonStyle(.plain)
             }
             .padding(.horizontal, 20)
@@ -1174,9 +1158,8 @@ struct DeviceTemplatesView: View {
             HStack {
                 Text("设备模板").font(.system(size: DesignTokens.fontEmphasis, weight: .medium))
                 Spacer()
-                Button(action: close) {
-                    Image(systemName: "xmark").frame(width: 32, height: 32).contentShape(Rectangle())
-                }.buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("关闭")
+                Button(action: close) { IconArt.closeGlyph() }
+                    .buttonStyle(.plain).accessibilityLabel("关闭")
             }
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)

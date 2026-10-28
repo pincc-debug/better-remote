@@ -51,14 +51,18 @@ private final class ToolbarButton: NSButton {
     private let pointSize: CGFloat
     /// The action's symbol; nil once a real app icon is set.
     private var symbol: String?
+    /// Action icons are coloured (B art, else palette label + systemBlue); grip, scroll arrows and the like stay single-colour.
+    private let colored: Bool
     /// Optional glyph centre (from the top); the horizontal footer uses the labelled buttons' centre.
     var glyphCenterY: CGFloat? { didSet { if oldValue != glyphCenterY { needsLayout = true } } }
     override var isFlipped: Bool { true }
     override var acceptsFirstResponder: Bool { false }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
-    init(symbol: String, name: String, showsCaption: Bool = true, largeIcon: Bool = false) {
+    /// `colored` defaults to the labelled action buttons.
+    init(symbol: String, name: String, showsCaption: Bool = true, largeIcon: Bool = false, colored: Bool? = nil) {
         labelled = showsCaption
+        self.colored = colored ?? showsCaption
         glyphSize = largeIcon ? 30 : (showsCaption ? 24 : 20)
         pointSize = largeIcon ? 28 : (showsCaption ? 23 : 18)
         self.symbol = symbol
@@ -110,11 +114,13 @@ private final class ToolbarButton: NSButton {
         super.viewDidChangeEffectiveAppearance()
         updateColors()
     }
-    /// Style-B art (baked colours: white on the blue selection) when the symbol has it, else the template symbol.
+    /// Style-B art (baked colours: white on the blue selection) when the symbol has it; else, for action buttons,
+    /// the palette symbol (label + systemBlue, or whole systemBlue), and the white template on the blue selection.
     private func refreshGlyph() {
         guard let symbol else { return }
         let dark = effectiveAppearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
         glyph.image = BIcons.image(symbol, side: pointSize, style: selected ? .onAccent : .normal, dark: dark)
+            ?? (colored && !selected ? IconArt.coloredNSImage(symbol, pointSize: pointSize, weight: .medium, dark: dark) : nil)
             ?? IconArt.nsImage(symbol, pointSize: pointSize, weight: .medium)
     }
     private func updateColors() {
@@ -239,7 +245,7 @@ private struct LayoutFlyoutView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             let arrangeItems: [(LayoutChoice, String, LayoutGlyph.Region)] =
-                [(.snap(.fill), "填充", .all([CGRect(x: 0, y: 0, width: 1, height: 1)])),
+                [(.snap(.fill), "铺满", .all([CGRect(x: 0, y: 0, width: 1, height: 1)])),
                  (.snap(.center), "居中", .all([CGRect(x: 0.15, y: 0.1, width: 0.7, height: 0.8)]))]
                 + WindowArrangement.allCases.map { arrangement in
                     let units = arrangement.units
@@ -937,7 +943,7 @@ final class FloatingSwitcher: NSObject {
             panel.contentView = paddedGlass(content: content, cornerRadius: DesignTokens.radiusXl, improvesContrast: true)
         } else {
             toolbar = nil
-            let handle = ToolbarButton(symbol: "macbook.and.iphone", name: "展开快捷操作", showsCaption: false, largeIcon: true)
+            let handle = ToolbarButton(symbol: "macbook.and.iphone", name: "展开快捷操作", showsCaption: false, largeIcon: true, colored: true)
             handle.isCircular = true
             handle.frame = CGRect(origin: .zero, size: frame.size)
             handle.onTap = { [weak self] in self?.toggleList() }

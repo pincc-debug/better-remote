@@ -8,7 +8,8 @@ import RemoteFitCore
 @MainActor
 final class IconBTests: XCTestCase {
     private let artKeys = ["spotlight", "paste", "copy", "switch-app", "desktop-left", "desktop-right", "return", "dock", "fill",
-                           "minimize", "clear-desktop", "mission-control", "apps", "window-layout", "displays", "settings", "collapse"]
+                           "minimize", "clear-desktop", "mission-control", "apps", "window-layout", "displays", "settings", "collapse",
+                           "automation", "reset"]
 
     func testEverySVGHasArtAndASymbol() {
         XCTAssertEqual(Set(BIcons.art.keys), Set(artKeys))
@@ -24,7 +25,9 @@ final class IconBTests: XCTestCase {
             for layer in layers where layer.fill != nil {
                 XCTAssertLessThanOrEqual(layer.fillOpacity, BIcons.maxFillOpacity, key)
             }
-            XCTAssertTrue(layers.allSatisfy { $0.stroke == nil || $0.width >= 1.5 }, key)
+            // The automation art's small back gear is drawn lighter on purpose (1.25, 50% fg) by the designer.
+            let thinAllowed = key == "automation" ? 1 : 0
+            XCTAssertLessThanOrEqual(layers.filter { $0.stroke != nil && $0.width < 1.5 }.count, thinAllowed, key)
         }
         // One accent hue per icon at most; the arrows carry none.
         for (key, layers) in BIcons.art {
@@ -118,11 +121,12 @@ final class IconBTests: XCTestCase {
                             let centre = CGPoint(x: label + CGFloat(c) * cell + cell / 2, y: y + rowH / 2)
                             if selected || card {
                                 let pad = CGRect(x: centre.x - 20, y: centre.y - 19, width: 40, height: 38)
-                                (selected ? DesignTokens.NS.buttonActive : NSColor.controlBackgroundColor).setFill()
+                                (selected ? DesignTokens.NS.buttonActive : NSColor.systemBlue.withAlphaComponent(IconArt.selectionFillOpacity)).setFill()
                                 NSBezierPath(roundedRect: pad, xRadius: 8, yRadius: 8).fill()
-                                if card { NSColor.systemBlue.setStroke(); let b = NSBezierPath(roundedRect: pad.insetBy(dx: 0.75, dy: 0.75), xRadius: 8, yRadius: 8); b.lineWidth = 1.5; b.stroke() }
+                                if card { NSColor.systemBlue.setStroke(); let b = NSBezierPath(roundedRect: pad.insetBy(dx: 0.5, dy: 0.5), xRadius: 8, yRadius: 8); b.lineWidth = IconArt.selectionStroke; b.stroke() }
                             }
-                            let style: BIcons.Style = selected ? .onAccent : (card ? .selectedInCard : .normal)
+                            // A card selection keeps the coloured art; only the blue toolbar button turns it white.
+                            let style: BIcons.Style = selected ? .onAccent : .normal
                             guard let image = BIcons.image(row.1, side: point, style: style, dark: dark) else { continue }
                             image.draw(in: CGRect(x: centre.x - point / 2, y: centre.y - point / 2, width: point, height: point))
                         }

@@ -337,7 +337,7 @@ private func filledHost<Content: View>(_ content: Content, background: NSColor, 
     host.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
     host.setContentCompressionResistancePriority(.defaultLow, for: .vertical)
     guard let cornerRadius else { return host }
-    // Joined resolution / app panels: same light treatment as the toolbar body.
+    // Joined resolution / app panels: toolbar backdrop, but a denser light blur than the toolbar body.
     return NativeGlassView(content: host, cornerRadius: cornerRadius, contentBackdrop: DesignTokens.NS.toolbarSurfaceBackdrop,
-                           lightBlurAlpha: DesignTokens.NS.toolbarLightBlurAlpha)
+                           lightBlurAlpha: DesignTokens.NS.attachedPanelLightBlurAlpha)
 }

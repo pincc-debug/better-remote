@@ -120,7 +120,7 @@ struct FeedbackSettings: View {
                     Text(FeedbackCopy.coffee)
                         .font(.system(size: DesignTokens.fontCaption))
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
+                        .font(.system(size: DesignTokens.fontCaption, weight: .semibold))
                 }
                 .foregroundStyle(hoveringCoffee ? DesignTokens.Colors.textPrimary : .secondary)
             }
@@ -139,9 +139,8 @@ struct FeedbackSettings: View {
     ) -> some View {
         Button(action: action) {
             HStack(spacing: DesignTokens.spacingSm) {
-                Image(systemName: symbol)
-                    .font(.system(size: DesignTokens.fontBody, weight: .regular))
-                    .foregroundStyle(DesignTokens.Colors.icon)
+                // Pills are entry points: whole systemBlue at 13pt, no layering.
+                IconArt.blueImage(symbol, pointSize: DesignTokens.fontBody)
                     .frame(width: 16, alignment: .center)
                 Text(title)
                     .font(.system(size: DesignTokens.fontBody, weight: .medium))
@@ -254,7 +253,7 @@ private final class FeedbackFormWindow: NSWindow {
     }
 }
 
-private struct FeedbackFormView: View {
+struct FeedbackFormView: View {
     @ObservedObject var model: FeedbackModel
 
     private var trimmed: String { model.trimmed }
@@ -386,7 +385,7 @@ final class CoffeeWindowController: NSObject, NSWindowDelegate {
     }
 }
 
-private struct CoffeeTipView: View {
+struct CoffeeTipView: View {
     private var qrImage: NSImage? {
         Bundle.main.image(forResource: "RewardQR")
             ?? NSImage(contentsOf: BetterRemoteSite.rewardQR)

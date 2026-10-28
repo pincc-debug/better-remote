@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import RemoteFitCore
 
-private struct LauncherApp: Identifiable {
+struct LauncherApp: Identifiable {
     var id: String
     var url: URL
     var name: String
@@ -11,7 +11,7 @@ private struct LauncherApp: Identifiable {
 }
 
 @MainActor
-private final class LauncherModel: ObservableObject {
+final class LauncherModel: ObservableObject {
     @Published var apps: [LauncherApp] = [] { didSet { layoutChanged() } }
     @Published var recent = RecentApplications() { didSet { layoutChanged() } }
     @Published var side: ToolbarSide = .right
@@ -32,7 +32,7 @@ private final class LauncherModel: ObservableObject {
     }
 }
 
-private struct AppLauncherView: View {
+struct AppLauncherView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @ObservedObject var model: LauncherModel
     @State private var hoveredAppId: String?
@@ -191,7 +191,8 @@ private struct AppLauncherView: View {
 
     private func errorBanner(_ error: String) -> some View {
         HStack(spacing: 8) {
-            Image(systemName: "exclamationmark.triangle.fill")
+            // Red circle = error; the orange triangle is kept for warnings (permissions).
+            Image(systemName: "exclamationmark.circle.fill")
                 .foregroundStyle(.red)
             Text(error)
                 .font(.system(size: 12))

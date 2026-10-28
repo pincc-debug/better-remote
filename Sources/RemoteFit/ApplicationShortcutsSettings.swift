@@ -104,7 +104,7 @@ struct ApplicationShortcutsSettings: View {
                 ShortcutFlowLayout(spacing: 8) {
                     ForEach(group.shortcuts) { shortcut in
                         Button { editing = EditDraft(bundleID: group.id, shortcut: shortcut) } label: {
-                            Label { Text(shortcut.name) } icon: { IconArt.image(shortcut.icon.rawValue, pointSize: DesignTokens.fontCaption, weight: .medium) }
+                            Label { Text(shortcut.name) } icon: { IconArt.blueImage(shortcut.icon.rawValue, pointSize: DesignTokens.fontCaption, weight: .medium) }
                                 .font(.system(size: DesignTokens.fontCaption, weight: .medium)).lineLimit(1).frame(minHeight: 24)
                         }
                         .buttonStyle(DSSecondaryButtonStyle()).controlSize(.small)

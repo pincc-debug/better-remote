@@ -62,9 +62,12 @@ public enum DesignTokens {
         public static let surfaceElevated = adaptive("surfaceElevated", light: NSColor(calibratedWhite: 0.96, alpha: 0.94), dark: NSColor(calibratedRed: 32/255, green: 34/255, blue: 40/255, alpha: 0.94))
         public static let pedestalBg = adaptive("pedestalBg", light: NSColor(calibratedWhite: 0, alpha: 0.28), dark: NSColor(calibratedWhite: 1, alpha: 0.28))
         public static let pedestalBorder = adaptive("pedestalBorder", light: NSColor(calibratedWhite: 0, alpha: 0.08), dark: NSColor(calibratedWhite: 1, alpha: 0.08))
-        /// Light mode only: opacity of the blur layer behind the toolbar and its joined resolution / app panels
-        /// (`.sidebar` on macOS 26, `.popover` on 14–25), so more of the desktop shows through. Dark is unchanged.
+        /// Light mode only: opacity of the blur layer behind the toolbar (`.sidebar` on macOS 26, `.popover` on
+        /// 14–25), so more of the desktop shows through. Dark is unchanged.
         public static let toolbarLightBlurAlpha: CGFloat = 0.70
+        /// Light mode only: blur opacity of the joined resolution / app panels. Denser than the toolbar because
+        /// they carry lists and text. Dark is unchanged. Was 0.70 (shared with the toolbar) before build 196.
+        public static let attachedPanelLightBlurAlpha: CGFloat = 0.85
         /// Light-mode hairline alpha (black) for the toolbar and every panel attached to it (joined resolution /
         /// app panels, window-layout and app-shortcut flyouts). Dark stays white 15%. Was 9% before build 195.
         public static let toolbarLightHairlineAlpha: CGFloat = 0.12

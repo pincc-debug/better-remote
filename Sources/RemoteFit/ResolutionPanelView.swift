@@ -33,8 +33,6 @@ struct ResolutionPanelView: View {
         }
     }
 
-    private static let cardHeight: CGFloat = 74
-
     private let scalePresets: [(title: String, percent: Int)] = [
         ("更大文字", 120), ("较大文字", 110), ("默认", 100), ("更多空间", 90), ("最多空间", 80)
     ]
@@ -63,36 +61,14 @@ struct ResolutionPanelView: View {
                         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: DesignTokens.spacingSm), count: columns), spacing: DesignTokens.spacingSm) {
                             ForEach(presets.indices, id: \.self) { index in
                                 let preset = presets[index]
-                                let dims = preset.dimensions(.standard)
                                 let selected = isAppliedCustom(preset.id)
                                 Button { selectCustom(preset.id, alreadySelected: selected) } label: {
-                                    VStack(spacing: 4) {
-                                        ScreenGlyph(dimensions: dims, selected: selected, maximumWidth: 34, maximumHeight: 20, strokeOpacity: 0.65)
-                                        VStack(spacing: 2) {
-                                            Text(preset.title)
-                                                .font(.system(size: DesignTokens.fontBody, weight: .medium))
-                                                .foregroundStyle(DesignTokens.Colors.textPrimary)
-                                                .lineLimit(1)
-                                                .minimumScaleFactor(0.85)
-                                            Text(verbatim: preset.sizeLabel)
-                                                .font(.system(size: DesignTokens.fontCaption, weight: .regular).monospacedDigit())
-                                                .foregroundStyle(DesignTokens.Colors.textSecondary)
-                                                .lineLimit(1)
-                                        }
-                                    }
-                                    .padding(.vertical, DesignTokens.spacingSm)
-                                    .padding(.horizontal, DesignTokens.spacingXs)
-                                    .frame(maxWidth: .infinity, minHeight: Self.cardHeight)
-                                    .cardSurface()
-                                    // Selected: one cue only, a 2pt brand stroke (plus the blue screen glyph).
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous)
-                                            .strokeBorder(selected ? DesignTokens.Colors.accent : Color.clear,
-                                                          lineWidth: DesignTokens.selectedStroke)
-                                    )
-                                    .contentShape(Rectangle())
+                                    SpecCard(preset: preset, selected: selected)
                                 }
                                 .buttonStyle(.plain)
+                                // Pixels live only in the hover tip: the grid is for picking, sizes are set in 设置.
+                                .help(SpecCard.help(preset))
+                                .accessibilityValue(Text(verbatim: preset.sizeLabel))
                                 .accessibilityAddTraits(selected ? .isSelected : [])
                             }
                         }
@@ -164,7 +140,12 @@ struct ResolutionPanelView: View {
                     // 还原本机 sits last, text only, below a divider.
                     Divider()
                     Button(action: restore) {
-                        Label("还原本机", systemImage: "arrow.counterclockwise")
+                        Label {
+                            Text("还原本机")
+                        } icon: {
+                            // Every 重置 / 还原 entry shares the reset B art (coloured even at this 13pt label size).
+                            IconArt.coloredImage(FloatingAction.restoreDisplay.symbol, pointSize: DesignTokens.fontBody)
+                        }
                             .font(.system(size: DesignTokens.fontBody, weight: .medium))
                             .foregroundStyle(DesignTokens.Colors.textPrimary)
                             .frame(maxWidth: .infinity, minHeight: 36)
@@ -224,5 +205,38 @@ private struct RestoreButtonStyle: ButtonStyle {
         configuration.label
             .background(configuration.isPressed || hovering ? DesignTokens.Colors.secondaryFillPressed : DesignTokens.Colors.secondaryFill,
                         in: RoundedRectangle(cornerRadius: DesignTokens.radiusLg, style: .continuous))
+    }
+}
+
+/// One card in the panel's 规格 picking grid: screen shape and name only, centred with equal space above and below.
+/// The size line stays in 设置 (spec list, editor); here it only shows in the hover tip.
+struct SpecCard: View {
+    static let height: CGFloat = 64
+    static let glyphSpacing: CGFloat = 6
+    static let nameFont = Font.system(size: DesignTokens.fontBody, weight: .medium)
+    static func help(_ preset: CustomPreset) -> String { preset.sizeLabel }
+
+    let preset: CustomPreset
+    let selected: Bool
+
+    var body: some View {
+        VStack(spacing: Self.glyphSpacing) {
+            ScreenGlyph(dimensions: preset.dimensions(.standard), selected: selected, maximumWidth: 34, maximumHeight: 20, strokeOpacity: 0.65)
+            Text(preset.title)
+                .font(Self.nameFont)
+                .foregroundStyle(DesignTokens.Colors.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+        }
+        .padding(.horizontal, DesignTokens.spacingXs)
+        .frame(maxWidth: .infinity, minHeight: Self.height, maxHeight: Self.height)
+        .cardSurface()
+        // Selected: one cue only, a 2pt brand stroke (plus the blue screen glyph).
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous)
+                .strokeBorder(selected ? DesignTokens.Colors.accent : Color.clear,
+                              lineWidth: DesignTokens.selectedStroke)
+        )
+        .contentShape(Rectangle())
     }
 }

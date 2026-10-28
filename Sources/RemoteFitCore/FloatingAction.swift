@@ -49,6 +49,6 @@ public enum FloatingAction: String, Codable, CaseIterable, Sendable {
 
 extension FloatingAction {
     /// 铺满 shown while the frontmost window is already filled: same square, arrows inward.
-    public static let restoreFillTitle = "还原"
+    public static let restoreFillTitle = "取消铺满"
     public static let restoreFillSymbol = "arrow.down.right.and.arrow.up.left.square"
 }

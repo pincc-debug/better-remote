@@ -104,7 +104,7 @@ final class ShortcutPermissions: ObservableObject {
         if !panel.ignoresMouseEvents { panel.orderFrontRegardless() }
     }
 }
-private struct PermissionGuideView: View {
+struct PermissionGuideView: View {
     let close: () -> Void
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -112,7 +112,7 @@ private struct PermissionGuideView: View {
                 Image(systemName: "arrow.up").foregroundStyle(Color.accentColor)
                 Text("拖入辅助功能列表并开启").font(.system(size: 12)).foregroundStyle(.secondary)
                 Spacer(minLength: 0)
-                Button(action: close) { Image(systemName: "xmark").frame(width: 24, height: 22) }
+                Button(action: close) { IconArt.closeGlyph() }
                     .buttonStyle(.plain).accessibilityLabel("关闭权限引导")
             }
             PermissionAppDragSource().frame(height: 38)
