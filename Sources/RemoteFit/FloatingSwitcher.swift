@@ -519,7 +519,7 @@ final class FloatingSwitcher: NSObject {
     private var preferredCenterY: CGFloat?
     private var preferredCenterX: CGFloat?
     /// Transparent margin around the glass: room for the 14pt soft shadow so the window does not clip it.
-    private static let glassPadding: CGFloat = 16
+    static let glassPadding: CGFloat = 16
     /// Outside-click region kept at the previous 6pt margin around the bar.
     private var toolbarHitFrame: CGRect { toolbarFrame.insetBy(dx: -6, dy: -6) }
     private var toolbar: ToolbarContent?
