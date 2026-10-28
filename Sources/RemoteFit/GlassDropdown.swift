@@ -71,7 +71,8 @@ struct GlassDropdown<ID: Hashable & Sendable>: View {
         .overlay(alignment: .topLeading) {
             if previewOpen {
                 GlassDropdownMenu(items: items, state: previewState, select: { _ in }, hover: { _ in })
-                    .frame(width: max(minWidth, GlassDropdownController<ID>.menuWidth(items)))
+                    // Same rule as the real panel: never narrower than the trigger.
+                    .frame(minWidth: GlassDropdownController<ID>.menuWidth(items), maxWidth: .infinity, alignment: .leading)
                     .background(DesignTokens.Colors.surfaceElevated, in: RoundedRectangle(cornerRadius: DesignTokens.radiusLg, style: .continuous))
                     .shadow(color: .black.opacity(Double(DesignTokens.dropdownShadowOpacity)), radius: DesignTokens.dropdownShadowRadius)
                     .offset(y: DesignTokens.controlHeight + DesignTokens.spacingXs)
@@ -198,6 +199,7 @@ final class GlassDropdownController<ID: Hashable & Sendable>: ObservableObject {
         guard let anchor, let window = anchor.window, let screen = window.screen ?? NSScreen.main, !items.isEmpty else { return }
         state.open()
         let trigger = window.convertToScreen(anchor.convert(anchor.bounds, to: nil))
+        // menuFrame widens this to at least the trigger width.
         let size = CGSize(width: Self.menuWidth(items), height: Self.menuHeight(rows: items.count))
         let frame = DropdownSelection<ID>.menuFrame(trigger: trigger, size: size, gap: DesignTokens.spacingXs, bounds: screen.visibleFrame)
         let panel = GlassDropdownPanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)

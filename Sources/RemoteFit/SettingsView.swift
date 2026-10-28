@@ -342,11 +342,12 @@ struct SettingsView: View {
             Button { draft = SpecDraft.editing(preset) } label: {
                 Image(systemName: "pencil").frame(width: 28, height: 32).contentShape(Rectangle())
             }.buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("编辑\(preset.title)")
-            Button(role: .destructive) { pendingDeletion = .preset(id: preset.id, name: preset.title) } label: {
+            // Slot stays laid out; only the glyph's opacity switches, so nothing shifts on hover.
+            HoverRevealButton(hovering: hovering, label: "删除\(preset.title)") {
+                pendingDeletion = .preset(id: preset.id, name: preset.title)
+            } content: {
                 Image(systemName: "trash").frame(width: 28, height: 32).contentShape(Rectangle())
-            }.buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("删除\(preset.title)")
-            // Slot stays laid out; only opacity / hit testing switch, so nothing shifts on hover.
-            .opacity(hovering ? 1 : 0).allowsHitTesting(hovering)
+            }
         }
         .padding(.horizontal, 12).padding(.vertical, 8)
         .contentShape(Rectangle())
@@ -1238,4 +1239,24 @@ private struct HoverRevealRow<Content: View>: View {
     @ViewBuilder let content: (Bool) -> Content
     @State private var hovering = false
     var body: some View { content(hovering).pointerHover(id) { hovering = $0 } }
+}
+
+/// Destructive row button that is drawn only while the row is hovered or the button has keyboard / VoiceOver focus.
+/// The button itself stays in the view and accessibility tree (only its glyph fades), so VoiceOver keeps its label.
+private struct HoverRevealButton<Content: View>: View {
+    let hovering: Bool
+    let label: String
+    let action: () -> Void
+    @ViewBuilder let content: () -> Content
+    @FocusState private var focused: Bool
+    @AccessibilityFocusState private var voiceOverFocused: Bool
+    var body: some View {
+        let shown = hovering || focused || voiceOverFocused
+        Button(role: .destructive, action: action) { content().opacity(shown ? 1 : 0) }
+            .buttonStyle(.plain).foregroundStyle(.secondary)
+            .focused($focused)
+            .accessibilityFocused($voiceOverFocused)
+            .accessibilityLabel(label)
+            .allowsHitTesting(shown)
+    }
 }

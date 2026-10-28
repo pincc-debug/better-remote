@@ -93,4 +93,13 @@ final class DropdownSelectionTests: XCTestCase {
         let frame = DropdownSelection<String>.menuFrame(trigger: trigger, size: CGSize(width: 200, height: 100), gap: 4, bounds: screen)
         XCTAssertEqual(frame.maxX, 1000)
     }
+
+    func testMenuIsNeverNarrowerThanTrigger() {
+        let screen = CGRect(x: 0, y: 0, width: 1000, height: 800)
+        let trigger = CGRect(x: 100, y: 500, width: 260, height: 28)
+        let narrow = DropdownSelection<String>.menuFrame(trigger: trigger, size: CGSize(width: 120, height: 100), gap: 4, bounds: screen)
+        XCTAssertEqual(narrow.width, 260)
+        let wide = DropdownSelection<String>.menuFrame(trigger: trigger, size: CGSize(width: 300, height: 100), gap: 4, bounds: screen)
+        XCTAssertEqual(wide.width, 300)
+    }
 }
