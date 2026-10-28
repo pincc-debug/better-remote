@@ -1,10 +1,12 @@
 import AppKit
 import QuartzCore
 import XCTest
+import RemoteFitCore
 @testable import RemoteFit
 
 /// The bar/ball layer shadow must fade to nothing inside the transparent window padding, or the window edge
-/// cuts it into a visible step (build 196: 14 / 0.22 → 4 / 0.10).
+/// cuts it into a visible step (build 196: 14 / 0.22 → 4 / 0.10). Since 0.9.2 (197) the padding is kept only
+/// toward the desktop (`FloatingSwitcher.panelPlacement`); edges on the visible frame's boundary have none.
 @MainActor
 final class ToolbarShadowTests: XCTestCase {
     private static let glass = CGSize(width: 72, height: 240)
@@ -12,12 +14,13 @@ final class ToolbarShadowTests: XCTestCase {
     /// Same shadow as FloatingSwitcher.paddedGlass, on a transparent window-sized canvas. CALayer.render(in:)
     /// drops layer shadows, so the shadow is drawn with Core Graphics using a blur of 2 × shadowRadius — at least
     /// as wide as the window server's, so this errs on the side of finding a cut-off.
-    private func shadowLayer(radius: CGFloat, opacity: Float, circle: Bool = false) -> CALayer {
+    private func shadowLayer(radius: CGFloat, opacity: Float, circle: Bool = false, size: CGSize? = nil, insets: NSEdgeInsets? = nil) -> CALayer {
         let padding = FloatingSwitcher.glassPadding
-        let size = circle ? CGSize(width: 56, height: 56) : Self.glass
+        let size = size ?? (circle ? CGSize(width: 56, height: 56) : Self.glass)
+        let insets = insets ?? NSEdgeInsets(top: padding, left: padding, bottom: padding, right: padding)
         let container = ShadowCanvas()
-        container.frame = CGRect(x: 0, y: 0, width: size.width + padding * 2, height: size.height + padding * 2)
-        container.rect = CGRect(origin: CGPoint(x: padding, y: padding), size: size)
+        container.frame = CGRect(x: 0, y: 0, width: size.width + insets.left + insets.right, height: size.height + insets.top + insets.bottom)
+        container.rect = CGRect(origin: CGPoint(x: insets.left, y: insets.bottom), size: size)
         container.circle = circle
         container.radius = radius
         container.shadowAlpha = CGFloat(opacity)
@@ -41,6 +44,54 @@ final class ToolbarShadowTests: XCTestCase {
         for x in 0..<rep.pixelsWide { for y in [0, rep.pixelsHigh - 1] { maxAlpha = max(maxAlpha, rep.colorAt(x: x, y: y)?.alphaComponent ?? 0) } }
         for y in 0..<rep.pixelsHigh { for x in [0, rep.pixelsWide - 1] { maxAlpha = max(maxAlpha, rep.colorAt(x: x, y: y)?.alphaComponent ?? 0) } }
         return maxAlpha
+    }
+
+    /// Strongest shadow alpha on one outer pixel line of the window.
+    private func edgeAlpha(_ rep: NSBitmapImageRep, edge: ToolbarSide) -> CGFloat {
+        var maxAlpha: CGFloat = 0
+        switch edge {
+        case .left, .right:
+            let x = edge == .left ? 0 : rep.pixelsWide - 1
+            for y in 0..<rep.pixelsHigh { maxAlpha = max(maxAlpha, rep.colorAt(x: x, y: y)?.alphaComponent ?? 0) }
+        case .top, .bottom:
+            let y = edge == .top ? 0 : rep.pixelsHigh - 1 // bitmap rows run top-down
+            for x in 0..<rep.pixelsWide { maxAlpha = max(maxAlpha, rep.colorAt(x: x, y: y)?.alphaComponent ?? 0) }
+        }
+        return maxAlpha
+    }
+
+    /// Real placements (four docks, Dock shown / hidden, ball at both ends of its drag range): every edge that keeps
+    /// padding faces the desktop and the shadow fades out inside it; every edge without padding is on the visible
+    /// frame's boundary, where the shadow would be off-screen or under the menu bar / Dock.
+    func testShadowIsNotCutTowardTheDesktop() {
+        let screen = CGRect(x: 0, y: 0, width: 1138, height: 1051)
+        for visible in [CGRect(x: 0, y: 51, width: 1138, height: 970), CGRect(x: 0, y: 0, width: 1138, height: 1021)] {
+            var cases: [(String, CGRect, Bool)] = ToolbarSide.allCases.map { side in
+                ("\(side)", DesktopToolbarLayout.toolbar(in: visible, centerY: visible.midY, expanded: true, count: 6, side: side), false)
+            }
+            let ball = DesktopToolbarLayout.toolbar(in: visible, centerY: visible.midY, expanded: false, count: 0)
+            for y in [visible.minY + DesktopToolbarLayout.margin, visible.midY, visible.maxY - ball.height - DesktopToolbarLayout.margin] {
+                cases.append(("ball y=\(y)", CGRect(x: ball.minX, y: y, width: ball.width, height: ball.height), true))
+            }
+            for (name, glass, circle) in cases {
+                let placement = FloatingSwitcher.panelPlacement(glass: glass, in: visible)
+                XCTAssertTrue(visible.contains(placement.frame) && screen.contains(placement.frame), name)
+                let rep = bitmap(shadowLayer(radius: DesignTokens.toolbarShadowRadius, opacity: DesignTokens.toolbarShadowOpacity, circle: circle,
+                                             size: glass.size, insets: placement.insets))
+                let edges: [(ToolbarSide, CGFloat, CGFloat)] = [(.left, placement.insets.left, placement.frame.minX - visible.minX),
+                                                                (.right, placement.insets.right, visible.maxX - placement.frame.maxX),
+                                                                (.top, placement.insets.top, visible.maxY - placement.frame.maxY),
+                                                                (.bottom, placement.insets.bottom, placement.frame.minY - visible.minY)]
+                for (edge, inset, gapToVisibleEdge) in edges {
+                    if inset >= FloatingSwitcher.glassPadding - 0.001 {
+                        XCTAssertLessThanOrEqual(edgeAlpha(rep, edge: edge), 1.0 / 255, "\(name) \(edge) \(visible)")
+                    } else {
+                        // Less room only where the window already touches the visible frame's edge.
+                        XCTAssertEqual(gapToVisibleEdge, 0, accuracy: 0.001, "\(name) \(edge) \(visible)")
+                    }
+                }
+            }
+        }
     }
 
     func testShadowFadesOutInsideTheWindowPaddingOnEveryEdge() {

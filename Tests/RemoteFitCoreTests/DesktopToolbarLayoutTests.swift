@@ -316,4 +316,17 @@ final class ToolbarWorkspacePresenceTests: XCTestCase {
             XCTAssertFalse(expanded.intersects(toolbar.insetBy(dx: 1, dy: 1)), "\(side)")
         }
     }
+
+    func testShadowWindowKeepsRoomOnlyInsideTheVisibleFrame() {
+        let visible = CGRect(x: 0, y: 51, width: 1138, height: 970)
+        let right = CGRect(x: 1066, y: 51, width: 72, height: 970)
+        XCTAssertEqual(DesktopToolbarLayout.shadowWindow(around: right, padding: 16, in: visible), CGRect(x: 1050, y: 51, width: 88, height: 970))
+        let top = CGRect(x: 0, y: 947, width: 1138, height: 74)
+        XCTAssertEqual(DesktopToolbarLayout.shadowWindow(around: top, padding: 16, in: visible), CGRect(x: 0, y: 931, width: 1138, height: 90))
+        let floating = CGRect(x: 500, y: 500, width: 52, height: 52)
+        XCTAssertEqual(DesktopToolbarLayout.shadowWindow(around: floating, padding: 16, in: visible), floating.insetBy(dx: -16, dy: -16))
+        // The glass itself is never clipped, even if it sticks out of the visible frame.
+        let outside = CGRect(x: 1100, y: 30, width: 52, height: 52)
+        XCTAssertTrue(DesktopToolbarLayout.shadowWindow(around: outside, padding: 16, in: visible).contains(outside))
+    }
 }

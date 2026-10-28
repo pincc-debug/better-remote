@@ -180,7 +180,9 @@ private final class ToolbarButton: NSButton {
     override func mouseDown(with event: NSEvent) {
         guard isEnabled else { return }
         let start = pointerPosition(for: event)
-        let origin = window?.frame.origin ?? .zero
+        // Screen origin of this button. The ball handle fills the glass, so a drag reports where the glass goes,
+        // independent of how much transparent shadow room the panel keeps around it.
+        let origin = window.map { $0.convertToScreen(convert(bounds, to: nil)).origin } ?? .zero
         var dragged = false
         lastScroll = nil
         let savedRelease = onRelease
@@ -518,8 +520,25 @@ final class FloatingSwitcher: NSObject {
     var isTransitioning: Bool { toolbarTransitionTask != nil }
     private var preferredCenterY: CGFloat?
     private var preferredCenterX: CGFloat?
-    /// Transparent margin around the glass: room for the 14pt soft shadow so the window does not clip it.
+    /// Transparent room around the glass for its soft shadow, kept only toward the desktop: `panelPlacement`
+    /// clips it to the visible frame, so a docked edge has none and the panel never reaches into the menu bar.
     static let glassPadding: CGFloat = 16
+    /// Transparent room the panel currently keeps on each edge of the glass (see `panelPlacement`).
+    private var glassInsets = NSEdgeInsets(top: glassPadding, left: glassPadding, bottom: glassPadding, right: glassPadding)
+    private var glassConstraints: (leading: NSLayoutConstraint, trailing: NSLayoutConstraint, top: NSLayoutConstraint, bottom: NSLayoutConstraint)?
+    private var glassCornerRadius: CGFloat = 0
+    /// Panel frame for a glass rect: up to `glassPadding` of shadow room per edge, never past `visible`.
+    /// 0.9.1 padded every edge, so a full-height side bar reached 16pt into the menu bar; macOS pulled the panel
+    /// back under it and the whole bar sat 16pt below the windows next to it.
+    static func panelPlacement(glass: CGRect, in visible: CGRect) -> (frame: CGRect, insets: NSEdgeInsets) {
+        let frame = DesktopToolbarLayout.shadowWindow(around: glass, padding: glassPadding, in: visible)
+        return (frame, NSEdgeInsets(top: frame.maxY - glass.maxY, left: glass.minX - frame.minX,
+                                    bottom: glass.minY - frame.minY, right: frame.maxX - glass.maxX))
+    }
+    static func glassFrame(inPanel frame: CGRect, insets: NSEdgeInsets) -> CGRect {
+        CGRect(x: frame.minX + insets.left, y: frame.minY + insets.bottom,
+               width: max(0, frame.width - insets.left - insets.right), height: max(0, frame.height - insets.top - insets.bottom))
+    }
     /// Outside-click region kept at the previous 6pt margin around the bar.
     private var toolbarHitFrame: CGRect { toolbarFrame.insetBy(dx: -6, dy: -6) }
     private var toolbar: ToolbarContent?
@@ -595,7 +614,7 @@ final class FloatingSwitcher: NSObject {
         if hasPositionedPanel, let screen = panel.screen { return screen }
         return NSScreen.screens.first ?? NSScreen.main
     }
-    var toolbarFrame: CGRect { panel.frame.insetBy(dx: Self.glassPadding, dy: Self.glassPadding) }
+    var toolbarFrame: CGRect { Self.glassFrame(inPanel: panel.frame, insets: glassInsets) }
     var isExpanded: Bool { enabled && expanded }
     /// Whether the toolbar (collapsed ball or expanded bar) is currently on screen.
     var isVisible: Bool { enabled }
@@ -868,7 +887,8 @@ final class FloatingSwitcher: NSObject {
         let center = preferredCenterY ?? visible.midY
         let grid = DesktopToolbarLayout.grid(in: visible, count: preferences.enabledOperations.count, side: preferences.toolbarSide, windowControls: preferences.showWindowControls)
         let frame = DesktopToolbarLayout.toolbar(in: visible, centerY: center, expanded: expanded, count: preferences.enabledOperations.count, side: preferences.toolbarSide, centerX: preferredCenterX, windowControls: preferences.showWindowControls)
-        let windowFrame = frame.insetBy(dx: -Self.glassPadding, dy: -Self.glassPadding)
+        let placement = Self.panelPlacement(glass: frame, in: visible)
+        let windowFrame = placement.frame
         buttons.removeAll()
         if expanded {
             let content = ToolbarContent(frame: CGRect(origin: .zero, size: frame.size), grid: grid, side: preferences.toolbarSide, application: application)
@@ -940,7 +960,7 @@ final class FloatingSwitcher: NSObject {
             toolbar = content
             content.layoutSubtreeIfNeeded()
             content.setOffset(scrollOffset)
-            panel.contentView = paddedGlass(content: content, cornerRadius: DesignTokens.radiusXl, improvesContrast: true)
+            panel.contentView = paddedGlass(content: content, cornerRadius: DesignTokens.radiusXl, insets: placement.insets, improvesContrast: true)
         } else {
             toolbar = nil
             let handle = ToolbarButton(symbol: "macbook.and.iphone", name: "展开快捷操作", showsCaption: false, largeIcon: true, colored: true)
@@ -949,7 +969,7 @@ final class FloatingSwitcher: NSObject {
             handle.onTap = { [weak self] in self?.toggleList() }
             handle.dragsHorizontally = false
             handle.onDrag = { [weak self] origin in self?.move(to: origin) }
-            panel.contentView = paddedGlass(content: handle, cornerRadius: frame.width / 2)
+            panel.contentView = paddedGlass(content: handle, cornerRadius: frame.width / 2, insets: placement.insets)
         }
         updateSelection()
         if animated && !reduceMotion() {
@@ -967,6 +987,15 @@ final class FloatingSwitcher: NSObject {
         panel.contentView?.layoutSubtreeIfNeeded()
         panel.invalidateShadow()
         panel.orderFrontRegardless()
+        if !(animated && !reduceMotion()) { checkPanelFrame(windowFrame, reason: "rebuild") }
+    }
+
+    /// Logs when the panel did not land where it was put (0.9.1: pulled 16pt under the menu bar).
+    private func checkPanelFrame(_ target: CGRect, reason: String) {
+        let actual = panel.frame
+        let off = max(abs(actual.minX - target.minX), abs(actual.minY - target.minY), abs(actual.width - target.width), abs(actual.height - target.height))
+        guard off > 0.5 else { return }
+        OperationDiagnostics.write("toolbar-frame-mismatch reason=\(reason) target=\(NSStringFromRect(target)) actual=\(NSStringFromRect(actual)) visible=\(NSStringFromRect(actionScreen?.visibleFrame ?? .zero)) screen=\(NSStringFromRect(actionScreen?.frame ?? .zero))")
     }
 
     private func cancelToolbarTransition() {
@@ -997,6 +1026,7 @@ final class FloatingSwitcher: NSObject {
             }
             guard !Task.isCancelled else { return }
             panel.setFrame(target, display: true)
+            checkPanelFrame(target, reason: "animation")
             panel.invalidateShadow()
             toolbarTransitionTask = nil
             if rebuildAfterTransition { rebuildAfterTransition = false; rebuild() }
@@ -1164,51 +1194,75 @@ final class FloatingSwitcher: NSObject {
         canvas.addSubview(flyout)
         return canvas
     }
-    private func paddedGlass(content: NSView, cornerRadius: CGFloat, improvesContrast: Bool = false) -> NSView {
-        let padding = Self.glassPadding
-        let container = NSView(frame: content.bounds.insetBy(dx: -padding, dy: -padding))
-        container.setFrameOrigin(.zero)
+    /// Glass inside a transparent panel-sized container: `insets` of room for the layer shadow (desktop side only).
+    private func paddedGlass(content: NSView, cornerRadius: CGFloat, insets: NSEdgeInsets, improvesContrast: Bool = false) -> NSView {
+        let size = content.bounds.size
+        let container = NSView(frame: CGRect(x: 0, y: 0, width: size.width + insets.left + insets.right, height: size.height + insets.top + insets.bottom))
         let glass = NativeGlassView(content: content, cornerRadius: cornerRadius,
-                                    frame: CGRect(origin: CGPoint(x: padding, y: padding), size: content.bounds.size),
+                                    frame: CGRect(origin: CGPoint(x: insets.left, y: insets.bottom), size: size),
                                     contentBackdrop: improvesContrast ? DesignTokens.NS.toolbarSurfaceBackdrop : nil,
                                     lightBlurAlpha: DesignTokens.NS.toolbarLightBlurAlpha)
         toolbarGlass = glass
         glass.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(glass)
-        let glassRect = CGRect(origin: CGPoint(x: padding, y: padding), size: content.bounds.size)
         container.wantsLayer = true
         container.layer?.masksToBounds = false
         container.layer?.shadowColor = NSColor.black.cgColor
         container.layer?.shadowOpacity = DesignTokens.toolbarShadowOpacity
         container.layer?.shadowRadius = DesignTokens.toolbarShadowRadius
         container.layer?.shadowOffset = CGSize(width: 0, height: DesignTokens.toolbarShadowOffsetY)
-        container.layer?.shadowPath = expanded
-            ? CGPath(roundedRect: glassRect, cornerWidth: cornerRadius, cornerHeight: cornerRadius, transform: nil)
-            : CGPath(ellipseIn: glassRect, transform: nil)
         toolbarShadowHost = container
+        glassCornerRadius = cornerRadius
+        let constraints = (leading: glass.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: insets.left),
+                           trailing: glass.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -insets.right),
+                           top: glass.topAnchor.constraint(equalTo: container.topAnchor, constant: insets.top),
+                           bottom: glass.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -insets.bottom))
+        glassConstraints = constraints
+        glassInsets = insets
+        updateShadowPath(glassSize: size)
         updateAttachedSurface()
-        NSLayoutConstraint.activate([
-            glass.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: padding),
-            glass.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -padding),
-            glass.topAnchor.constraint(equalTo: container.topAnchor, constant: padding),
-            glass.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: -padding)
-        ])
+        NSLayoutConstraint.activate([constraints.leading, constraints.trailing, constraints.top, constraints.bottom])
         return container
     }
+    private func updateShadowPath(glassSize: CGSize) {
+        let rect = CGRect(origin: CGPoint(x: glassInsets.left, y: glassInsets.bottom), size: glassSize)
+        toolbarShadowHost?.layer?.shadowPath = expanded
+            ? CGPath(roundedRect: rect, cornerWidth: glassCornerRadius, cornerHeight: glassCornerRadius, transform: nil)
+            : CGPath(ellipseIn: rect, transform: nil)
+    }
+    /// Moves the glass to `glass` on screen, re-clipping the shadow room to the visible frame (the ball near the
+    /// top or bottom edge keeps less room on that side).
+    private func placeGlass(_ glass: CGRect, in visible: CGRect, reason: String) {
+        let placement = Self.panelPlacement(glass: glass, in: visible)
+        let insets = placement.insets
+        if let constraints = glassConstraints, !NSEdgeInsetsEqual(insets, glassInsets) {
+            glassInsets = insets
+            constraints.leading.constant = insets.left
+            constraints.trailing.constant = -insets.right
+            constraints.top.constant = insets.top
+            constraints.bottom.constant = -insets.bottom
+            updateShadowPath(glassSize: glass.size)
+        }
+        panel.setFrame(placement.frame, display: true)
+        checkPanelFrame(placement.frame, reason: reason)
+    }
 
+    /// `origin` is where the glass (not the panel) should go: the drag handle reports its own screen origin.
     private func move(to origin: CGPoint) {
         guard let screen = actionScreen else { return }
         if activePanel != nil { onDismissPanels() }
         let visible = screen.visibleFrame
+        let size = toolbarFrame.size
         if !expanded {
             let collapsed = DesktopToolbarLayout.toolbar(in: visible, centerY: visible.midY, expanded: false, count: 0)
-            let minY = visible.minY + DesktopToolbarLayout.margin - Self.glassPadding
-            let maxY = visible.maxY - panel.frame.height - DesktopToolbarLayout.margin + Self.glassPadding
-            panel.setFrameOrigin(CGPoint(x: collapsed.minX - Self.glassPadding, y: min(max(origin.y, minY), max(minY, maxY))))
+            let minY = visible.minY + DesktopToolbarLayout.margin
+            let maxY = visible.maxY - size.height - DesktopToolbarLayout.margin
+            placeGlass(CGRect(x: collapsed.minX, y: min(max(origin.y, minY), max(minY, maxY)), width: size.width, height: size.height),
+                       in: visible, reason: "drag")
             return
         }
         let horizontal = preferences.toolbarSide.isHorizontal
-        var target = horizontal ? origin.x + panel.frame.width / 2 : origin.y + panel.frame.height / 2
+        var target = horizontal ? origin.x + size.width / 2 : origin.y + size.height / 2
         let lower = horizontal ? visible.minX : visible.minY
         let length = horizontal ? visible.width : visible.height
         for fraction: CGFloat in [0.5, 0.75, 0.25] {
@@ -1219,7 +1273,7 @@ final class FloatingSwitcher: NSObject {
         let frame = DesktopToolbarLayout.toolbar(in: visible, centerY: preferredCenterY ?? visible.midY,
                                                 expanded: expanded, count: preferences.enabledOperations.count,
                                                 side: preferences.toolbarSide, centerX: preferredCenterX, windowControls: preferences.showWindowControls)
-        panel.setFrameOrigin(CGPoint(x: frame.minX - Self.glassPadding, y: frame.minY - Self.glassPadding))
+        placeGlass(frame, in: visible, reason: "move")
     }
     private func updateSelection() {
         for (id, button) in buttons {

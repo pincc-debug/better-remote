@@ -35,7 +35,8 @@ public enum DesignTokens {
     public static let dropdownMinWidth: CGFloat = 160
 
     // MARK: - Floating toolbar shadow (drawn by the layer, not the window server)
-    /// Small enough to fade out inside the 16pt window padding (FloatingSwitcher.glassPadding) on every edge,
+    /// Small enough to fade out inside the 16pt window padding (FloatingSwitcher.glassPadding), which since 0.9.2
+    /// is kept only on the edges facing the desktop (none against the menu bar, the Dock or the screen edge),
     /// bar and ball alike; 14 / 0.22 before build 196 was cut off by the window edge. Joined panels: 0.
     public static let toolbarShadowOpacity: Float = 0.10
     public static let toolbarShadowRadius: CGFloat = 4

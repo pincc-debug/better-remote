@@ -131,6 +131,16 @@ public enum DesktopToolbarLayout {
         return CGRect(x: x, y: y, width: width, height: height)
     }
 
+    /// Window around a glass rect: `padding` of transparent room on each edge for its shadow, clipped to `screen`
+    /// (the visible frame) so the window never reaches into the menu bar, the Dock or past the screen edge.
+    /// Where the glass sits on that edge the window has no room there; the shadow would be off-screen or under
+    /// the menu bar / Dock anyway. The glass itself is never clipped.
+    public static func shadowWindow(around glass: CGRect, padding: CGFloat, in screen: CGRect) -> CGRect {
+        let outset = glass.insetBy(dx: -padding, dy: -padding)
+        let clipped = outset.intersection(screen)
+        return clipped.isNull ? outset : clipped.union(glass)
+    }
+
     /// What the toolbar occupies on its screen. Only the expanded bar reserves an edge strip;
     /// the collapsed ball and a hidden toolbar leave the whole visible frame to windows.
     public enum Presence: Equatable, Sendable { case hidden, collapsed, expanded }
