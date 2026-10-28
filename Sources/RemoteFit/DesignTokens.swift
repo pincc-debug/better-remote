@@ -62,13 +62,13 @@ public enum DesignTokens {
         public static let surfaceElevated = adaptive("surfaceElevated", light: NSColor(calibratedWhite: 0.96, alpha: 0.94), dark: NSColor(calibratedRed: 32/255, green: 34/255, blue: 40/255, alpha: 0.94))
         public static let pedestalBg = adaptive("pedestalBg", light: NSColor(calibratedWhite: 0, alpha: 0.28), dark: NSColor(calibratedWhite: 1, alpha: 0.28))
         public static let pedestalBorder = adaptive("pedestalBorder", light: NSColor(calibratedWhite: 0, alpha: 0.08), dark: NSColor(calibratedWhite: 1, alpha: 0.08))
-        /// Expanded toolbar edge: 1 px hairline, black 9% (light) / white 15% (dark); none on the docked side.
-        public static let toolbarHairline = adaptive("toolbarHairline", light: NSColor(calibratedWhite: 0, alpha: 0.09), dark: NSColor(calibratedWhite: 1, alpha: 0.15))
         /// Light mode only: opacity of the blur layer behind the toolbar and its joined resolution / app panels
         /// (`.sidebar` on macOS 26, `.popover` on 14–25), so more of the desktop shows through. Dark is unchanged.
         public static let toolbarLightBlurAlpha: CGFloat = 0.70
-        /// Light-mode hairline alpha (black) for the toolbar and its joined panels. Dark stays white 15%.
+        /// Light-mode hairline alpha (black) for the toolbar and every panel attached to it (joined resolution /
+        /// app panels, window-layout and app-shortcut flyouts). Dark stays white 15%. Was 9% before build 195.
         public static let toolbarLightHairlineAlpha: CGFloat = 0.12
+        /// 1 px edge of the toolbar and its attached panels; none on the docked side or a join.
         public static let toolbarSurfaceHairline = adaptive("toolbarSurfaceHairline", light: NSColor(calibratedWhite: 0, alpha: toolbarLightHairlineAlpha), dark: NSColor(calibratedWhite: 1, alpha: 0.15))
         /// Tint inside the toolbar and its joined panels: none in light (the faded blur carries the surface), black 14% in dark.
         public static let toolbarSurfaceBackdrop = adaptive("toolbarSurfaceBackdrop", light: .clear, dark: NSColor(calibratedWhite: 0, alpha: 0.14))

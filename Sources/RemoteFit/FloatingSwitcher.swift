@@ -559,7 +559,7 @@ final class FloatingSwitcher: NSObject {
         container.addSubview(layouts)
         flyout.contentView = NativeGlassView(content: container, cornerRadius: DesignTokens.radiusXl, frame: CGRect(origin: .zero, size: frame.size),
                                              contentBackdrop: DesignTokens.NS.glassBackdrop)
-        (flyout.contentView as? NativeGlassView)?.setHairline(DesignTokens.NS.toolbarHairline, omitting: nil)
+        (flyout.contentView as? NativeGlassView)?.setHairline(DesignTokens.NS.toolbarSurfaceHairline, omitting: nil)
         flyout.setFrame(frame, display: true)
         flyout.orderFrontRegardless()
         windowPanel = flyout
@@ -1062,7 +1062,7 @@ final class FloatingSwitcher: NSObject {
         container.addSubview(items)
         flyout.contentView = NativeGlassView(content: container, cornerRadius: DesignTokens.radiusXl, frame: CGRect(origin: .zero, size: frame.size),
                                              contentBackdrop: DesignTokens.NS.glassBackdrop)
-        (flyout.contentView as? NativeGlassView)?.setHairline(DesignTokens.NS.toolbarHairline, omitting: nil)
+        (flyout.contentView as? NativeGlassView)?.setHairline(DesignTokens.NS.toolbarSurfaceHairline, omitting: nil)
         flyout.setFrame(frame, display: true)
         flyout.invalidateShadow()
         applicationPanel = flyout
@@ -1130,7 +1130,7 @@ final class FloatingSwitcher: NSObject {
         NSApp.effectiveAppearance.performAsCurrentDrawingAppearance { surface.layer?.backgroundColor = backdrop.cgColor }
         surface.addSubview(layouts)
         let edge = HairlineEdgeView(frame: surface.bounds)
-        edge.color = DesignTokens.NS.toolbarHairline
+        edge.color = DesignTokens.NS.toolbarSurfaceHairline
         edge.cornerRadius = DesignTokens.radiusXl
         surface.addSubview(edge)
         return surface

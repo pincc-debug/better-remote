@@ -57,4 +57,21 @@ final class NativeGlassThemeTests: XCTestCase {
         guard let parent = content.superview else { return false }
         return parent.constraints.filter { $0.isActive && $0.firstItem as? NSView === content }.count == 4
     }
+
+    /// Every panel attached to the toolbar shares the toolbar's hairline token: black 12% light, white 15% dark.
+    func testAttachedPanelsShareTheToolbarHairline() throws {
+        func alpha(_ color: NSColor, _ name: NSAppearance.Name) -> CGFloat {
+            var a: CGFloat = 0
+            NSAppearance(named: name)!.performAsCurrentDrawingAppearance {
+                a = color.usingColorSpace(.genericGray)?.alphaComponent ?? -1
+            }
+            return a
+        }
+        XCTAssertEqual(alpha(DesignTokens.NS.toolbarSurfaceHairline, .aqua), DesignTokens.NS.toolbarLightHairlineAlpha, accuracy: 0.001)
+        XCTAssertEqual(alpha(DesignTokens.NS.toolbarSurfaceHairline, .darkAqua), 0.15, accuracy: 0.001)
+        let flyout = FloatingSwitcher.reviewLayoutFlyout()
+        let edges = flyout.subviews.compactMap { $0 as? HairlineEdgeView }
+        XCTAssertEqual(edges.count, 1)
+        XCTAssertTrue(edges.first?.color === DesignTokens.NS.toolbarSurfaceHairline)
+    }
 }
