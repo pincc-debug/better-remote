@@ -281,7 +281,6 @@ struct SettingsView: View {
 
                 ScrollView {
                   VStack(alignment: .leading, spacing: 12) {
-                MultiDisplayExtendSetting(model: model, narrow: narrow)
                 if !model.preferences.customPresets.isEmpty {
                     VStack(spacing: 2) {
                         ForEach(model.preferences.customPresets) { preset in
@@ -545,6 +544,8 @@ struct SettingsView: View {
                         .padding(.horizontal, 14)
                         .padding(.vertical, 10)
 
+                        Divider().padding(.leading, narrow ? 14 : 54)
+                        multiDisplayExtendSetting
                     }
                     .cardSurface()
                 }
@@ -606,6 +607,28 @@ struct SettingsView: View {
             .padding(pagePadding)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// 多屏保持扩展 sits in 常规 · 系统行为, under 开机启动. Global preference, not per device.
+    private var multiDisplayExtendSetting: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Self.settingRow(MultiDisplayExtendCopy.title, symbol: "rectangle.split.2x1") {
+                Toggle(MultiDisplayExtendCopy.title, isOn: Binding(
+                    get: { model.preferences.keepMultiDisplayExtended },
+                    set: { model.onKeepMultiDisplayExtended($0) }
+                ))
+                .labelsHidden()
+                .toggleStyle(StableBlueSwitchStyle(tooltip: MultiDisplayExtendCopy.footnote))
+                .accessibilityHint(MultiDisplayExtendCopy.footnote)
+            }
+            Text(MultiDisplayExtendCopy.footnote)
+                .font(.system(size: DesignTokens.fontCaption))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.leading, narrow ? 14 : 54)
+                .padding(.trailing, 14)
+                .padding(.bottom, 12)
+        }
     }
 
     // MARK: - Floating Settings
