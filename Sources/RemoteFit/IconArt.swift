@@ -30,7 +30,8 @@ enum IconArt {
     // MARK: - Colour (icon-color-rules.md)
 
     /// Symbols drawn whole systemBlue instead of palette(label, systemBlue): no second palette layer on macOS
-    /// (palette self-check, 136 red-only), plus four whose second layer reads wrong as blue.
+    /// (palette self-check, 136 red-only), plus five whose second layer reads wrong as blue
+    /// (arrow.up.arrow.down: 反转滚动方向, 像素之眼 wants it one accent blue like 单指滚动).
     static let wholeBlueSymbols: Set<String> = [
         "airplane", "app", "arrow.clockwise", "arrow.counterclockwise", "arrow.down", "arrow.down.right.and.arrow.up.left",
         "arrow.down.to.line", "arrow.left", "arrow.right", "arrow.right.to.line", "arrow.triangle.2.circlepath", "arrow.up",
@@ -50,7 +51,7 @@ enum IconArt {
         "rectangle.stack.fill", "return", "scissors", "sidebar.left", "sidebar.right", "slider.horizontal.3", "sparkles", "square.dashed",
         "square.grid.2x2", "star", "star.fill", "stop.fill", "sun.max.fill", "sun.min.fill", "tag", "tag.fill", "terminal.fill",
         "textformat", "trash", "trash.fill", "video.fill", "viewfinder", "wifi", "xmark",
-        "hand.draw", "hand.tap.fill", "lightbulb.fill", "speaker.wave.1.fill",
+        "hand.draw", "hand.tap.fill", "lightbulb.fill", "speaker.wave.1.fill", "arrow.up.arrow.down",
     ]
     static func isWholeBlue(_ name: String) -> Bool {
         wholeBlueSymbols.contains(name) || wholeBlueSymbols.contains(displaySymbol(name))

@@ -1,6 +1,6 @@
 # 0.9.3 (198) — 反转滚动方向（本机测试版，未发布）— 2026-10-29
 
-- 立品需求：触控设置里加一个开关「反转滚动方向」（位置按立品更正放在「触控」卡片内「单指滚动」下面、「滚动速度」上面），横向、纵向两个轴一起取反，跟着每台设备的 DeviceConfiguration 走，默认关。按立品要求不加旁注，用统一蓝开关；按像素之眼定稿加系统图标 arrow.up.arrow.down，直接复用邻行同一个 toggle/settingRow 组件（28×28 图标框即行内最小高度 28），图标、标题、分隔线缩进和行高与「单指滚动」一致。
+- 立品需求：触控设置里加一个开关「反转滚动方向」（位置按立品更正放在「触控」卡片内「单指滚动」下面、「滚动速度」上面），横向、纵向两个轴一起取反，跟着每台设备的 DeviceConfiguration 走，默认关。按立品要求不加旁注，用统一蓝开关；按像素之眼定稿加系统图标 arrow.up.arrow.down，直接复用邻行同一个 toggle/settingRow 组件，图标按像素之眼要求整体单色强调蓝（加入 IconArt.wholeBlueSymbols，与单指滚动同一路径）（28×28 图标框即行内最小高度 28），图标、标题、分隔线缩进和行高与「单指滚动」一致。
 - 实现：`DeviceConfiguration`/`Preferences` 新增 `remoteScrollReversed`（旧配置缺键解码为 false，DeviceConfiguration 改为手写 init(from:)，其余键严格程度不变；bypassedConfiguration 为 false）。复用 UUNativeScroll 的 annotated-session 滚轮监听：只处理 eventSourceUnixProcessID 解析为 UURemote.app 内可执行文件的事件；本机触控板/鼠标（pid 0 或非 UU 进程）、UU 单指滚动合成事件（UUTouchScroll 标记）、已处理过的事件都原样放行。速度 <100% 时先取反再缩放；100% 或按住 ⌘/⌃/⌥ 时只取反 line / point / fixed-pt 三组 delta，阶段、位置、路由不变。监听只在远程连接且（速度 <100% 或开启反转）时运行，断开即停止，本机事件不经过任何改动。
 - 测试：新增 UUNativeScroll 反转 4 项、DeviceConfiguration 迁移/往返 3 项；swift test 全部通过。
 - 未验证：Windows 客户端经 UU 实际滚动时事件来源 pid 未在本轮现场抓取（本机历史诊断日志里 UU 注入的鼠标事件来源为 UU 进程，本机点击为 pid 0）；需立品现场测试。

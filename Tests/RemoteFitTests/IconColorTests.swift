@@ -8,10 +8,10 @@ import RemoteFitCore
 /// selection / blur constants that go with them.
 @MainActor
 final class IconColorTests: XCTestCase {
-    private let forcedWholeBlue = ["hand.draw", "hand.tap.fill", "lightbulb.fill", "speaker.wave.1.fill"]
+    private let forcedWholeBlue = ["hand.draw", "hand.tap.fill", "lightbulb.fill", "speaker.wave.1.fill", "arrow.up.arrow.down"]
 
     func testWholeBlueSetIsTheReviewedList() {
-        XCTAssertEqual(IconArt.wholeBlueSymbols.count, 140)
+        XCTAssertEqual(IconArt.wholeBlueSymbols.count, 141)
         for name in forcedWholeBlue { XCTAssertTrue(IconArt.isWholeBlue(name), name) }
         XCTAssertFalse(IconArt.wholeBlueSymbols.contains("magnet"), "magnet does not exist on macOS 14; functional todo")
         for name in IconArt.wholeBlueSymbols {
