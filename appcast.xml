@@ -5,6 +5,15 @@
     <language>zh-CN</language>
 <!-- ITEMS -->
     <item>
+      <title>0.9.2</title>
+      <pubDate>Thu, 29 Oct 2026 05:25:30 +0000</pubDate>
+      <sparkle:version>198</sparkle:version>
+      <sparkle:shortVersionString>0.9.2</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<h3>0.9.2 更新内容</h3><ul><li>新增反转滚动方向，Windows 控制 Mac 更顺手。</li></ul>]]></description>
+      <enclosure url="https://github.com/pincc-debug/better-remote/releases/download/v0.9.2/Better-Remote-0.9.2.dmg" type="application/octet-stream" sparkle:edSignature="uwnczpBB8XcmwBcfiPRZhUWbye+0ZiWmGtXrjh8CU3Vol9fmgqyV7ckFup4bFYC9Bpm4WNicuMGUK/NioyKyBA==" length="8566708" />
+    </item>
+    <item>
       <title>0.9.1</title>
       <pubDate>Wed, 28 Oct 2026 12:55:36 +0000</pubDate>
       <sparkle:version>196</sparkle:version>
