@@ -63,6 +63,7 @@ final class ControlPanelModel: ObservableObject {
     var onUUTouchScrollToggle: (Bool) -> Void = { _ in }
     var onUUScrollSpeedPercent: (Int) -> Void = { _ in }
     var onAutoRestoreToggle: (Bool) -> Void = { _ in }
+    var onKeepMultiDisplayExtended: (Bool) -> Void = { _ in }
     var onScale: (Int) -> Void = { _ in }
     var onPresetScale: (String, Int) -> Void = { _, _ in }
     var onAdjust: (ResolutionAdjustment.Control, Int) -> Void = { _, _ in }

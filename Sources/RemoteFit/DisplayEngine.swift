@@ -13,9 +13,17 @@ struct EngineStatus: Sendable, Equatable {
 actor DisplayEngine {
     let root: URL
     let executable: String
-    var virtualDisplay: RFVirtualDisplay?
+    /// Every virtual framebuffer this session is keeping alive. Index 0 is the main one.
+    /// Replacing `virtualDisplay` still drops every framebuffer except the one assigned, which is the mirror-all path.
+    private var heldVirtualDisplays: [RFVirtualDisplay] = []
+    var virtualDisplay: RFVirtualDisplay? {
+        get { heldVirtualDisplays.first }
+        set { heldVirtualDisplays = newValue.map { [$0] } ?? [] }
+    }
     var applied: Dimensions? { didSet { if applied == nil { appliedMode = nil } } }
     private var appliedMode: DisplayMode?
+    /// Topology of the session currently held. Mirror-all unless an extended apply succeeded.
+    private var activeTopology: DisplayTopology = .mirrorAll
     var recovered = false
     var pendingRestore = false
     var shuttingDown = false
@@ -160,16 +168,20 @@ actor DisplayEngine {
         }
     }
 
-    private func verifyTransition(_ targets: [DisplayState], sourceID: UInt32, disappearingID: UInt32? = nil) throws {
+    private func verifyTransition(_ targets: [DisplayState], sourceID: UInt32, disappearingID: UInt32? = nil, disappearingIDs: Set<UInt32> = [], topology: DisplayTopology = .mirrorAll) throws {
         let expectedIDs = Set(targets.map(\.id))
+        let extras = disappearingIDs.union(disappearingID.map { [$0] } ?? [])
         var consecutiveMatches = 0
         for attempt in 0..<10 {
             let live = HeadlessPlaceholder.ignoringPlaceholders(try snapshot())
             let liveIDs = Set(live.map(\.id))
-            guard liveIDs == expectedIDs || disappearingID.map({ liveIDs == expectedIDs.union([$0]) }) == true else {
+            guard expectedIDs.isSubset(of: liveIDs), liveIDs.subtracting(expectedIDs).isSubset(of: extras) else {
                 throw FitError.message("适配期间显示器硬件拓扑发生变化，操作已中止。")
             }
-            if DisplayTransition.matches(live, targets: targets, sourceID: sourceID) {
+            let matched = topology == .extended
+                ? DisplayTopology.matches(live, targets: targets, sourceID: sourceID)
+                : DisplayTransition.matches(live, targets: targets, sourceID: sourceID)
+            if matched {
                 consecutiveMatches += 1
                 if consecutiveMatches >= 2 {
                     log("display_mode_verified", "source=\(sourceID) actual=\(Self.layout(live))")
@@ -180,8 +192,10 @@ actor DisplayEngine {
                 if attempt == 3 || attempt == 7 {
                     // Re-apply the source mode and any independent physical display macOS re-defaulted.
                     let drifted = targets.filter { target in
-                        guard target.id == sourceID || (target.physical && target.mirror == 0),
-                              let actual = live.first(where: { $0.id == target.id }) else { return false }
+                        let tracked = topology == .extended
+                            ? (!target.physical && target.mirror == 0 && !target.skipMode)
+                            : (target.id == sourceID || (target.physical && target.mirror == 0))
+                        guard tracked, let actual = live.first(where: { $0.id == target.id }) else { return false }
                         return !actual.mode.matches(target.mode)
                     }
                     if !drifted.isEmpty {
@@ -196,16 +210,16 @@ actor DisplayEngine {
         throw FitError.message("分辨率切换后未能通过状态校验")
     }
     func activate(_ dimensions: Dimensions, injectFailure: Bool = false, recoveryData: Data? = nil,
-                  injectFailureAfterSwitch: Bool = false) throws {
+                  injectFailureAfterSwitch: Bool = false, topology: DisplayTopology = .mirrorAll) throws {
         guard CustomPreset.isSupported(dimensions) else { throw FitError.message("分辨率超出支持范围。") }
         if virtualDisplay != nil, applied != nil, hasSession() {
-            try replaceDisplay(dimensions, injectFailure: injectFailure, injectFailureAfterSwitch: injectFailureAfterSwitch)
+            try replaceDisplay(dimensions, injectFailure: injectFailure, injectFailureAfterSwitch: injectFailureAfterSwitch, topology: topology)
             return
         }
         var recoveryData = recoveryData
         if hasSession() {
             if try !restore(), virtualDisplay != nil, applied != nil {
-                try replaceDisplay(dimensions, injectFailure: injectFailure, injectFailureAfterSwitch: injectFailureAfterSwitch)
+                try replaceDisplay(dimensions, injectFailure: injectFailure, injectFailureAfterSwitch: injectFailureAfterSwitch, topology: topology)
                 return
             }
             // Restore deferred with no live virtual display: keep the original snapshot.
@@ -217,7 +231,7 @@ actor DisplayEngine {
             // Our own display is never a conflict: it outlived its session state (headless deferred
             // restore, monitor powered off) or is still being torn down. Release it and wait it out.
             log("own_virtual_leftover", "held=\(virtualDisplay?.displayID ?? 0) \(Self.layout(live))")
-            virtualDisplay = nil; applied = nil
+            virtualDisplay = nil; applied = nil; activeTopology = .mirrorAll
             for _ in 0..<15 {
                 Thread.sleep(forTimeInterval: 0.2)
                 live = try snapshot()
@@ -244,30 +258,41 @@ actor DisplayEngine {
             wakeDisplays()
         }
         do {
-            virtualDisplay = try createDisplay(dimensions, policy: policy)
-            guard let sourceID = virtualDisplay?.displayID else { throw FitError.message("无法创建虚拟屏幕。") }
-            let ready = try readySource(id: sourceID, dimensions: dimensions, policy: policy)
             let mirrorable = HeadlessPlaceholder.mirrorable(saved)
             if mirrorable.count != saved.count {
                 log("headless_placeholder_skipped", "ids=\(saved.filter(HeadlessPlaceholder.isPlaceholder).map(\.id))")
             }
-            let targets = try DisplayTransition.targets(source: ready.source, dimensions: dimensions, physical: mirrorable, selectedMode: ready.mode)
-            if injectFailure { throw FitError.message("测试：模拟屏幕切换失败") }
-            try commit(targets)
-            try verifyTransition(targets, sourceID: sourceID)
+            let selected: DisplayMode
+            if topology == .extended {
+                selected = try startExtended(dimensions, physical: mirrorable, policy: policy, injectFailure: injectFailure)
+            } else {
+                virtualDisplay = try createDisplay(dimensions, policy: policy)
+                guard let sourceID = virtualDisplay?.displayID else { throw FitError.message("无法创建虚拟屏幕。") }
+                let ready = try readySource(id: sourceID, dimensions: dimensions, policy: policy)
+                let targets = try DisplayTransition.targets(source: ready.source, dimensions: dimensions, physical: mirrorable, selectedMode: ready.mode)
+                if injectFailure { throw FitError.message("测试：模拟屏幕切换失败") }
+                try commit(targets)
+                try verifyTransition(targets, sourceID: sourceID)
+                selected = ready.mode
+                activeTopology = .mirrorAll
+            }
             applied = dimensions
-            appliedMode = ready.mode
+            appliedMode = selected
             lastDisplayWork = ProcessInfo.processInfo.systemUptime
-            log("activated", "\(dimensions.label) seconds=\(String(format: "%.3f", ProcessInfo.processInfo.systemUptime - start))")
+            log("activated", "\(dimensions.label) topology=\(topology.rawValue) seconds=\(String(format: "%.3f", ProcessInfo.processInfo.systemUptime - start))")
         } catch {
             log("activation_failed", error.localizedDescription)
             // The half-made display is never kept, even when restoration is deferred.
-            virtualDisplay = nil; applied = nil
+            virtualDisplay = nil; applied = nil; activeTopology = .mirrorAll
             do { try restore() } catch { throw FitError.message("适配未能完成，且桌面还原异常：\(error.localizedDescription)") }
             throw error
         }
     }
-    private func replaceDisplay(_ dimensions: Dimensions, injectFailure: Bool, injectFailureAfterSwitch: Bool) throws {
+    private func replaceDisplay(_ dimensions: Dimensions, injectFailure: Bool, injectFailureAfterSwitch: Bool, topology: DisplayTopology = .mirrorAll) throws {
+        if topology != .mirrorAll || activeTopology != .mirrorAll {
+            try replaceTopology(dimensions, injectFailure: injectFailure, injectFailureAfterSwitch: injectFailureAfterSwitch, topology: topology)
+            return
+        }
         guard let previous = applied, let previousID = virtualDisplay?.displayID else { throw FitError.message("尚未应用分辨率") }
         let recoveryData = try Data(contentsOf: sessionURL)
         let before = HeadlessPlaceholder.ignoringPlaceholders(try snapshot())
@@ -301,6 +326,7 @@ actor DisplayEngine {
             try verifyTransition(targets.filter { $0.id != previousID }, sourceID: candidateID, disappearingID: previousID)
             applied = dimensions
             appliedMode = ready.mode
+            activeTopology = .mirrorAll
             log("display_handoff", "old=\(previousID) new=\(candidateID) physical_restore=false")
             log("display_replacement_complete", dimensions.label)
         } catch {
@@ -345,7 +371,7 @@ actor DisplayEngine {
         guard hasSession() else {
             // No restore point means nothing may keep our display alive.
             if virtualDisplay != nil { log("own_virtual_released", "no_session"); virtualDisplay = nil }
-            applied = nil; pendingRestore = false; try restoreFullHeightIfNeeded(); return true
+            applied = nil; activeTopology = .mirrorAll; pendingRestore = false; try restoreFullHeightIfNeeded(); return true
         }
         let saved = try JSONDecoder().decode([DisplayState].self, from: Data(contentsOf: sessionURL))
         if try headless(saved: saved) {
@@ -359,6 +385,7 @@ actor DisplayEngine {
             do {
                 virtualDisplay = nil
                 applied = nil
+                activeTopology = .mirrorAll
                 Thread.sleep(forTimeInterval: 0.2)
                 var live = try snapshot()
                 // Migrate recovery snapshots from earlier versions using hardware identity.
@@ -412,7 +439,7 @@ actor DisplayEngine {
             let failed = root.appendingPathComponent("session.failed.json")
             try? FileManager.default.removeItem(at: failed)
             try? FileManager.default.moveItem(at: sessionURL, to: failed)
-            applied = nil; pendingRestore = false
+            applied = nil; activeTopology = .mirrorAll; pendingRestore = false
             lastDisplayWork = ProcessInfo.processInfo.systemUptime
             log("restore_abandoned", "live=\(Self.layout(live)) reason=\(last.localizedDescription)")
             return true
@@ -468,12 +495,12 @@ actor DisplayEngine {
             return report(hasSession() ? "待还原屏幕" : "检测未通过", detail: error.localizedDescription)
         }
     }
-    func apply(_ dimensions: Dimensions) -> EngineStatus {
+    func apply(_ dimensions: Dimensions, topology: DisplayTopology = .mirrorAll) -> EngineStatus {
         guard !shuttingDown else { return report("正在还原…") }
         let ready = initialize()
         guard ready.detail == nil else { return ready }
         do {
-            if applied != dimensions { try activate(dimensions) }
+            if applied != dimensions || activeTopology != topology { try activate(dimensions, topology: topology) }
             let standard = appliedMode.map { $0.pixelWidth == $0.width } ?? false
             return report("已应用 · \(dimensions.label)" + (standard ? " · 标准清晰度" : ""))
         } catch {
@@ -482,6 +509,192 @@ actor DisplayEngine {
         }
     }
     func shutdown() throws { shuttingDown = true; do { _ = try restore() } catch { shuttingDown = false; throw error } }
+    /// One unmirrored framebuffer per physical display, each at the target size, arranged from the saved layout.
+    /// Panels are bound 1:1 so they show that framebuffer; they do not share a single mirror source.
+    private func startExtended(_ dimensions: Dimensions, physical: [DisplayState], policy: ZeroDisplayActivation, injectFailure: Bool) throws -> DisplayMode {
+        let slots = DisplayTopology.slots(topology: .extended, physical: physical, dimensions: dimensions)
+        var created: [RFVirtualDisplay] = []
+        for _ in slots {
+            let display = try createDisplay(dimensions, policy: policy)
+            created.append(display)
+            heldVirtualDisplays = created
+        }
+        var readies: [ReadyVirtualDisplay] = []
+        for display in created {
+            guard display.displayID != 0 else { throw FitError.message("无法创建虚拟屏幕。") }
+            readies.append(try readySource(id: display.displayID, dimensions: dimensions, policy: policy))
+        }
+        let targets = try DisplayTopology.targets(topology: .extended, sources: readies.map(\.source), modes: readies.map(\.mode), dimensions: dimensions, physical: physical)
+        if injectFailure { throw FitError.message("测试：模拟屏幕切换失败") }
+        try commit(targets)
+        guard let main = targets.first(where: { $0.main && !$0.physical }),
+              let ready = readies.first(where: { $0.source.id == main.id }) else {
+            throw FitError.message("无法创建虚拟屏幕。")
+        }
+        try verifyTransition(targets, sourceID: main.id, topology: .extended)
+        activeTopology = .extended
+        log("display_topology", "extended virtuals=\(created.count) physical=\(physical.count)")
+        return ready.mode
+    }
+
+    /// Swap framebuffers while a session is already up, including mirror-all ↔ extended.
+    /// The recovery snapshot (pre-session physical layout) is not rewritten.
+    private func replaceTopology(_ dimensions: Dimensions, injectFailure: Bool, injectFailureAfterSwitch: Bool, topology: DisplayTopology) throws {
+        guard let previous = applied, !heldVirtualDisplays.isEmpty else { throw FitError.message("尚未应用分辨率") }
+        let previousTopology = activeTopology
+        // Keep the old framebuffers alive until the new plan is verified, then drop this retain so they can disconnect.
+        var previousHeld: [RFVirtualDisplay]? = heldVirtualDisplays
+        let previousIDs = previousHeld?.map(\.displayID) ?? []
+        let recoveryData = try Data(contentsOf: sessionURL)
+        let saved = try JSONDecoder().decode([DisplayState].self, from: recoveryData)
+        let live = HeadlessPlaceholder.ignoringPlaceholders(try snapshot())
+        guard sessionIntact(live: live, ownedIDs: previousIDs, topology: previousTopology) else {
+            throw FitError.message("显示器布局已变化，请先还原屏幕")
+        }
+        let physical = try sessionArrangement(saved: saved, live: live)
+        let previousSources = try ownedSources(topology: previousTopology, live: live, ownedIDs: previousIDs, physical: physical, dimensions: previous)
+        log("display_replacement_start", "\(previous.label) -> \(dimensions.label) topology=\(topology.rawValue)")
+        var created: [RFVirtualDisplay] = []
+        var committed = false
+        var releasedOld = false
+        do {
+            let slots = DisplayTopology.slots(topology: topology, physical: physical, dimensions: dimensions)
+            for _ in slots {
+                let display = try createDisplay(dimensions)
+                created.append(display)
+                heldVirtualDisplays = (previousHeld ?? []) + created
+            }
+            var readies: [ReadyVirtualDisplay] = []
+            for display in created {
+                guard display.displayID != 0 else { throw FitError.message("无法创建虚拟屏幕。") }
+                readies.append(try readySource(id: display.displayID, dimensions: dimensions))
+            }
+            let targets = try DisplayTopology.targets(topology: topology, sources: readies.map(\.source), modes: readies.map(\.mode),
+                                                     dimensions: dimensions, physical: physical, retiring: previousSources)
+            if injectFailure { throw FitError.message("测试：模拟屏幕切换失败") }
+            try commit(targets)
+            committed = true
+            guard let main = targets.first(where: { $0.main && !$0.physical }) else { throw FitError.message("无法创建虚拟屏幕。") }
+            try verifyTransition(targets, sourceID: main.id, topology: topology)
+            if injectFailureAfterSwitch { throw FitError.message("测试：模拟屏幕交接后失败") }
+            heldVirtualDisplays = created
+            previousHeld = nil
+            releasedOld = true
+            let settled = targets.filter { !previousIDs.contains($0.id) }
+            try verifyTransition(settled, sourceID: main.id, disappearingIDs: Set(previousIDs), topology: topology)
+            applied = dimensions
+            appliedMode = readies.first { $0.source.id == main.id }?.mode
+            activeTopology = topology
+            log("display_handoff", "old=\(previousIDs) new=\(created.map(\.displayID)) physical_restore=false topology=\(topology.rawValue)")
+            log("display_replacement_complete", dimensions.label)
+        } catch {
+            let failure = error
+            log("display_replacement_failed", failure.localizedDescription)
+            var recovered = false
+            if !releasedOld {
+                do {
+                    if committed {
+                        let retiringNew = try snapshotStates(ids: created.map(\.displayID))
+                        let rollback = try DisplayTopology.targets(topology: previousTopology, sources: previousSources, modes: previousSources.map(\.mode),
+                                                                   dimensions: previous, physical: physical, retiring: retiringNew)
+                        try commit(rollback)
+                        guard let oldMain = rollback.first(where: { $0.main && !$0.physical }) else { throw FitError.message("尚未应用分辨率") }
+                        try verifyTransition(rollback, sourceID: oldMain.id, topology: previousTopology)
+                    }
+                    let newIDs = Set(created.map(\.displayID))
+                    heldVirtualDisplays = previousHeld ?? []
+                    created = []
+                    let settled = try DisplayTopology.targets(topology: previousTopology, sources: previousSources, modes: previousSources.map(\.mode),
+                                                             dimensions: previous, physical: physical)
+                    guard let oldMain = settled.first(where: { $0.main && !$0.physical }) else { throw FitError.message("尚未应用分辨率") }
+                    try verifyTransition(settled, sourceID: oldMain.id, disappearingIDs: newIDs, topology: previousTopology)
+                    applied = previous
+                    appliedMode = previousSources.first { $0.id == oldMain.id }?.mode ?? previousSources.first?.mode
+                    activeTopology = previousTopology
+                    recovered = true
+                    log("display_replacement_rolled_back", "\(previous.label) source_retained=true")
+                } catch { log("display_handoff_recovery_failed", error.localizedDescription) }
+            }
+            if recovered { throw failure }
+            // Drop every framebuffer we still own before the full restore, including the local retains.
+            heldVirtualDisplays = []
+            created = []
+            previousHeld = nil
+            do {
+                try restore()
+                try activate(previous, recoveryData: recoveryData, topology: previousTopology)
+                log("display_replacement_rolled_back", "\(previous.label) source_retained=false")
+            } catch {
+                log("display_replacement_rollback_failed", error.localizedDescription)
+                throw FitError.message("切换及恢复上次规格失败：\(error.localizedDescription)")
+            }
+            throw failure
+        }
+    }
+
+    private func snapshotStates(ids: [UInt32]) throws -> [DisplayState] {
+        let live = try snapshot()
+        let states = ids.compactMap { id in live.first(where: { $0.id == id }) }
+        guard states.count == ids.count, states.allSatisfy({ !$0.physical }) else {
+            throw FitError.message("显示器布局已变化，请先还原屏幕")
+        }
+        return states
+    }
+
+    /// Pre-session physical layout, remapped onto the displays that are online now.
+    private func sessionArrangement(saved: [DisplayState], live: [DisplayState]) throws -> [DisplayState] {
+        let savedPhysical = HeadlessPlaceholder.mirrorable(saved).filter(\.physical)
+        guard !savedPhysical.isEmpty else { return [] }
+        return try RestorePlan.targets(saved: savedPhysical, live: live)
+    }
+
+    private func sessionIntact(live: [DisplayState], ownedIDs: [UInt32], topology: DisplayTopology) -> Bool {
+        let owned = live.filter { ownedIDs.contains($0.id) }
+        guard owned.count == ownedIDs.count, owned.allSatisfy({ !$0.physical && $0.mirror == 0 }) else { return false }
+        let others = live.filter { !ownedIDs.contains($0.id) }
+        switch topology {
+        case .mirrorAll:
+            guard owned.count == 1, let source = owned.first, source.main else { return false }
+            return others.allSatisfy { $0.physical && ($0.mirror == source.id || $0.mirror == 0) }
+                && (others.contains { $0.mirror == source.id } || others.isEmpty)
+        case .extended:
+            guard owned.filter(\.main).count == 1, others.allSatisfy(\.physical) else { return false }
+            if others.isEmpty { return owned.count == 1 }
+            return Set(others.map(\.mirror)) == Set(ownedIDs)
+        }
+    }
+
+    /// Owned framebuffers in slot order, so a later plan lines up with the panels they already drive.
+    private func ownedSources(topology: DisplayTopology, live: [DisplayState], ownedIDs: [UInt32], physical: [DisplayState], dimensions: Dimensions) throws -> [DisplayState] {
+        let owned = ownedIDs.compactMap { id in live.first(where: { $0.id == id }) }
+        guard owned.count == ownedIDs.count, owned.allSatisfy({ !$0.physical && $0.mirror == 0 }) else {
+            throw FitError.message("显示器布局已变化，请先还原屏幕")
+        }
+        switch topology {
+        case .mirrorAll:
+            guard owned.count == 1, owned[0].main else { throw FitError.message("显示器布局已变化，请先还原屏幕") }
+            return owned
+        case .extended:
+            let slots = DisplayTopology.slots(topology: .extended, physical: physical, dimensions: dimensions)
+            if physical.isEmpty {
+                guard slots.count == 1, owned.count == 1 else { throw FitError.message("显示器布局已变化，请先还原屏幕") }
+                return owned
+            }
+            var mirrorByPhysical: [UInt32: UInt32] = [:]
+            for state in live where state.physical { mirrorByPhysical[state.id] = state.mirror }
+            var ordered: [DisplayState] = []
+            for slot in slots {
+                guard let physicalID = slot.physicalID, let mirror = mirrorByPhysical[physicalID],
+                      let source = owned.first(where: { $0.id == mirror }) else {
+                    throw FitError.message("显示器布局已变化，请先还原屏幕")
+                }
+                ordered.append(source)
+            }
+            guard Set(ordered.map(\.id)).count == ordered.count else { throw FitError.message("显示器布局已变化，请先还原屏幕") }
+            return ordered
+        }
+    }
+
     func smokeManual() throws {
         var preferences = Preferences()
         let custom = CustomPreset(name: "Native smoke", width: 1366, height: 768)

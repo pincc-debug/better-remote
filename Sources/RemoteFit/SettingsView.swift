@@ -281,6 +281,7 @@ struct SettingsView: View {
 
                 ScrollView {
                   VStack(alignment: .leading, spacing: 12) {
+                MultiDisplayExtendSetting(model: model, narrow: narrow)
                 if !model.preferences.customPresets.isEmpty {
                     VStack(spacing: 2) {
                         ForEach(model.preferences.customPresets) { preset in

@@ -115,6 +115,8 @@ struct ResolutionPanelView: View {
                         )
                     }
 
+                    MultiDisplayExtendSetting(model: model, style: .panel)
+
                     if let detail = model.detail {
                         Text(detail)
                             .font(.system(size: DesignTokens.fontCaption))
@@ -195,6 +197,57 @@ struct ResolutionPanelView: View {
     private func selectCustom(_ id: String, alreadySelected: Bool) {
         if alreadySelected { close(); return }
         model.onCustom(id)
+    }
+}
+
+/// 多屏保持扩展. Settings page uses the shared setting row; the resolution panel uses a compact row in the same group.
+struct MultiDisplayExtendSetting: View {
+    @ObservedObject var model: ControlPanelModel
+    var style: Style = .settings
+    var narrow = false
+    enum Style { case settings, panel }
+
+    private var isOn: Binding<Bool> {
+        Binding(get: { model.preferences.keepMultiDisplayExtended }, set: { model.onKeepMultiDisplayExtended($0) })
+    }
+
+    var body: some View {
+        switch style {
+        case .settings:
+            VStack(alignment: .leading, spacing: 0) {
+                SettingsView.settingRow(MultiDisplayExtendCopy.title, symbol: "rectangle.split.2x1") {
+                    Toggle(MultiDisplayExtendCopy.title, isOn: isOn)
+                        .labelsHidden()
+                        .toggleStyle(StableBlueSwitchStyle(tooltip: MultiDisplayExtendCopy.footnote))
+                        .accessibilityHint(MultiDisplayExtendCopy.footnote)
+                }
+                Text(MultiDisplayExtendCopy.footnote)
+                    .font(.system(size: DesignTokens.fontCaption))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.leading, narrow ? 14 : 54)
+                    .padding(.trailing, 14)
+                    .padding(.bottom, 12)
+            }
+            .cardSurface()
+        case .panel:
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 12) {
+                    Text(MultiDisplayExtendCopy.title)
+                        .font(.system(size: DesignTokens.fontBody, weight: .medium))
+                        .foregroundStyle(DesignTokens.Colors.textPrimary)
+                    Spacer(minLength: 8)
+                    Toggle(MultiDisplayExtendCopy.title, isOn: isOn)
+                        .labelsHidden()
+                        .toggleStyle(StableBlueSwitchStyle(tooltip: MultiDisplayExtendCopy.footnote))
+                        .accessibilityHint(MultiDisplayExtendCopy.footnote)
+                }
+                Text(MultiDisplayExtendCopy.footnote)
+                    .font(.system(size: DesignTokens.fontCaption))
+                    .foregroundStyle(DesignTokens.Colors.textSecondary.opacity(0.75))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 }
 

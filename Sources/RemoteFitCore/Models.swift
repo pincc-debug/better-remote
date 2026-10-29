@@ -143,6 +143,9 @@ public struct Preferences: Codable, Equatable, Sendable {
     public var autoFillWindowsOnRemote: Bool = false
     /// Restore the computer screen when the remote connection ends. On by default.
     public var autoRestoreOnDisconnect: Bool = true
+    /// 多屏保持扩展. Off (default): one virtual source, every physical display mirrors it.
+    /// On: each screen is its own desktop at the same target size. Missing key stays off.
+    public var keepMultiDisplayExtended: Bool = false
     /// UU Remote: one-finger swipe scrolls, long press drags. Off by default.
     public var uuTouchScrollEnabled: Bool = false
     /// Optional slowdown for UU native wheel events, independent of one-finger conversion.
@@ -168,7 +171,7 @@ public struct Preferences: Codable, Equatable, Sendable {
             autoResolutionPresetID = customPresets.first?.id
         }
     }
-    private enum CodingKeys: String, CodingKey { case applicationShortcutsEnabled, applicationShortcuts, theme, toolbarSide, preset, size, customPresets, selectedCustomID, floatingActions, namedShortcuts, operationOrder, floatingActionIcons, seededFactorySpecs, autoResolutionEnabled, remoteDevices, deviceResolutionEnabled, defaultResolutionEnabled, autoResolutionPresetID, connectionDockMode, toolbarWhenConnected, toolbarWhenDisconnected, autoFillWindowsOnRemote, uuTouchScrollEnabled, uuScrollSpeedPercent, remoteScrollReversed, autoRestoreOnDisconnect, showWindowControls, seededMinimizeAction, seededShowDesktopAction }
+    private enum CodingKeys: String, CodingKey { case applicationShortcutsEnabled, applicationShortcuts, theme, toolbarSide, preset, size, customPresets, selectedCustomID, floatingActions, namedShortcuts, operationOrder, floatingActionIcons, seededFactorySpecs, autoResolutionEnabled, remoteDevices, deviceResolutionEnabled, defaultResolutionEnabled, autoResolutionPresetID, connectionDockMode, toolbarWhenConnected, toolbarWhenDisconnected, autoFillWindowsOnRemote, uuTouchScrollEnabled, uuScrollSpeedPercent, remoteScrollReversed, autoRestoreOnDisconnect, keepMultiDisplayExtended, showWindowControls, seededMinimizeAction, seededShowDesktopAction }
     /// Pre-0.8.138 toolbar keys and the pre-0.8.146 Dock toggle, read once to migrate and never written again.
     private enum LegacyKeys: String, CodingKey { case autoExpandToolbarOnConnect, autoManageToolbarOnDisconnect, autoShowDockOnConnect, uuScrollSpeedEnabled }
     /// 连接时展开 on → 远程连接时显示 on; 断开时收起 off → 未连接时显示 on. Missing keys use the old defaults (on / on).
@@ -222,6 +225,7 @@ public struct Preferences: Codable, Equatable, Sendable {
         if try legacy.decodeIfPresent(Bool.self, forKey: .uuScrollSpeedEnabled) == false { uuScrollSpeedPercent = 100 }
         remoteScrollReversed = try c.decodeIfPresent(Bool.self, forKey: .remoteScrollReversed) ?? false
         autoRestoreOnDisconnect = try c.decodeIfPresent(Bool.self, forKey: .autoRestoreOnDisconnect) ?? true
+        keepMultiDisplayExtended = try c.decodeIfPresent(Bool.self, forKey: .keepMultiDisplayExtended) ?? false
         showWindowControls = try c.decodeIfPresent(Bool.self, forKey: .showWindowControls) ?? true
         seededMinimizeAction = try c.decodeIfPresent(Bool.self, forKey: .seededMinimizeAction) ?? false
         if !seededMinimizeAction {

@@ -318,6 +318,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         startNativeScroll()
         renderMenu()
     }
+    private var displayTopology: DisplayTopology { preferences.keepMultiDisplayExtended ? .extended : .mirrorAll }
     private func save() {
         do { try JSONEncoder().encode(preferences).write(to: root.appendingPathComponent("preferences.json"), options: .atomic) }
         catch { status = .init(title: "设置保存失败", detail: error.localizedDescription) }
@@ -610,6 +611,12 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             var next = preferences
             next.remoteDevices[index].presetID = next.customPresets.contains(where: { $0.id == presetID }) ? presetID : nil
             saveAutomaticPreferences(next)
+        }
+        panelModel.onKeepMultiDisplayExtended = { [weak self] enabled in
+            guard let self, enabled != preferences.keepMultiDisplayExtended else { return }
+            preferences.keepMultiDisplayExtended = enabled
+            save()
+            if status.applied != nil { applyManually(dismissPanel: false) }
         }
         panelModel.onAutoRestoreToggle = { [weak self] enabled in
             guard let self else { return }
@@ -1168,7 +1175,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         Task { [weak self] in
             guard let self else { return }
             guard generation == self.applyGeneration, !self.terminating else { return }
-            let result = await self.engine.apply(self.adjustment.dimensions)
+            let topology = self.displayTopology
+            let result = await self.engine.apply(self.adjustment.dimensions, topology: topology)
             guard generation == self.applyGeneration else { return }
             self.status = result
             if result.detail == nil, let applied = result.applied { self.startDisplayDiagnostics(applied, reason: "manual_apply") }
@@ -1408,7 +1416,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 await engine.log("automatic_apply_start", dimensions.label)
-                let result = await engine.apply(dimensions)
+                let topology = self.displayTopology
+                let result = await engine.apply(dimensions, topology: topology)
                 await engine.log("automatic_apply_result", result.detail == nil ? "success" : "failed")
                 guard !terminating, generation == applyGeneration else { return }
                 status = result
