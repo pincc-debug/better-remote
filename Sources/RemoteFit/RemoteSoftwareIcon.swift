@@ -1,14 +1,15 @@
 import AppKit
 import RemoteFitCore
 
-/// Shipped software marks for the device-list card. Drawn at 16pt in a 28pt top bar.
+/// Shipped UU / RustDesk marks. 16pt badge on the preview’s bottom-left, 8pt from those edges.
 /// Bitmaps are 32 (@2x), 64, and 128 so higher-density screens can pick a sharper rep.
 @MainActor
 enum RemoteSoftwareIcon {
     static let pointSize: CGFloat = 16
-    /// Squircle corner, about 22% of the 16pt side, matching the white-backed AppIcon artwork.
-    static let cornerRadius: CGFloat = 3.6
+    static let cornerRadius: CGFloat = 4
+    static let inset: CGFloat = 8
     static let borderWidth: CGFloat = 0.5
+    static let borderOpacity: CGFloat = 0.2
 
     private static var cache: [RemoteSoftware: NSImage] = [:]
 

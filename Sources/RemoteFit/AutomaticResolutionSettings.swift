@@ -81,10 +81,6 @@ struct DeviceListSettings: View {
         let enabled = model.preferences.appliesConfiguration(for: id)
         return VStack(spacing: 12) {
             HStack(spacing: 8) {
-                if let id, let software = RemoteSoftware.savedDeviceSoftware(for: id) {
-                    RemoteSoftwareBadge(software: software)
-                        .layoutPriority(1)
-                }
                 Text(name).font(.system(size: DesignTokens.fontBody, weight: .semibold))
                     .lineLimit(1).truncationMode(.middle).help(name)
                 if let id, model.preferences.remoteDevices.first(where: { $0.id == id })?.isNew == true {
@@ -114,7 +110,7 @@ struct DeviceListSettings: View {
                     .accessibilityLabel("\(name)的更多操作")
             }.frame(height: 28)
             Button { navigate(id ?? defaultID) } label: {
-                DeviceScreenPreview(dimensions: dimensions, identity: id ?? defaultID)
+                DeviceScreenPreview(dimensions: dimensions, identity: id ?? defaultID, software: id.flatMap(RemoteSoftware.savedDeviceSoftware(for:)))
                     .frame(maxWidth: .infinity)
                     .contentShape(Rectangle())
             }.buttonStyle(.plain).accessibilityLabel("配置\(name)")
@@ -127,19 +123,23 @@ struct DeviceListSettings: View {
     }
 }
 
-/// Software mark on the device card’s top bar, left of the name. 16pt in the 28pt bar.
+/// 16pt software mark on the preview silhouette’s bottom-left corner.
 private struct RemoteSoftwareBadge: View {
     var software: RemoteSoftware
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         if let image = RemoteSoftwareIcon.image(for: software) {
+            let shape = RoundedRectangle(cornerRadius: RemoteSoftwareIcon.cornerRadius, style: .continuous)
             Image(nsImage: image)
                 .interpolation(.high)
                 .frame(width: RemoteSoftwareIcon.pointSize, height: RemoteSoftwareIcon.pointSize)
+                .clipShape(shape)
                 .overlay {
-                    RoundedRectangle(cornerRadius: RemoteSoftwareIcon.cornerRadius, style: .continuous)
-                        .strokeBorder(Color.black.opacity(colorScheme == .dark ? 0 : 0.12), lineWidth: RemoteSoftwareIcon.borderWidth)
+                    shape.strokeBorder(
+                        (colorScheme == .dark ? Color.white : Color.black).opacity(RemoteSoftwareIcon.borderOpacity),
+                        lineWidth: RemoteSoftwareIcon.borderWidth
+                    )
                 }
                 .accessibilityLabel(software.title)
                 .help(software.title)
@@ -151,6 +151,8 @@ private struct RemoteSoftwareBadge: View {
 private struct DeviceScreenPreview: View {
     var dimensions: Dimensions
     var identity: String
+    /// UU or RustDesk only. Nil on the default-configuration card.
+    var software: RemoteSoftware? = nil
 
     /// Main display point size (what Better Remote treats as the live desktop resolution).
     static var currentScreenDimensions: Dimensions {
@@ -202,6 +204,13 @@ private struct DeviceScreenPreview: View {
         .overlay { RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.black.opacity(0.85), lineWidth: 3) }
         .overlay { RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.white.opacity(0.65), lineWidth: 0.7) }
         .frame(width: size.width, height: size.height)
+        .overlay(alignment: .bottomLeading) {
+            if let software {
+                RemoteSoftwareBadge(software: software)
+                    .padding(.leading, RemoteSoftwareIcon.inset)
+                    .padding(.bottom, RemoteSoftwareIcon.inset)
+            }
+        }
         .frame(width: 164, height: 152)
     }
 

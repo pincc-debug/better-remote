@@ -17,7 +17,10 @@ final class RemoteSoftwareIconTests: XCTestCase {
             XCTAssertEqual(loaded?.isTemplate, false)
         }
         XCTAssertEqual(RemoteSoftwareIcon.pointSize, 16)
+        XCTAssertEqual(RemoteSoftwareIcon.cornerRadius, 4)
+        XCTAssertEqual(RemoteSoftwareIcon.inset, 8)
         XCTAssertEqual(RemoteSoftwareIcon.borderWidth, 0.5)
+        XCTAssertEqual(RemoteSoftwareIcon.borderOpacity, 0.2)
         XCTAssertNotNil(RemoteSoftwareIcon.image(for: .uu))
         XCTAssertNotNil(RemoteSoftwareIcon.image(for: .rustDesk))
         XCTAssertNil(RemoteSoftwareIcon.image(for: .toDesk))
