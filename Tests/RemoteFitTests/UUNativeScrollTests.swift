@@ -84,7 +84,7 @@ final class UUNativeScrollTests: XCTestCase {
         XCTAssertFalse(apply(engine, event(y: 1, x: 0)))
     }
 
-    // MARK: - 反转远程滚动方向
+    // MARK: - 反转滚动方向
 
     private struct Deltas: Equatable {
         var line1, line2, point1, point2: Int64

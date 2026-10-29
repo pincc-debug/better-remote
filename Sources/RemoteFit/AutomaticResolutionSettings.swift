@@ -266,18 +266,19 @@ struct DeviceConfigurationSettings: View {
                     }
                 }
                 section("触控") {
-                    toggle("单指滚动", symbol: "hand.draw", key: \.uuTouchScrollEnabled)
+                    VStack(spacing: 0) {
+                        toggle("单指滚动", symbol: "hand.draw", key: \.uuTouchScrollEnabled)
+                        Divider().padding(.leading, 54)
+                        HStack(spacing: 12) {
+                            Text("反转滚动方向").font(.system(size: DesignTokens.fontBody, weight: .medium)).lineLimit(1)
+                            Spacer(minLength: 0)
+                            Toggle("反转滚动方向", isOn: binding(\.remoteScrollReversed))
+                                .labelsHidden().toggleStyle(StableBlueSwitchStyle())
+                        }
+                        .padding(.horizontal, 14).padding(.vertical, 10)
+                    }
                 }
                 UUScrollSpeedSettings(percent: binding(\.uuScrollSpeedPercent))
-                SettingsView.settingCard {
-                    HStack(spacing: 12) {
-                        Text("反转远程滚动方向").font(.system(size: DesignTokens.fontBody, weight: .medium)).lineLimit(1)
-                        Spacer(minLength: 0)
-                        Toggle("反转远程滚动方向", isOn: binding(\.remoteScrollReversed))
-                            .labelsHidden().toggleStyle(StableBlueSwitchStyle())
-                    }
-                    .padding(.horizontal, 14).padding(.vertical, 10)
-                }
                 section("窗口") {
                     toggle("远程时窗口自动铺满", symbol: "arrow.up.left.and.arrow.down.right.square", key: \.autoFillWindowsOnRemote)
                 }

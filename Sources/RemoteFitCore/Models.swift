@@ -147,7 +147,7 @@ public struct Preferences: Codable, Equatable, Sendable {
     public var uuTouchScrollEnabled: Bool = false
     /// Optional slowdown for UU native wheel events, independent of one-finger conversion.
     public var uuScrollSpeedPercent: Int = UUScrollScaling.defaultPercent
-    /// 反转远程滚动方向: negate both axes of UU-injected wheel events while connected. Off by default.
+    /// 反转滚动方向: negate both axes of UU-injected wheel events while connected. Off by default.
     public var remoteScrollReversed: Bool = false
     /// Fixed close / minimize / full-screen group on the toolbar. On by default.
     public var showWindowControls: Bool = true

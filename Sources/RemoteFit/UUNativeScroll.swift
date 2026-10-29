@@ -44,7 +44,7 @@ final class UUNativeScroll: @unchecked Sendable {
         }
     }
 
-    /// 反转远程滚动方向. Applies to the same UU-sourced events as speed scaling, never to local input.
+    /// 反转滚动方向. Applies to the same UU-sourced events as speed scaling, never to local input.
     func setReversed(_ value: Bool) {
         thread.sync {
             guard self.reversed != value else { return }
