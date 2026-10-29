@@ -89,6 +89,8 @@ public struct DeviceConfiguration: Codable, Equatable, Sendable {
     public var autoRestoreOnDisconnect: Bool
     public var uuTouchScrollEnabled: Bool
     public var uuScrollSpeedPercent: Int
+    /// Missing in configurations saved before 0.9.3 → off.
+    public var remoteScrollReversed: Bool
     public var autoFillWindowsOnRemote: Bool
     public var connectionDockMode: ConnectionDockMode
     public var toolbarWhenConnected: Bool
@@ -100,6 +102,7 @@ public struct DeviceConfiguration: Codable, Equatable, Sendable {
         autoRestoreOnDisconnect = preferences.autoRestoreOnDisconnect
         uuTouchScrollEnabled = preferences.uuTouchScrollEnabled
         uuScrollSpeedPercent = preferences.uuScrollSpeedPercent
+        remoteScrollReversed = preferences.remoteScrollReversed
         autoFillWindowsOnRemote = preferences.autoFillWindowsOnRemote
         connectionDockMode = preferences.connectionDockMode
         toolbarWhenConnected = preferences.toolbarWhenConnected
@@ -114,11 +117,32 @@ public struct DeviceConfiguration: Codable, Equatable, Sendable {
         result.autoRestoreOnDisconnect = autoRestoreOnDisconnect
         result.uuTouchScrollEnabled = uuTouchScrollEnabled
         result.uuScrollSpeedPercent = UUScrollScaling.clampedPercent(uuScrollSpeedPercent)
+        result.remoteScrollReversed = remoteScrollReversed
         result.autoFillWindowsOnRemote = autoFillWindowsOnRemote
         result.connectionDockMode = connectionDockMode
         result.toolbarWhenConnected = toolbarWhenConnected
         result.toolbarSide = toolbarSide
         return result
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case autoResolutionEnabled, autoResolutionPresetID, autoRestoreOnDisconnect, uuTouchScrollEnabled, uuScrollSpeedPercent,
+             remoteScrollReversed, autoFillWindowsOnRemote, connectionDockMode, toolbarWhenConnected, toolbarSide
+    }
+
+    /// Same strictness as the synthesized decoder for existing keys; keys added later are optional.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        autoResolutionEnabled = try c.decode(Bool.self, forKey: .autoResolutionEnabled)
+        autoResolutionPresetID = try c.decodeIfPresent(String.self, forKey: .autoResolutionPresetID)
+        autoRestoreOnDisconnect = try c.decode(Bool.self, forKey: .autoRestoreOnDisconnect)
+        uuTouchScrollEnabled = try c.decode(Bool.self, forKey: .uuTouchScrollEnabled)
+        uuScrollSpeedPercent = try c.decode(Int.self, forKey: .uuScrollSpeedPercent)
+        remoteScrollReversed = try c.decodeIfPresent(Bool.self, forKey: .remoteScrollReversed) ?? false
+        autoFillWindowsOnRemote = try c.decode(Bool.self, forKey: .autoFillWindowsOnRemote)
+        connectionDockMode = try c.decode(ConnectionDockMode.self, forKey: .connectionDockMode)
+        toolbarWhenConnected = try c.decode(Bool.self, forKey: .toolbarWhenConnected)
+        toolbarSide = try c.decode(ToolbarSide.self, forKey: .toolbarSide)
     }
 }
 
@@ -186,6 +210,7 @@ extension Preferences {
         result.autoRestoreOnDisconnect = false
         result.uuTouchScrollEnabled = false
         result.uuScrollSpeedPercent = 100
+        result.remoteScrollReversed = false
         result.autoFillWindowsOnRemote = false
         result.connectionDockMode = .keep
         result.toolbarWhenConnected = toolbarWhenDisconnected
@@ -203,6 +228,8 @@ extension Preferences {
 
 extension DeviceConfiguration {
     public var selectedResolutionID: String? { autoResolutionEnabled ? autoResolutionPresetID : nil }
+    /// The UU wheel tap runs only while connected and only when it changes something.
+    public var needsNativeScroll: Bool { uuScrollSpeedPercent < 100 || remoteScrollReversed }
     public mutating func selectResolution(_ id: String?) {
         autoResolutionPresetID = id
         autoResolutionEnabled = id != nil

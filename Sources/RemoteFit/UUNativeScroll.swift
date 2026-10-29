@@ -18,6 +18,7 @@ final class UUNativeScroll: @unchecked Sendable {
     private var runLoopSource: CFRunLoopSource?
     private var accumulator = UUScrollAccumulator()
     private var percent = UUScrollScaling.defaultPercent
+    private var reversed = false
     private var adjusted = 0
     private var sources: [Int32: (time: TimeInterval, matches: Bool)] = [:]
 
@@ -41,6 +42,30 @@ final class UUNativeScroll: @unchecked Sendable {
             self.percent = value
             self.accumulator.reset()
         }
+    }
+
+    /// 反转远程滚动方向. Applies to the same UU-sourced events as speed scaling, never to local input.
+    func setReversed(_ value: Bool) {
+        thread.sync {
+            guard self.reversed != value else { return }
+            self.reversed = value
+            self.accumulator.reset()
+        }
+    }
+
+    /// Both axes, all three delta representations (line, point, fixed-point). Phases, flags,
+    /// location and routing stay untouched. Values are read before any write because Quartz
+    /// may derive one representation from another on set.
+    static func reverseAxes(_ event: CGEvent) {
+        let lines: [CGEventField] = [.scrollWheelEventDeltaAxis1, .scrollWheelEventDeltaAxis2]
+        let points: [CGEventField] = [.scrollWheelEventPointDeltaAxis1, .scrollWheelEventPointDeltaAxis2]
+        let fixed: [CGEventField] = [.scrollWheelEventFixedPtDeltaAxis1, .scrollWheelEventFixedPtDeltaAxis2]
+        let lineValues = lines.map { event.getIntegerValueField($0) }
+        let pointValues = points.map { event.getIntegerValueField($0) }
+        let fixedValues = fixed.map { event.getDoubleValueField($0) }
+        for (field, value) in zip(lines, lineValues) { event.setIntegerValueField(field, value: -value) }
+        for (field, value) in zip(points, pointValues) { event.setIntegerValueField(field, value: -value) }
+        for (field, value) in zip(fixed, fixedValues) { event.setDoubleValueField(field, value: -value) }
     }
 
     @discardableResult func start() -> Bool {
@@ -97,9 +122,18 @@ final class UUNativeScroll: @unchecked Sendable {
         let now = clock()
         let marker = event.getIntegerValueField(.eventSourceUserData)
         let modified = !event.flags.intersection([.maskControl, .maskCommand, .maskAlternate]).isEmpty
+        let scales = !modified && percent < 100
         guard marker != Self.marker, marker != UUTouchScroll.marker,
-              !modified, percent < 100, isUU(event, at: now) else {
+              scales || reversed, isUU(event, at: now) else {
             accumulator.reset()
+            return true
+        }
+        if !scales {
+            // Direction only: keep the original magnitudes (also for ⌘/⌃/⌥ zoom-style scrolls).
+            accumulator.reset()
+            Self.reverseAxes(event)
+            event.setIntegerValueField(.eventSourceUserData, value: Self.marker)
+            adjusted += 1
             return true
         }
         func pixels(_ point: CGEventField, _ fixed: CGEventField, _ line: CGEventField) -> Double {
@@ -109,8 +143,9 @@ final class UUNativeScroll: @unchecked Sendable {
             // Quartz normally provides points even for line events; fallback is 10 px/line.
             return f != 0 ? f * 10 : Double(event.getIntegerValueField(line)) * 10
         }
-        let x = pixels(.scrollWheelEventPointDeltaAxis2, .scrollWheelEventFixedPtDeltaAxis2, .scrollWheelEventDeltaAxis2)
-        let y = pixels(.scrollWheelEventPointDeltaAxis1, .scrollWheelEventFixedPtDeltaAxis1, .scrollWheelEventDeltaAxis1)
+        let sign: Double = reversed ? -1 : 1
+        let x = sign * pixels(.scrollWheelEventPointDeltaAxis2, .scrollWheelEventFixedPtDeltaAxis2, .scrollWheelEventDeltaAxis2)
+        let y = sign * pixels(.scrollWheelEventPointDeltaAxis1, .scrollWheelEventFixedPtDeltaAxis1, .scrollWheelEventDeltaAxis1)
         let phase = event.getIntegerValueField(.scrollWheelEventScrollPhase)
         let momentum = event.getIntegerValueField(.scrollWheelEventMomentumPhase)
         if phase & 1 != 0 { accumulator.reset() }

@@ -1,3 +1,10 @@
+# 0.9.3 (198) — 反转远程滚动方向（本机测试版，未发布）— 2026-10-29
+
+- 立品需求：触控设置「滚动速度」下面加一个开关「反转远程滚动方向」，横向、纵向两个轴一起取反，跟着每台设备的 DeviceConfiguration 走，默认关。按立品要求不加旁注、不加图标，用统一蓝开关。
+- 实现：`DeviceConfiguration`/`Preferences` 新增 `remoteScrollReversed`（旧配置缺键解码为 false，DeviceConfiguration 改为手写 init(from:)，其余键严格程度不变；bypassedConfiguration 为 false）。复用 UUNativeScroll 的 annotated-session 滚轮监听：只处理 eventSourceUnixProcessID 解析为 UURemote.app 内可执行文件的事件；本机触控板/鼠标（pid 0 或非 UU 进程）、UU 单指滚动合成事件（UUTouchScroll 标记）、已处理过的事件都原样放行。速度 <100% 时先取反再缩放；100% 或按住 ⌘/⌃/⌥ 时只取反 line / point / fixed-pt 三组 delta，阶段、位置、路由不变。监听只在远程连接且（速度 <100% 或开启反转）时运行，断开即停止，本机事件不经过任何改动。
+- 测试：新增 UUNativeScroll 反转 4 项、DeviceConfiguration 迁移/往返 3 项；swift test 全部通过。
+- 未验证：Windows 客户端经 UU 实际滚动时事件来源 pid 未在本轮现场抓取（本机历史诊断日志里 UU 注入的鼠标事件来源为 UU 进程，本机点击为 pid 0）；需立品现场测试。
+
 # 0.8.160 (179) — 清理桌面 — 2026-10-24
 
 - 立品需求：一个内置快捷操作，把桌面上所有窗口最小化。新增 `FloatingAction.showDesktop`「清理桌面」（悬停提示「最小化所有窗口」，命名由立品定）（menubar.dock.rectangle），默认动作里排在「最小化」后；老用户用 `seededShowDesktopAction` 迁移一次，关掉后不再加回。

@@ -196,4 +196,58 @@ final class DeviceConfigurationTests: XCTestCase {
         XCTAssertTrue(legacy.uuTouchScrollEnabled)
     }
 
+
+    func testRemoteScrollReversedDefaultsOffAndMigratesOldConfigurations() throws {
+        XCTAssertFalse(Preferences().remoteScrollReversed)
+        XCTAssertFalse(Preferences().configuration(for: nil).remoteScrollReversed)
+        var preferences = Preferences()
+        let id = "uu:window:Computer"
+        preferences.remember(.init(id: id, name: "Computer"))
+        var computer = preferences.configuration(for: id)
+        computer.remoteScrollReversed = true
+        preferences.setConfiguration(computer, for: id)
+        // Saved before the switch existed: no key anywhere → off, everything else intact.
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(preferences)) as? [String: Any])
+        json.removeValue(forKey: "remoteScrollReversed")
+        var devices = try XCTUnwrap(json["remoteDevices"] as? [[String: Any]])
+        var stored = try XCTUnwrap(devices[0]["configuration"] as? [String: Any])
+        stored.removeValue(forKey: "remoteScrollReversed")
+        devices[0]["configuration"] = stored
+        json["remoteDevices"] = devices
+        let old = try JSONDecoder().decode(Preferences.self, from: JSONSerialization.data(withJSONObject: json))
+        var expected = computer
+        expected.remoteScrollReversed = false
+        XCTAssertEqual(old.configuration(for: id), expected)
+        XCTAssertFalse(old.remoteScrollReversed)
+        // Round trip keeps the per-device choice and does not leak into defaults.
+        let restored = try JSONDecoder().decode(Preferences.self, from: JSONEncoder().encode(preferences))
+        XCTAssertTrue(restored.configuration(for: id).remoteScrollReversed)
+        XCTAssertFalse(restored.configuration(for: nil).remoteScrollReversed)
+        XCTAssertFalse(restored.bypassedConfiguration.remoteScrollReversed)
+    }
+
+    func testOldDeviceConfigurationJSONDecodesWithReversalOff() throws {
+        var configuration = Preferences().configuration(for: nil)
+        configuration.remoteScrollReversed = true
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(configuration)) as? [String: Any])
+        XCTAssertEqual(json["remoteScrollReversed"] as? Bool, true)
+        json.removeValue(forKey: "remoteScrollReversed")
+        let old = try JSONDecoder().decode(DeviceConfiguration.self, from: JSONSerialization.data(withJSONObject: json))
+        configuration.remoteScrollReversed = false
+        XCTAssertEqual(old, configuration)
+        json.removeValue(forKey: "uuScrollSpeedPercent")
+        XCTAssertThrowsError(try JSONDecoder().decode(DeviceConfiguration.self, from: JSONSerialization.data(withJSONObject: json)))
+    }
+
+    func testNativeScrollIsNeededForSpeedOrReversal() {
+        var configuration = Preferences().configuration(for: nil)
+        configuration.uuScrollSpeedPercent = 100
+        configuration.remoteScrollReversed = false
+        XCTAssertFalse(configuration.needsNativeScroll)
+        configuration.remoteScrollReversed = true
+        XCTAssertTrue(configuration.needsNativeScroll)
+        configuration.remoteScrollReversed = false
+        configuration.uuScrollSpeedPercent = 50
+        XCTAssertTrue(configuration.needsNativeScroll)
+    }
 }

@@ -147,6 +147,8 @@ public struct Preferences: Codable, Equatable, Sendable {
     public var uuTouchScrollEnabled: Bool = false
     /// Optional slowdown for UU native wheel events, independent of one-finger conversion.
     public var uuScrollSpeedPercent: Int = UUScrollScaling.defaultPercent
+    /// 反转远程滚动方向: negate both axes of UU-injected wheel events while connected. Off by default.
+    public var remoteScrollReversed: Bool = false
     /// Fixed close / minimize / full-screen group on the toolbar. On by default.
     public var showWindowControls: Bool = true
     /// One-time migration: 最小化 joins the toolbar right after 铺满 for existing users.
@@ -166,7 +168,7 @@ public struct Preferences: Codable, Equatable, Sendable {
             autoResolutionPresetID = customPresets.first?.id
         }
     }
-    private enum CodingKeys: String, CodingKey { case applicationShortcutsEnabled, applicationShortcuts, theme, toolbarSide, preset, size, customPresets, selectedCustomID, floatingActions, namedShortcuts, operationOrder, floatingActionIcons, seededFactorySpecs, autoResolutionEnabled, remoteDevices, deviceResolutionEnabled, defaultResolutionEnabled, autoResolutionPresetID, connectionDockMode, toolbarWhenConnected, toolbarWhenDisconnected, autoFillWindowsOnRemote, uuTouchScrollEnabled, uuScrollSpeedPercent, autoRestoreOnDisconnect, showWindowControls, seededMinimizeAction, seededShowDesktopAction }
+    private enum CodingKeys: String, CodingKey { case applicationShortcutsEnabled, applicationShortcuts, theme, toolbarSide, preset, size, customPresets, selectedCustomID, floatingActions, namedShortcuts, operationOrder, floatingActionIcons, seededFactorySpecs, autoResolutionEnabled, remoteDevices, deviceResolutionEnabled, defaultResolutionEnabled, autoResolutionPresetID, connectionDockMode, toolbarWhenConnected, toolbarWhenDisconnected, autoFillWindowsOnRemote, uuTouchScrollEnabled, uuScrollSpeedPercent, remoteScrollReversed, autoRestoreOnDisconnect, showWindowControls, seededMinimizeAction, seededShowDesktopAction }
     /// Pre-0.8.138 toolbar keys and the pre-0.8.146 Dock toggle, read once to migrate and never written again.
     private enum LegacyKeys: String, CodingKey { case autoExpandToolbarOnConnect, autoManageToolbarOnDisconnect, autoShowDockOnConnect, uuScrollSpeedEnabled }
     /// 连接时展开 on → 远程连接时显示 on; 断开时收起 off → 未连接时显示 on. Missing keys use the old defaults (on / on).
@@ -218,6 +220,7 @@ public struct Preferences: Codable, Equatable, Sendable {
         uuScrollSpeedPercent = UUScrollScaling.clampedPercent(try c.decodeIfPresent(Int.self, forKey: .uuScrollSpeedPercent) ?? UUScrollScaling.defaultPercent)
         // Earlier preview builds used a separate toggle. Preserve an explicit off choice as original speed.
         if try legacy.decodeIfPresent(Bool.self, forKey: .uuScrollSpeedEnabled) == false { uuScrollSpeedPercent = 100 }
+        remoteScrollReversed = try c.decodeIfPresent(Bool.self, forKey: .remoteScrollReversed) ?? false
         autoRestoreOnDisconnect = try c.decodeIfPresent(Bool.self, forKey: .autoRestoreOnDisconnect) ?? true
         showWindowControls = try c.decodeIfPresent(Bool.self, forKey: .showWindowControls) ?? true
         seededMinimizeAction = try c.decodeIfPresent(Bool.self, forKey: .seededMinimizeAction) ?? false

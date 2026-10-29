@@ -560,7 +560,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             var next = preferences
             next.setConfiguration(configuration, for: deviceID)
             saveAutomaticPreferences(next)
-            if (configuration.uuTouchScrollEnabled || configuration.uuScrollSpeedPercent < 100 || configuration.autoFillWindowsOnRemote), !AXIsProcessTrusted() {
+            if (configuration.uuTouchScrollEnabled || configuration.uuScrollSpeedPercent < 100 || configuration.remoteScrollReversed || configuration.autoFillWindowsOnRemote), !AXIsProcessTrusted() {
                 ShortcutPermissions.shared.prepare { [weak self] in
                     self?.startTouchScroll()
                     self?.startNativeScroll()
@@ -763,7 +763,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func startNativeScroll() {
         nativeScrollTimer?.invalidate(); nativeScrollTimer = nil
         refreshNativeScroll()
-        guard remoteStability.isConnected, activeDeviceConfiguration.uuScrollSpeedPercent < 100, !terminating else { return }
+        guard remoteStability.isConnected, activeDeviceConfiguration.needsNativeScroll, !terminating else { return }
         let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.refreshNativeScroll() }
         }
@@ -772,7 +772,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func refreshNativeScroll() {
-        let enabled = remoteStability.isConnected && activeDeviceConfiguration.uuScrollSpeedPercent < 100 && !terminating
+        let enabled = remoteStability.isConnected && activeDeviceConfiguration.needsNativeScroll && !terminating
         let companion = enabled && NSWorkspace.shared.runningApplications.contains {
             $0.bundleIdentifier == UUNativeScroll.companionBundleID
         }
@@ -781,6 +781,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             return
         }
         nativeScroll.setPercent(activeDeviceConfiguration.uuScrollSpeedPercent)
+        nativeScroll.setReversed(activeDeviceConfiguration.remoteScrollReversed)
         if !nativeScroll.start() { nativeScroll.stop() }
     }
 

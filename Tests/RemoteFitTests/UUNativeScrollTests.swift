@@ -83,4 +83,100 @@ final class UUNativeScrollTests: XCTestCase {
         _ = apply(engine, event(), type: .tapDisabledByTimeout)
         XCTAssertFalse(apply(engine, event(y: 1, x: 0)))
     }
+
+    // MARK: - 反转远程滚动方向
+
+    private struct Deltas: Equatable {
+        var line1, line2, point1, point2: Int64
+        var fixed1, fixed2: Double
+        init(_ e: CGEvent) {
+            line1 = e.getIntegerValueField(.scrollWheelEventDeltaAxis1)
+            line2 = e.getIntegerValueField(.scrollWheelEventDeltaAxis2)
+            point1 = e.getIntegerValueField(.scrollWheelEventPointDeltaAxis1)
+            point2 = e.getIntegerValueField(.scrollWheelEventPointDeltaAxis2)
+            fixed1 = e.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1)
+            fixed2 = e.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis2)
+        }
+        var negated: Deltas {
+            var d = self
+            (d.line1, d.line2, d.point1, d.point2) = (-line1, -line2, -point1, -point2)
+            (d.fixed1, d.fixed2) = (-fixed1, -fixed2)
+            return d
+        }
+    }
+    private func reversing() -> UUNativeScroll {
+        let engine = make()
+        engine.setPercent(100)
+        engine.setReversed(true)
+        return engine
+    }
+    private func lineEvent(remote: Bool = true) -> CGEvent {
+        let e = CGEvent(scrollWheelEvent2Source: nil, units: .line, wheelCount: 2, wheel1: 3, wheel2: -2, wheel3: 0)!
+        e.setIntegerValueField(.eventSourceUnixProcessID, value: remote ? 900 : 901)
+        return e
+    }
+
+    func testReversalNegatesLinePointAndFixedDeltasOnBothAxes() {
+        let engine = reversing(); defer { engine.stop() }
+        for e in [event(y: 100, x: -50), lineEvent()] {
+            e.setIntegerValueField(.scrollWheelEventScrollPhase, value: 2)
+            let before = Deltas(e)
+            XCTAssertNotEqual(before.line1, 0); XCTAssertNotEqual(before.line2, 0)
+            XCTAssertNotEqual(before.point1, 0); XCTAssertNotEqual(before.fixed2, 0)
+            XCTAssertTrue(apply(engine, e))
+            XCTAssertEqual(Deltas(e), before.negated)
+            XCTAssertEqual(e.getIntegerValueField(.scrollWheelEventScrollPhase), 2)
+            XCTAssertEqual(e.getIntegerValueField(.eventSourceUnixProcessID), 900)
+            // Fed back by another handler: never flipped twice.
+            XCTAssertTrue(apply(engine, e))
+            XCTAssertEqual(Deltas(e), before.negated)
+        }
+        XCTAssertEqual(engine.snapshot.adjusted, 2)
+    }
+
+    func testReversalNeverTouchesLocalOrTouchGeneratedEvents() {
+        let engine = reversing(); defer { engine.stop() }
+        engine.setPercent(10)
+        let touch = event(); touch.setIntegerValueField(.eventSourceUserData, value: UUTouchScroll.marker)
+        let local = event(remote: false)
+        let localModified = event(remote: false); localModified.flags = .maskCommand
+        for e in [local, localModified, lineEvent(remote: false), touch] {
+            let before = Deltas(e)
+            XCTAssertTrue(apply(engine, e))
+            XCTAssertEqual(Deltas(e), before)
+        }
+        XCTAssertEqual(engine.snapshot.adjusted, 0)
+    }
+
+    func testReversalCombinesWithSpeedAndKeepsModifiedMagnitudes() {
+        let engine = reversing(); defer { engine.stop() }
+        engine.setPercent(10)
+        let scaled = event(y: 200, x: -100)
+        XCTAssertTrue(apply(engine, scaled))
+        XCTAssertEqual(scaled.getIntegerValueField(.scrollWheelEventPointDeltaAxis1), -20)
+        XCTAssertEqual(scaled.getIntegerValueField(.scrollWheelEventPointDeltaAxis2), 10)
+        // Fixed-point follows Quartz's canonical pixel→line conversion; only the sign is asserted.
+        XCTAssertLessThan(scaled.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1), 0)
+        XCTAssertGreaterThan(scaled.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis2), 0)
+        XCTAssertLessThan(scaled.getIntegerValueField(.scrollWheelEventDeltaAxis1), 0)
+        let zoom = event(y: 100, x: -50); zoom.flags = .maskCommand
+        let before = Deltas(zoom)
+        XCTAssertTrue(apply(engine, zoom))
+        XCTAssertEqual(Deltas(zoom), before.negated)
+    }
+
+    func testReversalOffLeavesRemoteEventsAlone() {
+        let engine = make(); defer { engine.stop() }
+        engine.setPercent(100)
+        let e = event()
+        let before = Deltas(e)
+        XCTAssertTrue(apply(engine, e))
+        XCTAssertEqual(Deltas(e), before)
+        engine.setReversed(true)
+        engine.setReversed(false)
+        let again = event()
+        XCTAssertTrue(apply(engine, again))
+        XCTAssertEqual(Deltas(again), before)
+        XCTAssertEqual(engine.snapshot.adjusted, 0)
+    }
 }
