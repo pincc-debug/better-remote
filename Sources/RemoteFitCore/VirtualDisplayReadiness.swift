@@ -11,6 +11,10 @@ public struct VirtualDisplayProbe: Codable, Sendable {
 public struct ReadyVirtualDisplay: Sendable {
     public var source: DisplayState
     public var mode: DisplayMode
+    public init(source: DisplayState, mode: DisplayMode) {
+        self.source = source
+        self.mode = mode
+    }
 }
 
 public enum VirtualDisplayReadiness {
@@ -28,12 +32,16 @@ public enum VirtualDisplayReadiness {
 
     /// Wait for advertised HiDPI modes, not for macOS to select one automatically.
     /// Standard density is eligible only at the deadline, from the final live sample.
+    /// `allowsMirroredSource` is for extended activation only. Adding the next virtual display can
+    /// briefly mark an earlier one as mirrored; that is cleared when the extended plan is committed.
+    /// Mirror-all keeps the default (false) and still waits for an unmirrored source.
     public static func wait(dimensions: Dimensions, policy: ZeroDisplayActivation,
-                            sample: () throws -> VirtualDisplayProbe, pause: (TimeInterval) -> Void) throws -> ReadyVirtualDisplay {
+                            sample: () throws -> VirtualDisplayProbe, pause: (TimeInterval) -> Void,
+                            allowsMirroredSource: Bool = false) throws -> ReadyVirtualDisplay {
         let polls = max(1, policy.readyPolls)
         for attempt in 0..<polls {
             let probe = try sample()
-            if let source = probe.source, !source.physical, source.mirror == 0 {
+            if let source = probe.source, !source.physical, allowsMirroredSource || source.mirror == 0 {
                 if let mode = select(probe.modes, dimensions: dimensions, scale: 2) {
                     return .init(source: source, mode: mode)
                 }

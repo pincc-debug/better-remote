@@ -83,29 +83,71 @@ extension DisplayTopology {
         }
     }
 
-    /// `sourceID` is the main virtual framebuffer. Retiring framebuffers may mirror it; every live desktop does not.
+    /// Resolve virtual displays after several have been created. macOS can reassign display IDs
+    /// when the next framebuffer appears; UUIDs stay put. Committing the IDs captured before that
+    /// reassignment fails and the activation restores the previous desktop.
+    public static func rebound(_ sources: [DisplayState], live: [DisplayState]) -> [DisplayState]? {
+        var used = Set<UInt32>()
+        var resolved: [DisplayState] = []
+        for source in sources {
+            guard let match = live.first(where: { candidate in
+                guard !candidate.physical, !used.contains(candidate.id) else { return false }
+                if let uuid = source.uuid { return candidate.uuid == uuid }
+                return candidate.id == source.id
+            }) else { return nil }
+            used.insert(match.id)
+            resolved.append(match)
+        }
+        return resolved
+    }
+
+    /// `sourceID` is the planned main virtual framebuffer. Retiring framebuffers may mirror it.
+    /// Live desktops are not clones of one another. macOS may translate the whole arrangement;
+    /// that must not look like a failed switch. A collapsed stack, or every panel mirroring one
+    /// framebuffer, is not the extended plan.
     public static func matches(_ live: [DisplayState], targets: [DisplayState], sourceID: UInt32) -> Bool {
         guard live.count == targets.count, Set(live.map(\.id)).count == live.count,
               Set(live.map(\.id)) == Set(targets.map(\.id)),
               let source = live.first(where: { $0.id == sourceID }), !source.physical,
-              source.main, source.mirror == 0, source.x == 0, source.y == 0 else { return false }
+              source.mirror == 0 else { return false }
+        let desktops = targets.filter { !$0.physical && $0.mirror == 0 }
+        let desktopIDs = Set(desktops.map(\.id))
+        let mains = live.filter(\.main)
+        guard mains.count == 1, let main = mains.first, desktopIDs.contains(main.id) else { return false }
+        guard extendedLayoutHolds(live: live, planned: desktops) else { return false }
         let virtualIDs = Set(targets.filter { !$0.physical }.map(\.id))
         return targets.allSatisfy { target in
             guard let actual = live.first(where: { $0.id == target.id }),
                   actual.uuid == target.uuid, actual.hardwareKey == target.hardwareKey,
-                  actual.physical == target.physical, actual.main == target.main,
-                  actual.mirror == target.mirror else { return false }
+                  actual.physical == target.physical, actual.mirror == target.mirror else { return false }
             if target.physical {
                 if target.mirror == 0 {
-                    return actual.mode.matches(target.mode) &&
-                        (target.skipOrigin || (actual.x == target.x && actual.y == target.y))
+                    let modeOK = target.skipMode || actual.mode.matches(target.mode)
+                    let originOK = target.skipOrigin || (actual.x == target.x && actual.y == target.y)
+                    return modeOK && originOK
                 }
                 return virtualIDs.contains(target.mirror)
             }
             if target.mirror != 0 { return target.mirror == sourceID && !target.main }
-            return (target.skipOrigin || (actual.x == target.x && actual.y == target.y)) &&
-                (target.skipMode || actual.mode.matches(target.mode))
+            let modeOK = target.skipMode || actual.mode.matches(target.mode)
+            if target.main { return modeOK && desktopIDs.contains(target.id) }
+            return modeOK
         }
+    }
+
+    /// Relative placement of the unmirrored desktops, allowing one translation of the whole set.
+    private static func extendedLayoutHolds(live: [DisplayState], planned: [DisplayState]) -> Bool {
+        guard let plannedMain = planned.first(where: \.main),
+              let liveMain = live.first(where: { $0.id == plannedMain.id }) else { return false }
+        let dx = Int(liveMain.x) - Int(plannedMain.x)
+        let dy = Int(liveMain.y) - Int(plannedMain.y)
+        var livePoints = Set<String>()
+        for item in planned {
+            guard let actual = live.first(where: { $0.id == item.id }) else { return false }
+            if Int(actual.x) - Int(item.x) != dx || Int(actual.y) - Int(item.y) != dy { return false }
+            livePoints.insert("\(actual.x),\(actual.y)")
+        }
+        return livePoints.count == Set(planned.map { "\($0.x),\($0.y)" }).count
     }
 
     private static func extendedTargets(sources: [DisplayState], modes: [DisplayMode], dimensions: Dimensions,
@@ -116,9 +158,9 @@ extension DisplayTopology {
               sources.count == slots.count, modes.count == slots.count,
               Set(ids).count == ids.count,
               Set(physical.map(\.id)).count == physical.count,
-              sources.allSatisfy({ !$0.physical && $0.mirror == 0 }),
+              sources.allSatisfy { !$0.physical },
               physical.allSatisfy(\.physical),
-              retiring.allSatisfy({ !$0.physical && $0.mirror == 0 }) else {
+              retiring.allSatisfy({ !$0.physical }) else {
             throw FitError.message("显示器布局已变化，请先还原屏幕")
         }
         var virtuals: [DisplayState] = []

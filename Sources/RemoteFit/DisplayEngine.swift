@@ -143,7 +143,7 @@ actor DisplayEngine {
             IOPMAssertionRelease(id)
         }
     }
-    private func readySource(id: UInt32, dimensions: Dimensions, policy: ZeroDisplayActivation = .standard) throws -> ReadyVirtualDisplay {
+    private func readySource(id: UInt32, dimensions: Dimensions, policy: ZeroDisplayActivation = .standard, allowsMirroredSource: Bool = false) throws -> ReadyVirtualDisplay {
         var lastProbe: VirtualDisplayProbe?
         var loggedModes: Data?
         do {
@@ -157,7 +157,7 @@ actor DisplayEngine {
                     log("display_mode_probe", "id=\(id) target=\(dimensions.label) actual=\(Self.layout(probe.source.map { [$0] } ?? [])) modes=\(String(decoding: modes, as: UTF8.self))")
                 }
                 return probe
-            }, pause: { Thread.sleep(forTimeInterval: $0) })
+            }, pause: { Thread.sleep(forTimeInterval: $0) }, allowsMirroredSource: allowsMirroredSource)
             let density = ready.mode.pixelWidth == dimensions.width * 2 ? "hidpi" : "standard"
             log("display_mode_selected", "id=\(id) density=\(density) mode=\(String(decoding: try encoder.encode(ready.mode), as: UTF8.self))")
             log("display_created", "id=\(id) uuid=\(ready.source.uuid ?? "nil") target=\(dimensions.label)")
@@ -176,6 +176,13 @@ actor DisplayEngine {
             let live = HeadlessPlaceholder.ignoringPlaceholders(try snapshot())
             let liveIDs = Set(live.map(\.id))
             guard expectedIDs.isSubset(of: liveIDs), liveIDs.subtracting(expectedIDs).isSubset(of: extras) else {
+                // Several new framebuffers can make one sample disagree. Aborting on that sample
+                // restores the old desktop and looks like a phone resolution that immediately reverts.
+                if topology == .extended && attempt < 9 {
+                    consecutiveMatches = 0
+                    Thread.sleep(forTimeInterval: 0.2)
+                    continue
+                }
                 throw FitError.message("适配期间显示器硬件拓扑发生变化，操作已中止。")
             }
             let matched = topology == .extended
@@ -190,17 +197,22 @@ actor DisplayEngine {
             } else {
                 consecutiveMatches = 0
                 if attempt == 3 || attempt == 7 {
-                    // Re-apply the source mode and any independent physical display macOS re-defaulted.
-                    let drifted = targets.filter { target in
-                        let tracked = topology == .extended
-                            ? (!target.physical && target.mirror == 0 && !target.skipMode)
-                            : (target.id == sourceID || (target.physical && target.mirror == 0))
-                        guard tracked, let actual = live.first(where: { $0.id == target.id }) else { return false }
-                        return !actual.mode.matches(target.mode)
-                    }
-                    if !drifted.isEmpty {
-                        log("mode_reapply", "attempt=\(attempt) ids=\(drifted.map(\.id))")
-                        try commit(drifted.map { var t = $0; t.skipOrigin = true; return t })
+                    if topology == .extended {
+                        // Mirrors and origins, not only the source mode. A mode-only retry leaves
+                        // every panel on one framebuffer, then verification gives up and restores.
+                        log("extended_reapply", "attempt=\(attempt)")
+                        try commit(targets)
+                    } else {
+                        // Re-apply the source mode and any independent physical display macOS re-defaulted.
+                        let drifted = targets.filter { target in
+                            guard target.id == sourceID || (target.physical && target.mirror == 0),
+                                  let actual = live.first(where: { $0.id == target.id }) else { return false }
+                            return !actual.mode.matches(target.mode)
+                        }
+                        if !drifted.isEmpty {
+                            log("mode_reapply", "attempt=\(attempt) ids=\(drifted.map(\.id))")
+                            try commit(drifted.map { var t = $0; t.skipOrigin = true; return t })
+                        }
                     }
                 }
             }
@@ -495,6 +507,7 @@ actor DisplayEngine {
             return report(hasSession() ? "待还原屏幕" : "检测未通过", detail: error.localizedDescription)
         }
     }
+    func topology() -> DisplayTopology { activeTopology }
     func apply(_ dimensions: Dimensions, topology: DisplayTopology = .mirrorAll) -> EngineStatus {
         guard !shuttingDown else { return report("正在还原…") }
         let ready = initialize()
@@ -509,21 +522,21 @@ actor DisplayEngine {
         }
     }
     func shutdown() throws { shuttingDown = true; do { _ = try restore() } catch { shuttingDown = false; throw error } }
-    /// One unmirrored framebuffer per physical display, each at the target size, arranged from the saved layout.
-    /// Panels are bound 1:1 so they show that framebuffer; they do not share a single mirror source.
+    /// One framebuffer per physical display, each at the target size. The framebuffers are not clones.
+    /// Each panel is bound only to its own framebuffer. Creating them one after another can renumber
+    /// display IDs, so the commit uses UUIDs captured before the next framebuffer exists.
     private func startExtended(_ dimensions: Dimensions, physical: [DisplayState], policy: ZeroDisplayActivation, injectFailure: Bool) throws -> DisplayMode {
         let slots = DisplayTopology.slots(topology: .extended, physical: physical, dimensions: dimensions)
         var created: [RFVirtualDisplay] = []
+        var probed: [ReadyVirtualDisplay] = []
         for _ in slots {
             let display = try createDisplay(dimensions, policy: policy)
             created.append(display)
             heldVirtualDisplays = created
+            // Probe before the next framebuffer exists, while this display ID is still current.
+            probed.append(try readySource(id: display.displayID, dimensions: dimensions, policy: policy, allowsMirroredSource: true))
         }
-        var readies: [ReadyVirtualDisplay] = []
-        for display in created {
-            guard display.displayID != 0 else { throw FitError.message("无法创建虚拟屏幕。") }
-            readies.append(try readySource(id: display.displayID, dimensions: dimensions, policy: policy))
-        }
+        let readies = try resolvedExtended(probed, retiring: []).readies
         let targets = try DisplayTopology.targets(topology: .extended, sources: readies.map(\.source), modes: readies.map(\.mode), dimensions: dimensions, physical: physical)
         if injectFailure { throw FitError.message("测试：模拟屏幕切换失败") }
         try commit(targets)
@@ -535,6 +548,21 @@ actor DisplayEngine {
         activeTopology = .extended
         log("display_topology", "extended virtuals=\(created.count) physical=\(physical.count)")
         return ready.mode
+    }
+
+    /// One snapshot so new framebuffers and the ones being retired are renumbered together.
+    private func resolvedExtended(_ readies: [ReadyVirtualDisplay], retiring: [DisplayState]) throws -> (readies: [ReadyVirtualDisplay], retiring: [DisplayState]) {
+        let live = HeadlessPlaceholder.ignoringPlaceholders(try snapshot())
+        guard let sources = DisplayTopology.rebound(readies.map(\.source), live: live) else { throw FitError.message("虚拟屏幕未就绪。") }
+        let retired: [DisplayState]
+        if retiring.isEmpty {
+            retired = []
+        } else if let resolved = DisplayTopology.rebound(retiring, live: live) {
+            retired = resolved
+        } else {
+            throw FitError.message("显示器布局已变化，请先还原屏幕")
+        }
+        return (zip(sources, readies).map { ReadyVirtualDisplay(source: $0.0, mode: $0.1.mode) }, retired)
     }
 
     /// Swap framebuffers while a session is already up, including mirror-all ↔ extended.
@@ -559,18 +587,18 @@ actor DisplayEngine {
         var releasedOld = false
         do {
             let slots = DisplayTopology.slots(topology: topology, physical: physical, dimensions: dimensions)
+            var probed: [ReadyVirtualDisplay] = []
             for _ in slots {
                 let display = try createDisplay(dimensions)
                 created.append(display)
                 heldVirtualDisplays = (previousHeld ?? []) + created
+                probed.append(try readySource(id: display.displayID, dimensions: dimensions, allowsMirroredSource: true))
             }
-            var readies: [ReadyVirtualDisplay] = []
-            for display in created {
-                guard display.displayID != 0 else { throw FitError.message("无法创建虚拟屏幕。") }
-                readies.append(try readySource(id: display.displayID, dimensions: dimensions))
-            }
+            let resolved = try resolvedExtended(probed, retiring: previousSources)
+            let readies = resolved.readies
+            let retiring = resolved.retiring
             let targets = try DisplayTopology.targets(topology: topology, sources: readies.map(\.source), modes: readies.map(\.mode),
-                                                     dimensions: dimensions, physical: physical, retiring: previousSources)
+                                                     dimensions: dimensions, physical: physical, retiring: retiring)
             if injectFailure { throw FitError.message("测试：模拟屏幕切换失败") }
             try commit(targets)
             committed = true
@@ -580,8 +608,9 @@ actor DisplayEngine {
             heldVirtualDisplays = created
             previousHeld = nil
             releasedOld = true
-            let settled = targets.filter { !previousIDs.contains($0.id) }
-            try verifyTransition(settled, sourceID: main.id, disappearingIDs: Set(previousIDs), topology: topology)
+            let retiringIDs = Set(retiring.map(\.id))
+            let settled = targets.filter { !retiringIDs.contains($0.id) }
+            try verifyTransition(settled, sourceID: main.id, disappearingIDs: retiringIDs, topology: topology)
             applied = dimensions
             appliedMode = readies.first { $0.source.id == main.id }?.mode
             activeTopology = topology

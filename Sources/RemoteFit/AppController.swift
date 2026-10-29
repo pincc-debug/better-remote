@@ -1396,27 +1396,31 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     selectedCustomID: preferences.selectedCustomID, adjustment: adjustment)
             }
             let dimensions = preset.dimensions(.standard)
-            // Already on the default (resolution kept from the last connection): nothing to switch.
-            if status.detail == nil, status.applied == dimensions, preferences.selectedCustomID == preset.id {
-                Task { [engine] in await engine.log("automatic_apply_skipped", dimensions.label) }
-                automaticPolicy.applied(success: true)
-                startDisplayDiagnostics(dimensions, reason: "already_applied")
-                renderMenu()
-                runPendingToolbarExpansion()
-                return
-            }
-            preferences.selectedCustomID = preset.id
-            preferences.size = .standard
-            adjustment = preset.adjustment
-            copySaved = false
-            applying = true
-            status.title = "正在自动切换…"
-            renderMenu()
+            let topology = displayTopology
             let generation = applyGeneration
+            applying = true
+            renderMenu()
             Task { @MainActor [weak self] in
                 guard let self else { return }
+                let appliedTopology = await engine.topology()
+                // Same spec and the same multi-display mode: nothing to switch. A mirror session must
+                // not swallow an extended connect, and an extended session must not be rebuilt as mirror-all.
+                if status.detail == nil, status.applied == dimensions, preferences.selectedCustomID == preset.id, appliedTopology == topology {
+                    await engine.log("automatic_apply_skipped", dimensions.label)
+                    automaticPolicy.applied(success: true)
+                    applying = false
+                    startDisplayDiagnostics(dimensions, reason: "already_applied")
+                    renderMenu()
+                    runPendingToolbarExpansion()
+                    return
+                }
+                preferences.selectedCustomID = preset.id
+                preferences.size = .standard
+                adjustment = preset.adjustment
+                copySaved = false
+                status.title = "正在自动切换…"
+                renderMenu()
                 await engine.log("automatic_apply_start", dimensions.label)
-                let topology = self.displayTopology
                 let result = await engine.apply(dimensions, topology: topology)
                 await engine.log("automatic_apply_result", result.detail == nil ? "success" : "failed")
                 guard !terminating, generation == applyGeneration else { return }

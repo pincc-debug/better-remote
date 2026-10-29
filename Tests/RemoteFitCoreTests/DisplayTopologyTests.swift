@@ -144,6 +144,71 @@ final class DisplayTopologyTests: XCTestCase {
         XCTAssertFalse(overlaps(placed, size: size))
     }
 
+    func testThreePanelsGetThreeSameSizeUnmirroredDesktops() throws {
+        let panels = [
+            display(1, physical: true, main: true, mode: mode(1728, 1117)),
+            display(2, physical: true, x: 1728, mode: mode(1920, 1080, scale: 1)),
+            display(3, physical: true, x: -1920, mode: mode(1920, 1080, scale: 1))
+        ]
+        let slots = DisplayTopology.slots(topology: .extended, physical: panels, dimensions: size)
+        XCTAssertEqual(slots.count, 3)
+        let sources = slots.indices.map { virtual(UInt32(100 + $0)) }
+        let targets = try DisplayTopology.targets(topology: .extended, sources: sources, modes: Array(repeating: hidpi(size), count: 3),
+                                                  dimensions: size, physical: panels)
+        let desktops = targets.filter { !$0.physical && $0.mirror == 0 }
+        XCTAssertEqual(desktops.count, 3)
+        XCTAssertTrue(desktops.allSatisfy { $0.mode.width == size.width && $0.mode.height == size.height && $0.mode.pixelWidth == size.width * 2 })
+        XCTAssertGreaterThan(Set(desktops.map { "\($0.x),\($0.y)" }).count, 1)
+        let bound = targets.filter(\.physical)
+        XCTAssertEqual(bound.count, 3)
+        XCTAssertEqual(Set(bound.map(\.mirror)), Set(desktops.map(\.id)))
+        XCTAssertTrue(DisplayTopology.matches(targets, targets: targets, sourceID: desktops.first { $0.main }!.id))
+    }
+
+    func testRebindFollowsUUIDWhenDisplayIDsChange() {
+        let original = [virtual(10), virtual(11), virtual(12)]
+        var live = original
+        live[0].id = 210
+        live[1].id = 211
+        live[2].id = 212
+        var decoy = virtual(10)
+        decoy.uuid = "not-the-framebuffer"
+        let resolved = DisplayTopology.rebound(original, live: [decoy] + live)
+        XCTAssertEqual(resolved?.map(\.id), [210, 211, 212])
+        XCTAssertEqual(resolved?.map(\.uuid), original.map(\.uuid))
+        XCTAssertNil(DisplayTopology.rebound(original, live: [decoy]))
+    }
+
+    func testMirroredProbeStillPlansAnUnmirroredDesktop() throws {
+        let panels = [display(1, physical: true, main: true), display(2, physical: true, x: 1800)]
+        let slots = DisplayTopology.slots(topology: .extended, physical: panels, dimensions: size)
+        var sources = slots.indices.map { virtual(UInt32(50 + $0)) }
+        sources[0].mirror = 7
+        let targets = try DisplayTopology.targets(topology: .extended, sources: sources, modes: [hidpi(size), hidpi(size)],
+                                                  dimensions: size, physical: panels)
+        XCTAssertTrue(targets.filter { !$0.physical && $0.mirror == 0 }.allSatisfy { !$0.skipMode })
+        XCTAssertEqual(Set(targets.filter(\.physical).map(\.mirror)).count, 2)
+        XCTAssertFalse(targets.contains { !$0.physical && $0.mirror == 7 })
+    }
+
+    func testNormalizedOriginDoesNotLookLikeAFailedExtend() throws {
+        let panels = [display(1, physical: true, main: true), display(2, physical: true, x: 1728, y: -1440, mode: mode(3840, 2160, scale: 1))]
+        let targets = try DisplayTopology.targets(topology: .extended, sources: [virtual(50), virtual(51)],
+                                                  modes: [hidpi(size), hidpi(size)], dimensions: size, physical: panels)
+        var translated = targets
+        for index in translated.indices where !translated[index].physical && translated[index].mirror == 0 {
+            translated[index].x += 80
+            translated[index].y += 40
+        }
+        XCTAssertTrue(DisplayTopology.matches(translated, targets: targets, sourceID: 50))
+        var collapsed = targets
+        for index in collapsed.indices where !collapsed[index].physical && collapsed[index].mirror == 0 {
+            collapsed[index].x = 0
+            collapsed[index].y = 0
+        }
+        XCTAssertFalse(DisplayTopology.matches(collapsed, targets: targets, sourceID: 50))
+    }
+
     func testExtendedVerificationRejectsASharedMirrorAndAMovedDesktop() throws {
         let builtin = display(1, physical: true, main: true)
         let external = display(2, physical: true, x: 1728, y: -1440, mode: mode(3840, 2160, scale: 1))

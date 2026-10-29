@@ -92,6 +92,20 @@ final class VirtualDisplayReadinessTests: XCTestCase {
         XCTAssertNotNil(VirtualDisplayReadiness.select([wrong], dimensions: dimensions, scale: 1))
     }
 
+    func testMirroredSourceWaitsUnlessExtendedActivationAllowsIt() throws {
+        var mirrored = source(hidpi: true)
+        mirrored.mirror = 4
+        let probe = VirtualDisplayProbe(source: mirrored, modes: [mode(hidpi: true)])
+        XCTAssertThrowsError(try VirtualDisplayReadiness.wait(dimensions: dimensions, policy: policy,
+            sample: { probe }, pause: { _ in })) { error in
+            XCTAssertEqual(error.localizedDescription, "虚拟屏幕未就绪。")
+        }
+        let ready = try VirtualDisplayReadiness.wait(dimensions: dimensions, policy: policy,
+            sample: { probe }, pause: { _ in XCTFail("Mode is already advertised") }, allowsMirroredSource: true)
+        XCTAssertEqual(ready.mode.pixelWidth, 1260)
+        XCTAssertEqual(ready.source.mirror, 4)
+    }
+
     func testPhysicalDisplayCannotBeSelected() {
         var wrong = source(hidpi: true); wrong.physical = true
         XCTAssertThrowsError(try VirtualDisplayReadiness.wait(dimensions: dimensions, policy: policy,
