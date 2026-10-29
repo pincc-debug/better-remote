@@ -4,11 +4,13 @@ import IOKit.pwr_mgt
 import RemoteFitCore
 
 /// Connection signals are read-only. Optional UU identity uses a single programmatic window cycle.
+/// RustDesk identity is the CM window title, cached until that `--cm` process exits.
 actor RemoteSessionProbe {
     private var uuReadAttempted = false
     private var uuIdentifyFailures = 0
     private var uuIdentifyStatus: String?
     private var uuDevice: RemoteDevice?
+    private var rustDeskIdentity = RustDeskSessionIdentity()
     /// After within-call AX retries, allow a few more sample cycles before stopping.
     private static let uuIdentifyMaxFailures = 3
     private var anyDeskTrace = AnyDeskTraceReader()
@@ -23,7 +25,7 @@ actor RemoteSessionProbe {
               let entries = raw?.takeRetainedValue() as? [NSNumber: [[String: Any]]] else {
             var unavailable = RemoteSessionSnapshot(unknown: Set(RemoteSoftware.allCases))
             unavailable.recheckAfter = 2
-            return unavailable
+            return await applyingRustDesk(unavailable)
         }
         var assertions: [RemotePowerAssertion] = []
         var anyDeskBackends: [Int32: Date] = [:]
@@ -105,7 +107,37 @@ actor RemoteSessionProbe {
         snapshot.uuIdentifyStatus = uuActive ? uuIdentifyStatus : nil
         snapshot.uuIdentifyExhausted = uuActive && uuReadAttempted && uuDevice == nil
         if uuActive { snapshot.recheckAfter = 1 }
+        return await applyingRustDesk(snapshot)
+    }
+
+    /// `--cm` means a session even when its window title has no peer id yet.
+    /// No device row is created until a peer id is known.
+    private func applyingRustDesk(_ input: RemoteSessionSnapshot) async -> RemoteSessionSnapshot {
+        var snapshot = input
+        switch await RustDeskSessionReader.read() {
+        case .absent, .idle:
+            _ = rustDeskIdentity.sample(sessionConnected: false, visiblePeerIDs: [])
+            snapshot.active.remove(.rustDesk)
+            snapshot.unknown.remove(.rustDesk)
+            snapshot.rustDeskDevice = nil
+            snapshot.rustDeskDevices = []
+        case .unknown:
+            snapshot.unknown.insert(.rustDesk)
+            snapshot.active.remove(.rustDesk)
+            scheduleRecheck(1, on: &snapshot)
+        case .connected(let peerIDs):
+            snapshot.unknown.remove(.rustDesk)
+            snapshot.active.insert(.rustDesk)
+            let sampled = rustDeskIdentity.sample(sessionConnected: true, visiblePeerIDs: peerIDs)
+            snapshot.rustDeskDevice = sampled.sessionDevice
+            snapshot.rustDeskDevices = sampled.devices
+            scheduleRecheck(1, on: &snapshot)
+        }
         return snapshot
+    }
+
+    private func scheduleRecheck(_ interval: TimeInterval, on snapshot: inout RemoteSessionSnapshot) {
+        snapshot.recheckAfter = min(snapshot.recheckAfter ?? interval, interval)
     }
 
     /// User tapped「重试」on the panel hint: clear the one-shot latch so the next sample identifies again.

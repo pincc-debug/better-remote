@@ -1241,16 +1241,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 Task { [engine] in await engine.noteRemoteActivity() }
             }
             awaitingConfirmedDisconnect = snapshot.active.isEmpty && remoteStability.isConnected
-            // Other providers never inherit a UU-specific rule.
-            // Keep a matched identity during a transient unknown sample, but never
-            // carry a UU profile into a different provider's connection.
-            if snapshot.active == [.uu] {
-                remoteDeviceID = snapshot.uuDevice?.id
-            } else if snapshot.active.isEmpty && snapshot.unknown.contains(.uu) {
-                remoteDeviceID = lastMatchedDeviceID
-            } else {
-                remoteDeviceID = nil
-            }
+            // One software at a time. An unreadable sample keeps that software's last id,
+            // and never carries a UU profile into a RustDesk session (or the reverse).
+            remoteDeviceID = RemoteSessionDeviceMatch.deviceID(in: snapshot, previous: lastMatchedDeviceID)
             if let transition = remoteStability.observe(snapshot, at: now) {
                 if transition == .disconnected {
                     deviceCollection.disconnected()
@@ -1278,11 +1271,14 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 Task { [engine] in await engine.log("remote_signal", "\(transition) providers=\(providers) uptime=\(now) \(decision)") }
             }
             if let remoteDeviceID { lastMatchedDeviceID = remoteDeviceID }
+            var next = preferences
             if let device = snapshot.uuDevice {
-                var next = preferences
                 deviceCollection.remember(device, in: &next)
-                if next != preferences { saveAutomaticPreferences(next) }
             }
+            for device in snapshot.rustDeskDevices {
+                deviceCollection.remember(device, in: &next)
+            }
+            if next != preferences { saveAutomaticPreferences(next) }
             panelModel.connectedDeviceID = remoteStability.isConnected ? remoteDeviceID : nil
             syncDeviceConfiguration()
             updateIdentifyHint(from: snapshot)

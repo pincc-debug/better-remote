@@ -89,6 +89,8 @@ xcrun actool "$PWD/assets/branding/AppIcon.icon" \
 # Menu bar status item artwork (normal + active), loaded as template images.
 cp "$PWD/assets/branding/MenuBarTemplate.png" "$PWD/assets/branding/MenuBarTemplate@2x.png" "$PWD/assets/branding/MenuBarTemplateActive.png" "$PWD/assets/branding/MenuBarTemplateActive@2x.png" "$APP/Contents/Resources/"
 cp "$PWD/assets/branding/RewardQR.png" "$APP/Contents/Resources/"
+# Device-list software marks: 32 (@2x of 16pt), 64 and 128 for higher density.
+cp "$PWD/assets/software/"uu-*.png "$PWD/assets/software/"rustdesk-*.png "$APP/Contents/Resources/"
 if [ "$DEVELOPER_ID" = true ]; then
     SIGN_FLAGS=(--force --sign "$SIGN_IDENTITY" --options runtime --timestamp)
 else

@@ -1,13 +1,21 @@
 import Foundation
 
 public enum RemoteSoftware: String, Codable, CaseIterable, Sendable {
-    case uu, toDesk, anyDesk
+    case uu, toDesk, anyDesk, rustDesk
     public var title: String {
         switch self {
         case .uu: "UU 远程"
         case .toDesk: "ToDesk"
         case .anyDesk: "AnyDesk"
+        case .rustDesk: "RustDesk"
         }
+    }
+
+    /// Software that mints a saved device row. ToDesk and AnyDesk stay session-only.
+    public static func savedDeviceSoftware(for id: String) -> RemoteSoftware? {
+        if id.hasPrefix("uu:") { return .uu }
+        if id.hasPrefix("rustdesk:") { return .rustDesk }
+        return nil
     }
 }
 
@@ -18,6 +26,10 @@ public struct RemoteSessionSnapshot: Equatable, Sendable {
     public var uuIdentifyStatus: String?
     /// True after identify retries are exhausted without a device (panel may show a hint).
     public var uuIdentifyExhausted = false
+    /// The one RustDesk peer this session resolved to, when there is exactly one.
+    public var rustDeskDevice: RemoteDevice?
+    /// Peers to show in the device list: every visible CM id, or the cached id if that window is closed.
+    public var rustDeskDevices: [RemoteDevice] = []
     public var unknown: Set<RemoteSoftware>
     /// A pending vendor authorization can finish without another power notification.
     public var recheckAfter: TimeInterval?
@@ -75,6 +87,23 @@ public struct RemoteSessionStability: Sendable {
                 missingSince = nil
                 return .disconnected
             }
+        }
+        return nil
+    }
+}
+
+/// Which saved device profile applies to this sample.
+/// One software at a time. An unreadable sample keeps the previous id only when
+/// that id belongs to the software we could not read, so a UU profile never
+/// follows a RustDesk session (and the reverse).
+public enum RemoteSessionDeviceMatch {
+    public static func deviceID(in snapshot: RemoteSessionSnapshot, previous: String?) -> String? {
+        if snapshot.active == [.uu] { return snapshot.uuDevice?.id }
+        if snapshot.active == [.rustDesk] { return snapshot.rustDeskDevice?.id }
+        if snapshot.active.isEmpty {
+            let previousSoftware = previous.flatMap(RemoteSoftware.savedDeviceSoftware(for:))
+            if snapshot.unknown.contains(.uu), previousSoftware == .uu { return previous }
+            if snapshot.unknown.contains(.rustDesk), previousSoftware == .rustDesk { return previous }
         }
         return nil
     }

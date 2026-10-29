@@ -202,7 +202,7 @@ public struct Preferences: Codable, Equatable, Sendable {
         deviceResolutionEnabled = try c.decodeIfPresent(Bool.self, forKey: .deviceResolutionEnabled) ?? true
         remoteDevices = try c.decodeIfPresent([RemoteDevice].self, forKey: .remoteDevices) ?? []
         var deviceIDs = Set<String>()
-        remoteDevices = remoteDevices.filter { $0.id.hasPrefix("uu:") && deviceIDs.insert($0.id).inserted }
+        remoteDevices = remoteDevices.filter { RemoteSoftware.savedDeviceSoftware(for: $0.id) != nil && deviceIDs.insert($0.id).inserted }
         for index in remoteDevices.indices {
             if !customPresets.contains(where: { $0.id == remoteDevices[index].presetID }) { remoteDevices[index].presetID = nil }
         }

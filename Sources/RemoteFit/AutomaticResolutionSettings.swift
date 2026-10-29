@@ -81,6 +81,10 @@ struct DeviceListSettings: View {
         let enabled = model.preferences.appliesConfiguration(for: id)
         return VStack(spacing: 12) {
             HStack(spacing: 8) {
+                if let id, let software = RemoteSoftware.savedDeviceSoftware(for: id) {
+                    RemoteSoftwareBadge(software: software)
+                        .layoutPriority(1)
+                }
                 Text(name).font(.system(size: DesignTokens.fontBody, weight: .semibold))
                     .lineLimit(1).truncationMode(.middle).help(name)
                 if let id, model.preferences.remoteDevices.first(where: { $0.id == id })?.isNew == true {
@@ -120,6 +124,26 @@ struct DeviceListSettings: View {
         .frame(maxWidth: .infinity)
         .frame(height: 220)
         .cardSurface()
+    }
+}
+
+/// Software mark on the device card’s top bar, left of the name. 16pt in the 28pt bar.
+private struct RemoteSoftwareBadge: View {
+    var software: RemoteSoftware
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        if let image = RemoteSoftwareIcon.image(for: software) {
+            Image(nsImage: image)
+                .interpolation(.high)
+                .frame(width: RemoteSoftwareIcon.pointSize, height: RemoteSoftwareIcon.pointSize)
+                .overlay {
+                    RoundedRectangle(cornerRadius: RemoteSoftwareIcon.cornerRadius, style: .continuous)
+                        .strokeBorder(Color.black.opacity(colorScheme == .dark ? 0 : 0.12), lineWidth: RemoteSoftwareIcon.borderWidth)
+                }
+                .accessibilityLabel(software.title)
+                .help(software.title)
+        }
     }
 }
 
@@ -241,7 +265,7 @@ struct DeviceConfigurationSettings: View {
                                     .accessibilityLabel("设备名称")
                             }
                             Divider().padding(.leading, 54)
-                            SettingsView.wideControlRow("设备型号", symbol: "iphone", narrow: narrow, controlWidth: nil) {
+                            SettingsView.wideControlRow(device.software == .rustDesk ? "RustDesk ID" : "设备型号", symbol: "iphone", narrow: narrow, controlWidth: nil) {
                                 Text(device.name).foregroundStyle(.secondary).textSelection(.enabled)
                             }
                         }
