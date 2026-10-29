@@ -269,13 +269,7 @@ struct DeviceConfigurationSettings: View {
                     VStack(spacing: 0) {
                         toggle("单指滚动", symbol: "hand.draw", key: \.uuTouchScrollEnabled)
                         Divider().padding(.leading, 54)
-                        HStack(spacing: 12) {
-                            Text("反转滚动方向").font(.system(size: DesignTokens.fontBody, weight: .medium)).lineLimit(1)
-                            Spacer(minLength: 0)
-                            Toggle("反转滚动方向", isOn: binding(\.remoteScrollReversed))
-                                .labelsHidden().toggleStyle(StableBlueSwitchStyle())
-                        }
-                        .padding(.horizontal, 14).padding(.vertical, 10)
+                        toggle("反转滚动方向", symbol: "arrow.up.arrow.down", key: \.remoteScrollReversed)
                     }
                 }
                 UUScrollSpeedSettings(percent: binding(\.uuScrollSpeedPercent))
