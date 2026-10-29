@@ -89,7 +89,7 @@ public struct DeviceConfiguration: Codable, Equatable, Sendable {
     public var autoRestoreOnDisconnect: Bool
     public var uuTouchScrollEnabled: Bool
     public var uuScrollSpeedPercent: Int
-    /// Missing in configurations saved before 0.9.3 → off.
+    /// Missing in configurations saved before 0.9.2 (198) → off.
     public var remoteScrollReversed: Bool
     public var autoFillWindowsOnRemote: Bool
     public var connectionDockMode: ConnectionDockMode
