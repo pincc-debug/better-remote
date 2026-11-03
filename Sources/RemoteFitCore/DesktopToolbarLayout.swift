@@ -2,6 +2,20 @@ import Foundation
 import CoreGraphics
 
 public enum DesktopToolbarLayout {
+    public enum Density: Int, CaseIterable, Sendable {
+        case regular, compact, tight
+        public var height: CGFloat { switch self { case .regular: 58; case .compact: 52; case .tight: 48 } }
+        public var step: CGFloat { switch self { case .regular: 64; case .compact: 56; case .tight: 50 } }
+        public func length(count: Int) -> CGFloat { count > 0 ? CGFloat(count - 1) * step + height : 0 }
+        /// Leave 24pt spare before expanding again, so small height changes don't toggle density.
+        public static func resolve(count: Int, available: CGFloat, current: Density) -> Density {
+            let fitting = allCases.first { $0.length(count: count) <= available } ?? .tight
+            if fitting.rawValue < current.rawValue {
+                return allCases.first { $0.rawValue < current.rawValue && $0.length(count: count) + 24 <= available } ?? current
+            }
+            return fitting
+        }
+    }
     public static let width: CGFloat = 72
     public static let buttonHeight: CGFloat = 58
     public static let step: CGFloat = 64

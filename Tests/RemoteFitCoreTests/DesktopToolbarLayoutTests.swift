@@ -3,6 +3,26 @@ import CoreGraphics
 @testable import RemoteFitCore
 
 final class DesktopToolbarLayoutTests: XCTestCase {
+    func testDensityFitsWithoutShrinkingBelowTouchTargetMinimum() {
+        typealias D = DesktopToolbarLayout.Density
+        XCTAssertEqual(D.resolve(count: 10, available: 650, current: .regular), .regular)
+        XCTAssertEqual(D.resolve(count: 10, available: 580, current: .regular), .compact)
+        XCTAssertEqual(D.resolve(count: 10, available: 520, current: .compact), .tight)
+        XCTAssertEqual(D.resolve(count: 30, available: 520, current: .tight), .tight)
+        XCTAssertGreaterThan(D.tight.length(count: 30), 520) // Scroll, never shrink further.
+        XCTAssertEqual(D.tight.height, 48)
+    }
+
+    func testDensityDoesNotOscillateAtFitBoundary() {
+        typealias D = DesktopToolbarLayout.Density
+        var current = D.compact
+        for room: CGFloat in [633, 634, 635, 640, 634] {
+            current = D.resolve(count: 10, available: room, current: current)
+            XCTAssertEqual(current, .compact)
+        }
+        XCTAssertEqual(D.resolve(count: 10, available: 658, current: current), .regular)
+        XCTAssertEqual(D.resolve(count: 0, available: 100, current: .tight), .regular)
+    }
     func testToolbarRedocksToRightEdgeAfterResolutionChange() {
         let before = CGRect(x: 0, y: 25, width: 1400, height: 605)
         let after = CGRect(x: 0, y: 33, width: 1728, height: 1084)

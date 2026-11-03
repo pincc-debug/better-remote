@@ -8,12 +8,12 @@ private final class ToolbarPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 }
 
-private final class ToolbarDocumentView: NSView {
+final class ToolbarDocumentView: NSView {
     override var isFlipped: Bool { true }
 }
 
 @MainActor
-private final class ToolbarButton: NSButton {
+final class ToolbarButton: NSButton {
     var onTap: () -> Void = {}
     var onPress: () -> Void = {}
     var onRelease: () -> Void = {}
@@ -144,9 +144,10 @@ private final class ToolbarButton: NSButton {
     }
     override func layout() {
         super.layout()
-        let glyphY = glyphCenterY.map { $0 - glyphSize / 2 } ?? (labelled ? 9 : (bounds.height - glyphSize) / 2)
+        let compression = labelled ? max(0, 58 - bounds.height) : 0
+        let glyphY = glyphCenterY.map { $0 - glyphSize / 2 } ?? (labelled ? 9 - compression / 2 : (bounds.height - glyphSize) / 2)
         glyph.frame = CGRect(x: (bounds.width - glyphSize) / 2, y: glyphY, width: glyphSize, height: glyphSize)
-        caption.frame = CGRect(x: 2, y: 38, width: bounds.width - 4, height: 14)
+        caption.frame = CGRect(x: 2, y: 38 - compression * 0.8, width: bounds.width - 4, height: 14)
     }
     override func draw(_ dirtyRect: NSRect) {
         let radius = isCircular ? min(bounds.width, bounds.height) / 2 : DesignTokens.radiusMd
@@ -366,7 +367,7 @@ private struct TileHover: ViewModifier {
 }
 
 @MainActor
-private final class ToolbarContent: NSView {
+final class ToolbarContent: NSView {
     let clip = ToolbarDocumentView()
     let document = ToolbarDocumentView()
     let grip = ToolbarButton(symbol: "line.3.horizontal", name: "移动快捷操作", showsCaption: false)
@@ -382,6 +383,7 @@ private final class ToolbarContent: NSView {
     let next: ToolbarButton
     let grid: DesktopToolbarLayout.Grid
     let side: ToolbarSide
+    var density: DesktopToolbarLayout.Density = .regular
     var buttons: [ToolbarButton] = []
     /// Scroll position of the custom operations, in points along the toolbar.
     private(set) var offset: CGFloat = 0
@@ -427,7 +429,8 @@ private final class ToolbarContent: NSView {
     required init?(coder: NSCoder) { nil }
     /// Single column after a divider: 窗口, 分辨率, 设置, 收起, 重置.
     private var footerButtons: [ToolbarButton] { (applicationButton.map { [$0] } ?? []) + (windowButton.map { [$0] } ?? []) + [resolution, settings, collapse] }
-    private var contentLength: CGFloat { max(0, CGFloat(buttons.count) * DesktopToolbarLayout.step - (DesktopToolbarLayout.step - DesktopToolbarLayout.buttonHeight)) }
+    private var metrics: DesktopToolbarLayout.Density { side.isHorizontal ? .regular : density }
+    private var contentLength: CGFloat { metrics.length(count: buttons.count) }
     private var visibleLength: CGFloat { side.isHorizontal ? clip.bounds.width : clip.bounds.height }
     var maxOffset: CGFloat { max(0, contentLength - visibleLength) }
     func setOffset(_ value: CGFloat, animated: Bool = false) {
@@ -468,7 +471,7 @@ private final class ToolbarContent: NSView {
     }
     override func layout() {
         super.layout()
-        let step = DesktopToolbarLayout.step, height = DesktopToolbarLayout.buttonHeight
+        let step = metrics.step, height = metrics.height
         let footer = DesktopToolbarLayout.footerHeight(windowControls: windowButton != nil, applicationShortcut: applicationButton != nil)
         if side.isHorizontal {
             let footerX = bounds.width - footer
@@ -507,6 +510,31 @@ private final class ToolbarContent: NSView {
 
 @MainActor
 final class FloatingSwitcher: NSObject {
+    private var density: DesktopToolbarLayout.Density = .regular
+    private var densityInput: String?
+    private var densityTask: Task<Void, Never>?
+
+    private func updateDensity(available: CGFloat, count: Int, side: ToolbarSide) {
+        let input = "\(side.rawValue):\(count):\(Int(available.rounded()))"
+        guard input != densityInput else { return }
+        densityInput = input
+        densityTask?.cancel()
+        guard !side.isHorizontal else { return }
+        densityTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: .milliseconds(800))
+                // Never move a button under an active click/drag or entrance animation.
+                while NSEvent.pressedMouseButtons != 0 || self?.isTransitioning == true {
+                    try await Task.sleep(for: .milliseconds(200))
+                }
+            } catch { return }
+            guard let self, !Task.isCancelled, self.densityInput == input else { return }
+            let next = DesktopToolbarLayout.Density.resolve(count: count, available: available, current: self.density)
+            guard next != self.density else { return }
+            self.density = next
+            if self.enabled && self.expanded { self.rebuild() }
+        }
+    }
     private let panel = ToolbarPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
     private let sender = ShortcutSender()
     private var history = ApplicationHistory()
@@ -892,6 +920,13 @@ final class FloatingSwitcher: NSObject {
         buttons.removeAll()
         if expanded {
             let content = ToolbarContent(frame: CGRect(origin: .zero, size: frame.size), grid: grid, side: preferences.toolbarSide, application: application)
+            // Reserve the optional app shortcut slot while enabled, even if its app isn't frontmost.
+            // Switching applications must not repeatedly resize every operation.
+            let densityFooter = DesktopToolbarLayout.footerHeight(windowControls: preferences.showWindowControls,
+                applicationShortcut: preferences.applicationShortcutsEnabled)
+            updateDensity(available: frame.height - densityFooter - DesktopToolbarLayout.customInset * 2,
+                          count: preferences.enabledOperations.count, side: preferences.toolbarSide)
+            content.density = density
             content.applicationButton?.onTap = { [weak self, weak content] in
                 guard let self, let button = content?.applicationButton else { return }
                 toggleApplicationShortcuts(from: button)

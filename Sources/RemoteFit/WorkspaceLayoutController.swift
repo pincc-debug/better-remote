@@ -21,6 +21,7 @@ final class WorkspaceLayoutController {
     private let foregroundPID: () -> pid_t?
     private let move: (ApplicationWindowCatalog.Window, Region) async -> Void
     private let fill: (ApplicationWindowCatalog.Window, Region) async -> Void
+    private let notificationCenter: NotificationCenter
     private var task: Task<Void, Never>?
     private var collapseTask: Task<Void, Never>?
     private var timer: Timer?
@@ -44,12 +45,14 @@ final class WorkspaceLayoutController {
     init(visibleWindows: @escaping () async -> [ApplicationWindowCatalog.Window],
          canAdjust: @escaping () -> Bool, userInteracting: @escaping () -> Bool,
          foregroundPID: @escaping () -> pid_t? = { NSWorkspace.shared.frontmostApplication?.processIdentifier },
+         notificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter,
          fill: @escaping (ApplicationWindowCatalog.Window, Region) async -> Void = { _, _ in },
          move: @escaping (ApplicationWindowCatalog.Window, Region) async -> Void) {
         self.visibleWindows = visibleWindows
         self.canAdjust = canAdjust
         self.userInteracting = userInteracting
         self.foregroundPID = foregroundPID
+        self.notificationCenter = notificationCenter
         self.move = move
         self.fill = fill
     }
@@ -62,7 +65,7 @@ final class WorkspaceLayoutController {
         // First tick follows the expansion animation. Later ticks observe changes,
         // including apps that do not deliver AX window-moved notifications.
         schedule(WorkspaceCheckSchedule.active)
-        let center = NSWorkspace.shared.notificationCenter
+        let center = notificationCenter
         appObservers = [NSWorkspace.didLaunchApplicationNotification, NSWorkspace.didActivateApplicationNotification].map { name in
             center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
                 MainActor.assumeIsolated { self?.applicationChanged() }
@@ -141,7 +144,7 @@ final class WorkspaceLayoutController {
         timer = nil
         interval = 0
         schedule = WorkspaceCheckSchedule()
-        appObservers.forEach { NSWorkspace.shared.notificationCenter.removeObserver($0) }
+        appObservers.forEach { notificationCenter.removeObserver($0) }
         appObservers = []
         cancelPending()
         collapseTask?.cancel()

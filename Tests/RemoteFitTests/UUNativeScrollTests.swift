@@ -3,6 +3,52 @@ import XCTest
 @testable import RemoteFit
 
 final class UUNativeScrollTests: XCTestCase {
+    func testRepeatedConfigurationPreservesFractionalMovementAndChangesClearIt() {
+        let engine = make(); defer { engine.stop() }
+        engine.configure(percent: 10, reversed: true)
+        XCTAssertFalse(apply(engine, event(y: 6, x: 0)))
+        engine.configure(percent: 10, reversed: true) // Watchdog refresh must retain the -0.6 remainder.
+        let next = event(y: 6, x: 0)
+        XCTAssertTrue(apply(engine, next))
+        XCTAssertEqual(next.getIntegerValueField(.scrollWheelEventPointDeltaAxis1), -1)
+        engine.configure(percent: 20, reversed: false)
+        XCTAssertFalse(apply(engine, event(y: 4, x: 0)))
+        let changed = event(y: 1, x: 0)
+        XCTAssertTrue(apply(engine, changed))
+        XCTAssertEqual(changed.getIntegerValueField(.scrollWheelEventPointDeltaAxis1), 1)
+        XCTAssertEqual(engine.snapshot.percent, 20)
+        XCTAssertFalse(engine.snapshot.reversed)
+        let local = event(remote: false)
+        let before = Deltas(local)
+        engine.configure(percent: 1000, reversed: true)
+        XCTAssertEqual(engine.snapshot.percent, 100)
+        XCTAssertTrue(apply(engine, local))
+        XCTAssertEqual(Deltas(local), before)
+    }
+    func testDiagnosticsDistinguishRejectedBypassedAndReversedEvents() {
+        let engine = make(); defer { engine.stop() }
+        engine.setPercent(100)
+        engine.setReversed(true)
+        let local = event(remote: false)
+        let localBefore = Deltas(local)
+        XCTAssertTrue(apply(engine, local))
+        XCTAssertEqual(Deltas(local), localBefore)
+        let remote = event()
+        let remoteBefore = Deltas(remote)
+        XCTAssertTrue(apply(engine, remote))
+        XCTAssertEqual(Deltas(remote), remoteBefore.negated)
+        // An already handled event must pass through unchanged and count as bypassed.
+        XCTAssertTrue(apply(engine, remote))
+        XCTAssertEqual(Deltas(remote), remoteBefore.negated)
+        let snapshot = engine.snapshot
+        XCTAssertEqual(snapshot.seen, 3)
+        XCTAssertEqual(snapshot.rejectedSource, 1)
+        XCTAssertEqual(snapshot.bypassed, 1)
+        XCTAssertEqual(snapshot.reversedEvents, 1)
+        XCTAssertEqual(snapshot.suppressed, 0)
+        XCTAssertTrue(snapshot.reversed)
+        XCTAssertEqual(snapshot.percent, 100)
+    }
     private func make() -> UUNativeScroll {
         let engine = UUNativeScroll(sourceOverride: { $0.getIntegerValueField(.eventSourceUnixProcessID) == 900 })
         engine.setPercent(10)

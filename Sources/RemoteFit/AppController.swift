@@ -41,6 +41,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var touchScrollRetry: Timer?
     private let nativeScroll = UUNativeScroll()
     private var nativeScrollTimer: Timer?
+    private var scrollDiagnosticState: String?
+    private var scrollDiagnosticTime: TimeInterval = -.infinity
+    private var scrollDiagnosticSeen = 0
+    private var scrollDiagnosticAppliedDeviceID: String?
     private let windowController = WindowController()
     private let notice = TransientNotice()
     private lazy var workspaceLayout = WorkspaceLayoutController(windows: windowController)
@@ -84,7 +88,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func syncDeviceConfiguration() {
+        defer { recordScrollDiagnostics(trigger: "configuration-sync") }
         guard remoteStability.isConnected else {
+            scrollDiagnosticAppliedDeviceID = nil
             appliedDeviceConfiguration = nil
             appliedConfigurationEnabled = nil
             floatingSwitcher.configure(preferences: toolbarPreferences)
@@ -94,6 +100,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         let next = activeDeviceConfiguration
         let enabled = activeConfigurationEnabled
+        if !awaitingConfirmedDisconnect { scrollDiagnosticAppliedDeviceID = remoteDeviceID }
         guard next != appliedDeviceConfiguration || enabled != appliedConfigurationEnabled else { return }
         appliedConfigurationEnabled = enabled
         let previous = appliedDeviceConfiguration
@@ -557,9 +564,14 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         panelModel.onDeviceConfiguration = { [weak self] deviceID, configuration in
             guard let self else { return }
+            let before = preferences.configuration(for: deviceID)
+            OperationDiagnostics.write("uu-scroll-write device=\(String(reflecting: deviceID ?? "default")) reversed=\(before.remoteScrollReversed)->\(configuration.remoteScrollReversed) percent=\(before.uuScrollSpeedPercent)->\(configuration.uuScrollSpeedPercent) touch=\(before.uuTouchScrollEnabled)->\(configuration.uuTouchScrollEnabled)")
             var next = preferences
             next.setConfiguration(configuration, for: deviceID)
             saveAutomaticPreferences(next)
+            let after = preferences.configuration(for: deviceID)
+            OperationDiagnostics.write("uu-scroll-write-result device=\(String(reflecting: deviceID ?? "default")) exists=\(deviceID == nil || preferences.remoteDevices.contains { $0.id == deviceID }) reversed=\(after.remoteScrollReversed) percent=\(after.uuScrollSpeedPercent) matchesRequest=\(after == configuration)")
+            recordScrollDiagnostics(trigger: "write", force: true)
             if (configuration.uuTouchScrollEnabled || configuration.uuScrollSpeedPercent < 100 || configuration.remoteScrollReversed || configuration.autoFillWindowsOnRemote), !AXIsProcessTrusted() {
                 ShortcutPermissions.shared.prepare { [weak self] in
                     self?.startTouchScroll()
@@ -761,6 +773,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     /// Keep the watchdog off at original speed. It retries authorization and notices
     /// the standalone companion starting/stopping, without polling processes on the tap thread.
     private func startNativeScroll() {
+        defer { recordScrollDiagnostics(trigger: "watchdog-setup") }
         nativeScrollTimer?.invalidate(); nativeScrollTimer = nil
         refreshNativeScroll()
         guard remoteStability.isConnected, activeDeviceConfiguration.needsNativeScroll, !terminating else { return }
@@ -772,7 +785,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func refreshNativeScroll() {
-        let enabled = remoteStability.isConnected && activeDeviceConfiguration.needsNativeScroll && !terminating
+        defer { recordScrollDiagnostics(trigger: "refresh") }
+        let configuration = activeDeviceConfiguration
+        let enabled = remoteStability.isConnected && configuration.needsNativeScroll && !terminating
         let companion = enabled && NSWorkspace.shared.runningApplications.contains {
             $0.bundleIdentifier == UUNativeScroll.companionBundleID
         }
@@ -780,9 +795,30 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             nativeScroll.stop()
             return
         }
-        nativeScroll.setPercent(activeDeviceConfiguration.uuScrollSpeedPercent)
-        nativeScroll.setReversed(activeDeviceConfiguration.remoteScrollReversed)
+        nativeScroll.configure(percent: configuration.uuScrollSpeedPercent, reversed: configuration.remoteScrollReversed)
         if !nativeScroll.start() { nativeScroll.stop() }
+    }
+
+    /// Read-only diagnostics: never starts/reconfigures a tap or changes the selected profile.
+    /// State changes are immediate; wheel counters are cumulative and emitted at most every 10s.
+    private func recordScrollDiagnostics(trigger: String, force: Bool = false) {
+        let configuration = activeDeviceConfiguration
+        let snapshot = nativeScroll.snapshot
+        let trusted = AXIsProcessTrusted()
+        let companion = NSWorkspace.shared.runningApplications.contains { $0.bundleIdentifier == UUNativeScroll.companionBundleID }
+        let profileID = remoteStability.isConnected ? remoteDeviceID : nil
+        let saved = preferences.configuration(for: profileID)
+        let held = preferences.configuration(for: scrollDiagnosticAppliedDeviceID)
+        let reason = terminating ? "terminating" : !remoteStability.isConnected ? "disconnected" :
+            !configuration.needsNativeScroll ? "not-requested" : companion ? "companion" : !trusted ? "accessibility" :
+            snapshot.running ? "running" : "tap-not-running"
+        let state = "device=\(String(reflecting: profileID ?? "default")) heldDevice=\(String(reflecting: scrollDiagnosticAppliedDeviceID ?? "default")) connected=\(remoteStability.isConnected) awaitingDisconnect=\(awaitingConfirmedDisconnect) configurationEnabled=\(activeConfigurationEnabled) savedReversed=\(saved.remoteScrollReversed) heldSavedReversed=\(held.remoteScrollReversed) effectiveReversed=\(configuration.remoteScrollReversed) effectivePercent=\(configuration.uuScrollSpeedPercent) touch=\(configuration.uuTouchScrollEnabled) companion=\(companion) trusted=\(trusted) watchdog=\(nativeScrollTimer != nil) running=\(snapshot.running) tapReversed=\(snapshot.reversed) tapPercent=\(snapshot.percent) reason=\(reason)"
+        let now = ProcessInfo.processInfo.systemUptime
+        guard force || state != scrollDiagnosticState || (snapshot.seen != scrollDiagnosticSeen && now - scrollDiagnosticTime >= 10) else { return }
+        scrollDiagnosticState = state
+        scrollDiagnosticTime = now
+        scrollDiagnosticSeen = snapshot.seen
+        OperationDiagnostics.write("uu-scroll-state trigger=\(trigger) \(state) seen=\(snapshot.seen) rejectedSource=\(snapshot.rejectedSource) bypassed=\(snapshot.bypassed) adjusted=\(snapshot.adjusted) reversedEvents=\(snapshot.reversedEvents) suppressed=\(snapshot.suppressed)")
     }
 
     private func performWindowAction(_ action: FloatingAction) {
@@ -1213,7 +1249,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             syncDeviceConfiguration()
             renderMenu()
             runAutomaticResolutionIfNeeded()
-        } catch { showNotice("设置保存失败", detail: error.localizedDescription) }
+        } catch {
+            OperationDiagnostics.write("preferences-write-failed error=\(String(reflecting: error.localizedDescription))")
+            showNotice("设置保存失败", detail: error.localizedDescription)
+        }
     }
 
     private func startRemoteMonitor() {

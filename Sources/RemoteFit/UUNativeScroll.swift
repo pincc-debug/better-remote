@@ -10,6 +10,13 @@ final class UUNativeScroll: @unchecked Sendable {
     struct Snapshot: Sendable {
         var running: Bool
         var adjusted: Int
+        var percent: Int
+        var reversed: Bool
+        var seen: Int
+        var rejectedSource: Int
+        var bypassed: Int
+        var reversedEvents: Int
+        var suppressed: Int
     }
     private let thread = EventTapThread.shared
     private let sourceOverride: (@Sendable (CGEvent) -> Bool)?
@@ -20,6 +27,11 @@ final class UUNativeScroll: @unchecked Sendable {
     private var percent = UUScrollScaling.defaultPercent
     private var reversed = false
     private var adjusted = 0
+    private var seen = 0
+    private var rejectedSource = 0
+    private var bypassed = 0
+    private var reversedEvents = 0
+    private var suppressed = 0
     private var sources: [Int32: (time: TimeInterval, matches: Bool)] = [:]
 
     init(sourceOverride: (@Sendable (CGEvent) -> Bool)? = nil,
@@ -31,7 +43,9 @@ final class UUNativeScroll: @unchecked Sendable {
     var snapshot: Snapshot {
         thread.sync {
             Snapshot(running: self.tap.map { CGEvent.tapIsEnabled(tap: $0) } ?? false,
-                     adjusted: self.adjusted)
+                     adjusted: self.adjusted, percent: self.percent, reversed: self.reversed,
+                     seen: self.seen, rejectedSource: self.rejectedSource, bypassed: self.bypassed,
+                     reversedEvents: self.reversedEvents, suppressed: self.suppressed)
         }
     }
 
@@ -40,6 +54,17 @@ final class UUNativeScroll: @unchecked Sendable {
             let value = UUScrollScaling.clampedPercent(value)
             guard self.percent != value else { return }
             self.percent = value
+            self.accumulator.reset()
+        }
+    }
+
+    /// Publish the pair in one tap-thread turn: a wheel event never sees half of a profile update.
+    func configure(percent: Int, reversed: Bool) {
+        thread.sync {
+            let percent = UUScrollScaling.clampedPercent(percent)
+            guard self.percent != percent || self.reversed != reversed else { return }
+            self.percent = percent
+            self.reversed = reversed
             self.accumulator.reset()
         }
     }
@@ -57,20 +82,26 @@ final class UUNativeScroll: @unchecked Sendable {
     /// location and routing stay untouched. Values are read before any write because Quartz
     /// may derive one representation from another on set.
     static func reverseAxes(_ event: CGEvent) {
-        let lines: [CGEventField] = [.scrollWheelEventDeltaAxis1, .scrollWheelEventDeltaAxis2]
-        let points: [CGEventField] = [.scrollWheelEventPointDeltaAxis1, .scrollWheelEventPointDeltaAxis2]
-        let fixed: [CGEventField] = [.scrollWheelEventFixedPtDeltaAxis1, .scrollWheelEventFixedPtDeltaAxis2]
-        let lineValues = lines.map { event.getIntegerValueField($0) }
-        let pointValues = points.map { event.getIntegerValueField($0) }
-        let fixedValues = fixed.map { event.getDoubleValueField($0) }
-        for (field, value) in zip(lines, lineValues) { event.setIntegerValueField(field, value: -value) }
-        for (field, value) in zip(points, pointValues) { event.setIntegerValueField(field, value: -value) }
-        for (field, value) in zip(fixed, fixedValues) { event.setDoubleValueField(field, value: -value) }
+        let lineY = event.getIntegerValueField(.scrollWheelEventDeltaAxis1)
+        let lineX = event.getIntegerValueField(.scrollWheelEventDeltaAxis2)
+        let pointY = event.getIntegerValueField(.scrollWheelEventPointDeltaAxis1)
+        let pointX = event.getIntegerValueField(.scrollWheelEventPointDeltaAxis2)
+        let fixedY = event.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1)
+        let fixedX = event.getDoubleValueField(.scrollWheelEventFixedPtDeltaAxis2)
+        event.setIntegerValueField(.scrollWheelEventDeltaAxis1, value: -lineY)
+        event.setIntegerValueField(.scrollWheelEventDeltaAxis2, value: -lineX)
+        event.setIntegerValueField(.scrollWheelEventPointDeltaAxis1, value: -pointY)
+        event.setIntegerValueField(.scrollWheelEventPointDeltaAxis2, value: -pointX)
+        event.setDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1, value: -fixedY)
+        event.setDoubleValueField(.scrollWheelEventFixedPtDeltaAxis2, value: -fixedX)
     }
 
     @discardableResult func start() -> Bool {
         thread.sync {
-            if let tap = self.tap { CGEvent.tapEnable(tap: tap, enable: true); return CGEvent.tapIsEnabled(tap: tap) }
+            if let tap = self.tap {
+                if !CGEvent.tapIsEnabled(tap: tap) { CGEvent.tapEnable(tap: tap, enable: true) }
+                return CGEvent.tapIsEnabled(tap: tap)
+            }
             let mask = CGEventMask(1) << CGEventType.scrollWheel.rawValue
             guard let tap = CGEvent.tapCreate(tap: .cgAnnotatedSessionEventTap, place: .headInsertEventTap,
                 options: .defaultTap, eventsOfInterest: mask, callback: { _, type, event, info in
@@ -83,13 +114,17 @@ final class UUNativeScroll: @unchecked Sendable {
             self.runLoopSource = source
             CFRunLoopAddSource(self.thread.runLoop, source, .commonModes)
             CGEvent.tapEnable(tap: tap, enable: true)
+            OperationDiagnostics.write("uu-scroll-tap-created enabled=\(CGEvent.tapIsEnabled(tap: tap))")
             return CGEvent.tapIsEnabled(tap: tap)
         }
     }
 
     func stop() {
         thread.sync {
-            if let tap = self.tap { CGEvent.tapEnable(tap: tap, enable: false); CFMachPortInvalidate(tap) }
+            if let tap = self.tap {
+                CGEvent.tapEnable(tap: tap, enable: false); CFMachPortInvalidate(tap)
+                OperationDiagnostics.write("uu-scroll-tap-stopped")
+            }
             if let source = self.runLoopSource { CFRunLoopRemoveSource(self.thread.runLoop, source, .commonModes) }
             self.tap = nil; self.runLoopSource = nil
             self.accumulator.reset(); self.sources.removeAll()
@@ -105,6 +140,9 @@ final class UUNativeScroll: @unchecked Sendable {
         let size = proc_pidpath(pid, &bytes, UInt32(bytes.count))
         let path = size > 0 ? String(decoding: bytes.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }, as: UTF8.self) : ""
         let matches = UUScrollScaling.isUUExecutable(path)
+        if sources[pid]?.matches != matches {
+            OperationDiagnostics.write("uu-scroll-source pid=\(pid) pathResolved=\(size > 0) executable=\(String(reflecting: (path as NSString).lastPathComponent)) matchesUU=\(matches)")
+        }
         if sources.count > 64 { sources.removeAll() }
         sources[pid] = (now, matches)
         return matches
@@ -116,15 +154,22 @@ final class UUNativeScroll: @unchecked Sendable {
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             accumulator.reset()
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
+            OperationDiagnostics.write("uu-scroll-tap-disabled type=\(type.rawValue) recovered=\(tap.map { CGEvent.tapIsEnabled(tap: $0) } ?? false)")
             return true
         }
         guard type == .scrollWheel else { return true }
+        seen += 1
         let now = clock()
         let marker = event.getIntegerValueField(.eventSourceUserData)
         let modified = !event.flags.intersection([.maskControl, .maskCommand, .maskAlternate]).isEmpty
         let scales = !modified && percent < 100
-        guard marker != Self.marker, marker != UUTouchScroll.marker,
-              scales || reversed, isUU(event, at: now) else {
+        guard marker != Self.marker, marker != UUTouchScroll.marker, scales || reversed else {
+            bypassed += 1
+            accumulator.reset()
+            return true
+        }
+        guard isUU(event, at: now) else {
+            rejectedSource += 1
             accumulator.reset()
             return true
         }
@@ -132,6 +177,7 @@ final class UUNativeScroll: @unchecked Sendable {
             // Direction only: keep the original magnitudes (also for ⌘/⌃/⌥ zoom-style scrolls).
             accumulator.reset()
             Self.reverseAxes(event)
+            reversedEvents += 1
             event.setIntegerValueField(.eventSourceUserData, value: Self.marker)
             adjusted += 1
             return true
@@ -156,7 +202,7 @@ final class UUNativeScroll: @unchecked Sendable {
         let context = "\(pid):\(target):\(window):\(Int(point.x / 32)):\(Int(point.y / 32))"
         let delta = accumulator.scale(x: x, y: y, percent: percent, time: now, context: context)
         adjusted += 1
-        if delta.x == 0 && delta.y == 0 && phase == 0 && momentum == 0 { return false }
+        if delta.x == 0 && delta.y == 0 && phase == 0 && momentum == 0 { suppressed += 1; return false }
         guard let canonical = CGEvent(scrollWheelEvent2Source: nil, units: .pixel, wheelCount: 2,
                                       wheel1: delta.y, wheel2: delta.x, wheel3: 0) else { return true }
         for field: CGEventField in [.scrollWheelEventDeltaAxis1, .scrollWheelEventDeltaAxis2, .scrollWheelEventDeltaAxis3,
@@ -168,6 +214,7 @@ final class UUNativeScroll: @unchecked Sendable {
         }
         event.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
         event.setIntegerValueField(.eventSourceUserData, value: Self.marker)
+        if reversed { reversedEvents += 1 }
         if phase & (4 | 8) != 0 || momentum & 4 != 0 { accumulator.reset() }
         return true
     }
