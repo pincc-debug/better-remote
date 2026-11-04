@@ -6,6 +6,13 @@ struct DeviceListSettings: View {
     @ObservedObject var model: ControlPanelModel
     @State private var selection: String?
     @State private var deletingDeviceID: String?
+    @State private var hoveredCardID: String?
+    @State private var hoveredGearID: String?
+    /// Offscreen review only: open this detail page directly.
+    nonisolated(unsafe) static var forcedSelection: String?
+    @Environment(\.colorScheme) private var colorScheme
+    /// Offscreen review only: render this card ("default" or a device id) in its hover state.
+    nonisolated(unsafe) static var forcedHoverCardID: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let defaultID = "default"
 
@@ -28,6 +35,17 @@ struct DeviceListSettings: View {
                 }
                 ScrollView {
                     DeviceConfigurationSettings(model: model, deviceID: selection == defaultID ? nil : selection)
+                    if selection != defaultID {
+                        VStack(spacing: 0) {
+                            Rectangle().fill(Color(nsColor: .separatorColor)).frame(height: 0.5)
+                            Button("删除设备") { deletingDeviceID = selection }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(Color(nsColor: .systemRed))
+                                .frame(maxWidth: .infinity)
+                                .padding(.top, 24)
+                                .padding(.bottom, 16)
+                        }.padding(.top, 8)
+                    }
                 }
             } else {
                 VStack(alignment: .leading, spacing: 8) {
@@ -38,9 +56,12 @@ struct DeviceListSettings: View {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 210), spacing: 16, alignment: .top)], alignment: .leading, spacing: 16) {
                         deviceCard("默认配置", id: nil)
+                            .contextMenu { Button("编辑默认配置") { navigate(defaultID) } }
                         ForEach(model.preferences.remoteDevices) { device in
                             deviceCard(device.displayName, id: device.id)
                                 .contextMenu {
+                                    Button("配置设备") { navigate(device.id) }
+                                    Divider()
                                     Button("删除设备", role: .destructive) { deletingDeviceID = device.id }
                                 }
                         }
@@ -63,9 +84,19 @@ struct DeviceListSettings: View {
                 deletingDeviceID = nil
             }
         }
+        .onAppear { if let forced = Self.forcedSelection { selection = forced } }
         .onChange(of: model.preferences.remoteDevices.map(\.id)) { _, ids in
             if let selection, selection != defaultID, !ids.contains(selection) { navigate(nil) }
         }
+    }
+
+    private var gearColor: Color {
+        let v: Double = colorScheme == .dark ? 0x9A : 0x8A
+        return Color(red: v / 255, green: v / 255, blue: v / 255)
+    }
+
+    private var mutedText: Color {
+        colorScheme == .dark ? Color(red: 0xAB / 255, green: 0xAB / 255, blue: 0xAB / 255) : Color(red: 0x63 / 255, green: 0x63 / 255, blue: 0x63 / 255)
     }
 
     private func navigate(_ id: String?) {
@@ -80,6 +111,9 @@ struct DeviceListSettings: View {
         let dimensions = preset?.dimensions(.standard) ?? DeviceScreenPreview.currentScreenDimensions
         let enabled = model.preferences.appliesConfiguration(for: id)
         let summary = DeviceConfigurationSummary.text(for: id, in: model.preferences)
+        let key = id ?? defaultID
+        let hovered = hoveredCardID == key || Self.forcedHoverCardID == key
+        let gearHovered = hoveredGearID == key || Self.forcedHoverCardID == key
         return VStack(spacing: 10) {
             HStack(spacing: 6) {
                 Text(name).font(.system(size: DesignTokens.fontBody, weight: .semibold))
@@ -97,31 +131,19 @@ struct DeviceListSettings: View {
                         .accessibilityLabel("\(name)：连接时应用")
                         .help("关闭后，此设备连接时不应用设备配置或默认配置。")
                 }
-                Button { navigate(id ?? defaultID) } label: {
-                    HStack(spacing: 2) {
-                        Text("设置")
-                        Image(systemName: "chevron.right").font(.system(size: 9, weight: .semibold))
-                    }
-                    .font(.system(size: DesignTokens.fontCaption, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 9)
-                    .frame(minWidth: 48, minHeight: 24, maxHeight: 24)
-                    .background(Capsule().fill(Color.secondary.opacity(0.14)))
-                    .contentShape(Capsule())
-                }.buttonStyle(.plain).fixedSize()
-                    .accessibilityLabel("设置\(name)")
-                Menu {
-                    Button("配置设备") { navigate(id ?? defaultID) }
-                    if let id {
-                        Divider()
-                        Button("删除设备", role: .destructive) { deletingDeviceID = id }
-                    }
-                } label: {
-                    Image(systemName: "ellipsis").font(.system(size: DesignTokens.fontBody, weight: .semibold))
-                        .foregroundStyle(.secondary).frame(width: 24, height: 28)
+                Button { navigate(key) } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 16, weight: .light))
+                        .foregroundStyle(gearColor)
+                        .frame(width: 28, height: 28)
+                        .background(Circle().fill(Color.secondary.opacity(gearHovered ? 0.12 : 0)))
                         .contentShape(Rectangle())
-                }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
-                    .accessibilityLabel("\(name)的更多操作")
+                }.buttonStyle(.plain)
+                    .onHover { inside in
+                        if inside { hoveredGearID = key } else if hoveredGearID == key { hoveredGearID = nil }
+                    }
+                    .help("配置\(name)")
+                    .accessibilityLabel("配置\(name)")
             }.frame(height: 28)
             Button { navigate(id ?? defaultID) } label: {
                 DeviceScreenPreview(dimensions: dimensions, identity: id ?? defaultID)
@@ -132,11 +154,13 @@ struct DeviceListSettings: View {
             Button { navigate(id ?? defaultID) } label: {
                 Text(summary)
                     .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(colorScheme == .dark ? AnyShapeStyle(.secondary) : AnyShapeStyle(mutedText))
                     .lineLimit(1).truncationMode(.tail)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
             }.buttonStyle(.plain)
+                .padding(.top, 8)
+                .overlay(alignment: .top) { Rectangle().fill(Color(nsColor: .separatorColor)).frame(height: 0.5) }
                 .help(summary)
                 .accessibilityLabel("\(name)配置摘要：\(summary)")
         }
@@ -145,7 +169,13 @@ struct DeviceListSettings: View {
         .frame(height: 244)
         .contentShape(Rectangle())
         .onTapGesture { navigate(id ?? defaultID) }
+        .background(Color.primary.opacity(hovered ? 0.035 : 0), in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous))
         .cardSurface()
+        .onHover { inside in
+            if inside { hoveredCardID = key; NSCursor.pointingHand.set() }
+            else if hoveredCardID == key { hoveredCardID = nil; NSCursor.arrow.set() }
+        }
+        .onContinuousHover { phase in if case .active = phase { NSCursor.pointingHand.set() } }
     }
 }
 
