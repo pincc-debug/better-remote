@@ -47,7 +47,7 @@ struct DeviceListSettings: View {
                     }
                     .padding(.bottom, 8)
                 }
-                Text("新识别到的设备会自动显示在这里，点击即可配置。")
+                Text("新设备会自动出现在这里，点卡片可调单指滚动、分辨率等。")
                     .font(.system(size: DesignTokens.fontCaption))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -79,8 +79,9 @@ struct DeviceListSettings: View {
         // 「不切换分辨率」时用本机当前实际分辨率做预览，不再落回手机规格占位。
         let dimensions = preset?.dimensions(.standard) ?? DeviceScreenPreview.currentScreenDimensions
         let enabled = model.preferences.appliesConfiguration(for: id)
-        return VStack(spacing: 12) {
-            HStack(spacing: 8) {
+        let summary = DeviceConfigurationSummary.text(for: id, in: model.preferences)
+        return VStack(spacing: 10) {
+            HStack(spacing: 6) {
                 Text(name).font(.system(size: DesignTokens.fontBody, weight: .semibold))
                     .lineLimit(1).truncationMode(.middle).help(name)
                 if let id, model.preferences.remoteDevices.first(where: { $0.id == id })?.isNew == true {
@@ -96,6 +97,19 @@ struct DeviceListSettings: View {
                         .accessibilityLabel("\(name)：连接时应用")
                         .help("关闭后，此设备连接时不应用设备配置或默认配置。")
                 }
+                Button { navigate(id ?? defaultID) } label: {
+                    HStack(spacing: 2) {
+                        Text("设置")
+                        Image(systemName: "chevron.right").font(.system(size: 9, weight: .semibold))
+                    }
+                    .font(.system(size: DesignTokens.fontCaption, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 9)
+                    .frame(minWidth: 48, minHeight: 24, maxHeight: 24)
+                    .background(Capsule().fill(Color.secondary.opacity(0.14)))
+                    .contentShape(Capsule())
+                }.buttonStyle(.plain).fixedSize()
+                    .accessibilityLabel("设置\(name)")
                 Menu {
                     Button("配置设备") { navigate(id ?? defaultID) }
                     if let id {
@@ -115,10 +129,22 @@ struct DeviceListSettings: View {
                     .contentShape(Rectangle())
             }.buttonStyle(.plain).accessibilityLabel("配置\(name)")
                 .opacity(enabled ? 1 : 0.45)
+            Button { navigate(id ?? defaultID) } label: {
+                Text(summary)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1).truncationMode(.tail)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+            }.buttonStyle(.plain)
+                .help(summary)
+                .accessibilityLabel("\(name)配置摘要：\(summary)")
         }
         .padding(14)
         .frame(maxWidth: .infinity)
-        .frame(height: 220)
+        .frame(height: 244)
+        .contentShape(Rectangle())
+        .onTapGesture { navigate(id ?? defaultID) }
         .cardSurface()
     }
 }
