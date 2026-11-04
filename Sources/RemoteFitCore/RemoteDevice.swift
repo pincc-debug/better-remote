@@ -49,7 +49,7 @@ extension Preferences {
             if device.id.hasPrefix("uu:window:"), legacyMatches.count == 1, let index = legacyMatches.first {
                 remoteDevices[index] = .init(id: device.id, name: device.name, presetID: remoteDevices[index].presetID, configuration: remoteDevices[index].configuration, configurationEnabled: remoteDevices[index].configurationEnabled, customName: remoteDevices[index].customName, isNew: remoteDevices[index].isNew)
             } else {
-                remoteDevices.append(.init(id: device.id, name: device.name, configuration: DeviceConfiguration(preferences: self), isNew: true))
+                remoteDevices.append(.init(id: device.id, name: device.name, configuration: .newDevice(named: device.name, preferences: self), isNew: true))
             }
         }
     }

@@ -78,6 +78,44 @@ final class UUTouchScroll: @unchecked Sendable {
         if trace.count < 40 { trace.append("\(name)@\(Int((now - traceStart) * 1000))\(action)") }
         if type == .leftMouseUp || trace.count >= 40 { flushTrace() }
     }
+    /// Diagnostics only: which fields UU sets on injected presses, so a later
+    /// build can tell phone touch from a computer mouse. One line on press and
+    /// one on the first drag of that press, capped per tap session. Never
+    /// changes what happens to the event.
+    private var sourceLogPressStart: TimeInterval?
+    private var sourceLogDragPending = false
+    private var sourceLogCount = 0
+    static let sourceLogLimit = 80
+    private func logSource(_ type: CGEventType, _ event: CGEvent) {
+        let label: String
+        switch type {
+        case .leftMouseDown:
+            sourceLogPressStart = now
+            sourceLogDragPending = true
+            label = "down"
+        case .leftMouseDragged where sourceLogDragPending:
+            sourceLogDragPending = false
+            label = "drag"
+        default:
+            return
+        }
+        guard sourceLogCount < Self.sourceLogLimit else { return }
+        sourceLogCount += 1
+        OperationDiagnostics.write("uu-touch-src " + Self.sourceFields(of: event, label: label, app: onSession ? "todesk" : "uu",
+                                                                     elapsedMs: sourceLogPressStart.map { Int((now - $0) * 1000) } ?? 0))
+    }
+    static func sourceFields(of event: CGEvent, label: String, app: String, elapsedMs: Int) -> String {
+        func i(_ field: CGEventField) -> Int64 { event.getIntegerValueField(field) }
+        let pressure = String(format: "%.3f", event.getDoubleValueField(.mouseEventPressure))
+        let tabletPressure = String(format: "%.3f", event.getDoubleValueField(.tabletEventPointPressure))
+        return "ev=\(label) app=\(app) ms=\(elapsedMs) subtype=\(i(.mouseEventSubtype)) pressure=\(pressure) click=\(i(.mouseEventClickState))"
+            + " btn=\(i(.mouseEventButtonNumber)) num=\(i(.mouseEventNumber)) dx=\(i(.mouseEventDeltaX)) dy=\(i(.mouseEventDeltaY))"
+            + " state=\(i(.eventSourceStateID)) userData=\(i(.eventSourceUserData)) pid=\(i(.eventSourceUnixProcessID))"
+            + " uid=\(i(.eventSourceUserID)) gid=\(i(.eventSourceGroupID)) flags=0x\(String(event.flags.rawValue, radix: 16))"
+            + " tabX=\(i(.tabletEventPointX)) tabY=\(i(.tabletEventPointY)) tabP=\(tabletPressure) tabDev=\(i(.tabletEventDeviceID))"
+            + " proxDev=\(i(.tabletProximityEventDeviceID)) proxPtr=\(i(.tabletProximityEventPointerType)) proxIn=\(i(.tabletProximityEventEnterProximity))"
+            + " x=\(Int(event.location.x)) y=\(Int(event.location.y))"
+    }
     private func flushTrace() {
         guard !trace.isEmpty else { return }
         OperationDiagnostics.write("uu-touch " + trace.joined(separator: " "))
@@ -89,6 +127,7 @@ final class UUTouchScroll: @unchecked Sendable {
 
     private func startOnTapThread() -> Bool {
         if tap != nil { return true }
+        sourceLogCount = 0
         let types: [CGEventType] = [.leftMouseDown, .leftMouseDragged, .leftMouseUp, .mouseMoved]
         let mask = types.reduce(CGEventMask(0)) { $0 | (CGEventMask(1) << $1.rawValue) }
         // HID level so remote-client input is seen before session filters.
@@ -213,7 +252,10 @@ final class UUTouchScroll: @unchecked Sendable {
             return false
         }
         guard event.getIntegerValueField(.eventSourceUserData) != Self.marker else { return false }
-        if isSource(event) { return decide(type, event) }
+        if isSource(event) {
+            logSource(type, event)
+            return decide(type, event)
+        }
         // Physical mouse input takes over immediately. Never replay an older
         // remote press, hold or momentum after the user returns to the Mac.
         if type == .mouseMoved || type == .leftMouseDown || type == .leftMouseDragged || type == .leftMouseUp {
