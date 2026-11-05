@@ -24,7 +24,14 @@ APP="$PWD/dist/Better Remote.app"
 DEVELOPER_ID=false
 if [[ "$SIGN_IDENTITY" == "Developer ID Application:"* ]]; then DEVELOPER_ID=true; fi
 STAGING="$(mktemp -d "${TMPDIR:-/tmp}/RemoteFit-dmg.XXXXXX")"
-trap 'rm -rf "$STAGING"' EXIT
+MOUNT_DIR=""
+cleanup() {
+    if [ -n "$MOUNT_DIR" ]; then
+        hdiutil detach "$MOUNT_DIR" -quiet || echo "warning: could not detach $MOUNT_DIR during cleanup" >&2
+    fi
+    rm -rf "$STAGING"
+}
+trap cleanup EXIT
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN_DIR/BetterRemote" "$APP/Contents/MacOS/BetterRemote"
@@ -50,8 +57,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <string>zh-Hans</string>
 <string>en</string>
 </array>
-<key>CFBundleShortVersionString</key><string>0.9.5</string>
-<key>CFBundleVersion</key><string>202</string>
+<key>CFBundleShortVersionString</key><string>0.9.6</string>
+<key>CFBundleVersion</key><string>203</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
 <key>LSUIElement</key><true/>
 <key>NSHighResolutionCapable</key><true/>
@@ -95,20 +102,8 @@ else
     SIGN_FLAGS=(--force --sign "$SIGN_IDENTITY" --timestamp=none)
 fi
 # Sign Sparkle inside-out (XPC services, helpers, framework), then the app.
-# Timestamp server is flaky; fall back to --timestamp=none rather than shipping linker-signed adhoc.
 sign() {
-    if ! codesign "${SIGN_FLAGS[@]}" "$@"; then
-        echo "warning: codesign with timestamp failed; retrying without timestamp" >&2
-        local flags=()
-        local skip=0
-        for arg in "${SIGN_FLAGS[@]}"; do
-            if [ "$skip" = 1 ]; then skip=0; continue; fi
-            if [ "$arg" = "--timestamp" ]; then flags+=(--timestamp=none); continue; fi
-            if [ "$arg" = "--timestamp=none" ]; then flags+=("$arg"); continue; fi
-            flags+=("$arg")
-        done
-        codesign "${flags[@]}" "$@"
-    fi
+    codesign "${SIGN_FLAGS[@]}" "$@"
 }
 SPK="$APP/Contents/Frameworks/Sparkle.framework/Versions/B"
 for NESTED in "$SPK/XPCServices/Installer.xpc" "$SPK/XPCServices/Downloader.xpc" "$SPK/Autoupdate" "$SPK/Updater.app"; do
@@ -147,8 +142,7 @@ if [ -f "$DMG_BG" ]; then
     MOUNT_DIR="$(hdiutil attach -readwrite -noverify -noautoopen "$RW_DMG" | awk -F'\t' '/\/Volumes\//{print $NF}' | tail -1)"
     if [ -n "$MOUNT_DIR" ] && [ -d "$MOUNT_DIR" ]; then
         DISK_NAME="$(basename "$MOUNT_DIR")"
-        for ATTEMPT in 1 2 3; do
-            if osascript <<APPLESCRIPT
+        osascript <<APPLESCRIPT
 tell application "Finder"
     tell disk "$DISK_NAME"
         open
@@ -169,24 +163,21 @@ tell application "Finder"
     end tell
 end tell
 APPLESCRIPT
-            then LAYOUT_OK=true; break; fi
-            echo "warning: Finder layout attempt $ATTEMPT failed" >&2
-            sleep 2
-        done
+        LAYOUT_OK=true
         SetFile -a V "$MOUNT_DIR/.background" 2>/dev/null || chflags hidden "$MOUNT_DIR/.background" || true
         for _ in 1 2 3 4 5 6 7 8 9 10; do [ -f "$MOUNT_DIR/.DS_Store" ] && break; sleep 1; done
         sync
-        for ATTEMPT in 1 2 3 4 5; do
-            hdiutil detach "$MOUNT_DIR" -quiet && break
-            sleep 2
-            [ "$ATTEMPT" = 5 ] && hdiutil detach "$MOUNT_DIR" -force
-        done
+        hdiutil detach "$MOUNT_DIR" -quiet
+        MOUNT_DIR=""
     fi
 fi
 if [ "$LAYOUT_OK" = true ]; then
     hdiutil convert "$RW_DMG" -ov -format UDZO -imagekey zlib-level=9 -o "$CANDIDATE"
 else
-    echo "warning: DMG window layout failed; building a plain DMG" >&2
+    if [ -f "$DMG_BG" ]; then
+        echo "error: DMG layout was not completed" >&2
+        exit 1
+    fi
     rm -rf "$STAGING/payload/.background"
     hdiutil create -ov -fs HFS+ -volname "Better Remote" -srcfolder "$STAGING/payload" -format UDZO "$CANDIDATE"
 fi
@@ -194,12 +185,6 @@ if [ "$DEVELOPER_ID" = true ]; then
     codesign --force --sign "$SIGN_IDENTITY" --timestamp "$CANDIDATE"
     codesign --verify --strict "$CANDIDATE"
 fi
-# DiskImages may briefly keep a newly created APFS image busy on newer macOS.
-VERIFIED=false
-for ATTEMPT in 1 2 3 4 5; do
-    if hdiutil verify "$CANDIDATE"; then VERIFIED=true; break; fi
-    sleep 1
-done
-if [ "$VERIFIED" != true ]; then exit 1; fi
+hdiutil verify "$CANDIDATE"
 mv -f "$CANDIDATE" "$DMG"
 echo "$DMG"

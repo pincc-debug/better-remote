@@ -93,7 +93,9 @@ struct Entry {
                 let preset = args.count > 1 ? ScreenPreset(rawValue: args[1]) ?? .phone : .phone
                 let size = args.count > 2 ? DisplaySize(rawValue: args[2]) ?? .standard : .standard
                 let engine = DisplayEngine(root: root, executable: executable)
-                if args.contains("--capture-replacement") {
+                if args.contains("--identity-reuse") {
+                    try await engine.smokeIdentityReuse()
+                } else if args.contains("--capture-replacement") {
                     try await engine.smokeCaptureReplacement()
                 } else if args.contains("--adjustments") {
                     try await engine.smokeAdjustments()
@@ -103,9 +105,10 @@ struct Entry {
                     try await engine.smoke(dimensions: preset.dimensions(size), injectFailure: args.contains("--inject-failure"))
                 }
                 withExtendedLifetime(lock) {}
-                let scenario = args.contains("--capture-replacement") ? "direct display handoff, fresh capture identities and retained-source rollback" :
+                let scenario = args.contains("--identity-reuse") ? "30 display creations, bounded identities and physical restoration" :
+                    (args.contains("--capture-replacement") ? "direct display handoff, alternating capture identities and retained-source rollback" :
                     (args.contains("--adjustments") ? "direct display handoff, fresh capture identities and retained-source rollback" :
-                    (args.contains("--manual") ? "standalone 1366×768" : preset.dimensions(size).label))
+                    (args.contains("--manual") ? "standalone 1366×768" : preset.dimensions(size).label)))
                 print("PASS: \(scenario), HiDPI, mirror source, restore")
                 exit(0)
               } catch { fputs(error.localizedDescription + "\n", stderr); exit(1) }

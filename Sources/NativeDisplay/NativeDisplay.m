@@ -32,6 +32,7 @@ NSString *RFDisplayUUID(uint32_t displayID) {
 - (instancetype)initWithWidth:(uint32_t)width height:(uint32_t)height serialNumber:(uint32_t)serial {
     self = [super init];
     if (!self || ![RFVirtualDisplay isAvailable] || width < 512 || height < 512 || width > 3840 || height > 3840) return nil;
+    _serialNumber = serial;
     @try {
         id descriptor = [[NSClassFromString(@"CGVirtualDisplayDescriptor") alloc] init];
         [descriptor setValue:@"Better Remote Virtual Display" forKey:@"name"];

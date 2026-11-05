@@ -7,6 +7,17 @@ import RemoteFitCore
 struct CommitRequest: Codable { var targets: [DisplayState] }
 
 enum DisplayWorker {
+    /// Includes online displays whose modes have not arrived yet. A mode-based
+    /// snapshot can omit those and would allow premature identity reuse.
+    static func occupiedVirtualSerials() throws -> [UInt32] {
+        var ids = [CGDirectDisplayID](repeating: 0, count: 128), count: UInt32 = 0
+        try check(CGGetOnlineDisplayList(UInt32(ids.count), &ids, &count), "读取显示器身份")
+        guard count < ids.count else { throw FitError.message("显示器列表不完整") }
+        return ids.prefix(Int(count)).filter {
+            CGDisplayVendorNumber($0) == VirtualDisplayIdentity.vendor &&
+            CGDisplayModelNumber($0) == VirtualDisplayIdentity.product
+        }.map { CGDisplaySerialNumber($0) }
+    }
     static func mode(_ m: CGDisplayMode) -> DisplayMode {
         .init(width: m.width, height: m.height, pixelWidth: m.pixelWidth, pixelHeight: m.pixelHeight,
               refresh: m.refreshRate, modeID: Int(m.ioDisplayModeID))
@@ -110,6 +121,8 @@ enum DisplayWorker {
             guard let command = args.first else { throw FitError.message("缺少命令") }
             let result: Data
             switch command {
+            case "occupied-virtual-serials":
+                result = try JSONEncoder().encode(occupiedVirtualSerials())
             case "snapshot":
                 result = try JSONEncoder().encode(snapshot())
             case "probe-virtual":

@@ -13,13 +13,19 @@ struct EngineStatus: Sendable, Equatable {
 actor DisplayEngine {
     let root: URL
     let executable: String
-    var virtualDisplay: RFVirtualDisplay?
+    var virtualDisplay: RFVirtualDisplay? {
+        didSet {
+            if let oldValue, oldValue !== virtualDisplay {
+                log("display_release_requested", "id=\(oldValue.displayID) serial=\(oldValue.serialNumber) replacement=\(virtualDisplay?.displayID ?? 0)")
+            }
+        }
+    }
     var applied: Dimensions? { didSet { if applied == nil { appliedMode = nil } } }
     private var appliedMode: DisplayMode?
     var recovered = false
     var pendingRestore = false
     var shuttingDown = false
-    private var lastDisplaySerial: UInt32 = 1
+    private var identityCursorURL: URL { root.appendingPathComponent("display-identity-cursor.json") }
     let encoder = JSONEncoder()
     var sessionURL: URL { root.appendingPathComponent("session.json") }
     var stableURL: URL { root.appendingPathComponent("stable-layouts.json") }
@@ -108,12 +114,29 @@ actor DisplayEngine {
             }
         }
     }
-    private func createDisplay(_ dimensions: Dimensions, policy: ZeroDisplayActivation = .standard) throws -> RFVirtualDisplay {
+    private func reserveDisplayIdentity() throws -> UInt32 {
+        let cursor = (try? JSONDecoder().decode(VirtualDisplayIdentityCursor.self,
+                                              from: Data(contentsOf: identityCursorURL))) ?? .init()
+        for poll in 0..<10 {
+            let data = try ProcessRunner.run(executable, ["--worker", "occupied-virtual-serials"], timeout: 12)
+            var occupied = Set(try JSONDecoder().decode([UInt32].self, from: data))
+            if let held = virtualDisplay { occupied.insert(held.serialNumber) }
+            if let serial = VirtualDisplayIdentity.next(after: cursor.lastSerial, occupied: occupied) {
+                try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+                try encoder.encode(VirtualDisplayIdentityCursor(lastSerial: serial)).write(to: identityCursorURL, options: .atomic)
+                return serial
+            }
+            if poll == 0 { log("display_identity_wait", "occupied=\(occupied.sorted())") }
+            if poll < 9 { Thread.sleep(forTimeInterval: 0.2) }
+        }
+        log("display_identity_unavailable", "bounded_pool_busy")
+        throw FitError.message("虚拟屏幕正在释放，请稍后重试。")
+    }
+    private func createDisplay(_ dimensions: Dimensions, reason: String, policy: ZeroDisplayActivation = .standard) throws -> RFVirtualDisplay {
         guard RFVirtualDisplay.isAvailable() else { throw FitError.message("当前系统不支持虚拟屏幕。") }
         for attempt in 1...max(1, policy.createAttempts) {
-            var serial: UInt32
-            repeat { serial = UInt32.random(in: 2...UInt32.max) } while serial == lastDisplaySerial
-            lastDisplaySerial = serial
+            let serial = try reserveDisplayIdentity()
+            log("display_create_requested", "reason=\(reason) target=\(dimensions.label) serial=\(serial) attempt=\(attempt)/\(policy.createAttempts)")
             if let display = RFVirtualDisplay(width: UInt32(dimensions.width), height: UInt32(dimensions.height), serialNumber: serial),
                display.displayID != 0 {
                 if attempt > 1 { log("display_create_recovered", "attempt=\(attempt)") }
@@ -167,6 +190,7 @@ actor DisplayEngine {
             let live = HeadlessPlaceholder.ignoringPlaceholders(try snapshot())
             let liveIDs = Set(live.map(\.id))
             guard liveIDs == expectedIDs || disappearingID.map({ liveIDs == expectedIDs.union([$0]) }) == true else {
+                log("display_topology_changed", "expected=\(expectedIDs.sorted()) disappearing=\(disappearingID ?? 0) actual=\(Self.layout(live))")
                 throw FitError.message("适配期间显示器硬件拓扑发生变化，操作已中止。")
             }
             if DisplayTransition.matches(live, targets: targets, sourceID: sourceID) {
@@ -244,7 +268,7 @@ actor DisplayEngine {
             wakeDisplays()
         }
         do {
-            virtualDisplay = try createDisplay(dimensions, policy: policy)
+            virtualDisplay = try createDisplay(dimensions, reason: "activation", policy: policy)
             guard let sourceID = virtualDisplay?.displayID else { throw FitError.message("无法创建虚拟屏幕。") }
             let ready = try readySource(id: sourceID, dimensions: dimensions, policy: policy)
             let mirrorable = HeadlessPlaceholder.mirrorable(saved)
@@ -284,7 +308,7 @@ actor DisplayEngine {
         var retiredOld = false
         do {
             // Keep the current desktop until the new capture identity is ready.
-            candidate = try createDisplay(dimensions)
+            candidate = try createDisplay(dimensions, reason: "replacement")
             guard let candidateID = candidate?.displayID else { throw FitError.message("无法创建虚拟屏幕。") }
             let ready = try readySource(id: candidateID, dimensions: dimensions)
             let targets = try DisplayTransition.targets(source: ready.source, dimensions: dimensions, physical: physical, retiring: oldSource, selectedMode: ready.mode)
@@ -496,18 +520,56 @@ actor DisplayEngine {
         } catch { try restore(); throw error }
     }
     func smokeAdjustments() throws { try smokeCaptureReplacement() }
+    func smokeIdentityReuse() throws {
+        let baseline = try snapshot()
+        guard !baseline.isEmpty, baseline.allSatisfy({ $0.physical && $0.mirror == 0 }) else {
+            throw FitError.message("身份复用测试需要独立物理屏幕")
+        }
+        let sizes = [Dimensions(1024, 768), Dimensions(630, 1400), Dimensions(1280, 800)]
+        var seen = Set<String>()
+        var lastUUID: String?
+        do {
+            for session in 0..<3 {
+                var recovery: Data?
+                for step in 0..<10 {
+                    let size = sizes[(session * 10 + step) % sizes.count]
+                    let result = apply(size)
+                    guard result.detail == nil, result.applied == size,
+                          let source = try snapshot().first(where: { !$0.physical && $0.main }),
+                          let uuid = source.uuid, uuid != lastUUID else { throw FitError.message(result.detail ?? "相邻屏幕身份未更换") }
+                    seen.insert(uuid); lastUUID = uuid
+                    guard seen.count <= VirtualDisplayIdentity.serials.count else { throw FitError.message("身份数量持续增长") }
+                    let saved = try Data(contentsOf: sessionURL)
+                    if let recovery, saved != recovery { throw FitError.message("切换改变了恢复记录") }
+                    recovery = saved
+                    let repeatResult = apply(size)
+                    guard repeatResult.detail == nil, virtualDisplay?.displayID == source.id else { throw FitError.message("重复规格创建了新屏幕") }
+                    log("identity_smoke", "step=\(session * 10 + step + 1) unique=\(seen.count) uuid=\(uuid)")
+                }
+                try restore()
+                let live = try snapshot()
+                guard baseline.count == live.count, baseline.allSatisfy({ expected in
+                    StableModes.mismatches(target: expected, actual: live.first(where: { $0.hardwareKey == expected.hardwareKey })).isEmpty
+                }) else { throw FitError.message("物理屏幕未恢复到测试前状态") }
+            }
+        } catch { try restore(); throw error }
+    }
     func smokeCaptureReplacement() throws {
         do {
             var identities = Set<String>()
+            var previousUUID: String?
             var recovery: Data?
             let dimensions = [Dimensions(1252, 1156), Dimensions(630, 1400), Dimensions(1024, 768), Dimensions(1400, 630)]
             for size in dimensions {
                 let result = apply(size)
                 guard result.detail == nil, result.applied == size,
                       let source = try snapshot().first(where: { !$0.physical && $0.main }),
-                      let uuid = source.uuid, identities.insert(uuid).inserted else {
+                      let uuid = source.uuid, uuid != previousUUID else {
                     throw FitError.message(result.detail ?? "采集屏幕身份未更新")
                 }
+                identities.insert(uuid)
+                guard identities.count <= VirtualDisplayIdentity.serials.count else { throw FitError.message("虚拟屏幕身份超出上限") }
+                previousUUID = uuid
                 let saved = try Data(contentsOf: sessionURL)
                 if let recovery {
                     guard saved == recovery else { throw FitError.message("更换采集屏幕改变了恢复记录") }
