@@ -12,8 +12,8 @@ final class ToolbarPresenceTests: XCTestCase {
         for expand in [true, false] {
             for manage in [true, false] {
                 let p = try decode("{\"floatingSwitcherEnabled\":false,\"autoExpandToolbarOnConnect\":\(expand),\"autoManageToolbarOnDisconnect\":\(manage)}")
-                XCTAssertEqual(p.toolbarWhenConnected, expand, "连接时展开 \(expand)")
-                XCTAssertEqual(p.toolbarWhenDisconnected, !manage, "断开时收起 \(manage)")
+                XCTAssertEqual(p.toolbarWhenConnected, ToolbarVisibility.migratedConnected(expand), "连接时展开 \(expand)")
+                XCTAssertEqual(p.toolbarWhenDisconnected, ToolbarVisibility.migratedDisconnected(!manage), "断开时收起 \(manage)")
             }
         }
     }
@@ -21,30 +21,30 @@ final class ToolbarPresenceTests: XCTestCase {
     func testMigrationOfCurrentUserSettings() throws {
         // 立品's saved file: master switch off, 连接时展开 on, 断开时收起 on.
         let p = try decode("{\"floatingSwitcherEnabled\":false,\"autoExpandToolbarOnConnect\":true,\"autoManageToolbarOnDisconnect\":true,\"toolbarSide\":\"right\"}")
-        XCTAssertTrue(p.toolbarWhenConnected)
-        XCTAssertFalse(p.toolbarWhenDisconnected)
+        XCTAssertEqual(p.toolbarWhenConnected, .toolbar)
+        XCTAssertEqual(p.toolbarWhenDisconnected, .hidden)
         XCTAssertEqual(p.toolbarSide, .right)
     }
 
     func testMissingKeysUseNewDefaults() throws {
         let p = try decode("{}")
-        XCTAssertTrue(p.toolbarWhenConnected)
-        XCTAssertFalse(p.toolbarWhenDisconnected)
+        XCTAssertEqual(p.toolbarWhenConnected, .toolbar)
+        XCTAssertEqual(p.toolbarWhenDisconnected, .hidden)
         XCTAssertFalse(p.autoFillWindowsOnRemote)
-        XCTAssertEqual(Preferences().toolbarWhenConnected, true)
-        XCTAssertEqual(Preferences().toolbarWhenDisconnected, false)
+        XCTAssertEqual(Preferences().toolbarWhenConnected, .toolbar)
+        XCTAssertEqual(Preferences().toolbarWhenDisconnected, .hidden)
     }
 
     func testMalformedLegacyValuesDecodeSafely() throws {
         let p = try decode("{\"autoExpandToolbarOnConnect\":\"yes\",\"autoManageToolbarOnDisconnect\":3,\"toolbarWhenDisconnected\":null}")
-        XCTAssertTrue(p.toolbarWhenConnected)
-        XCTAssertFalse(p.toolbarWhenDisconnected)
+        XCTAssertEqual(p.toolbarWhenConnected, .toolbar)
+        XCTAssertEqual(p.toolbarWhenDisconnected, .hidden)
     }
 
     func testNewKeysWinAndLegacyKeysAreNotWrittenBack() throws {
         let p = try decode("{\"autoExpandToolbarOnConnect\":true,\"autoManageToolbarOnDisconnect\":true,\"toolbarWhenConnected\":false,\"toolbarWhenDisconnected\":true,\"autoFillWindowsOnRemote\":true}")
-        XCTAssertFalse(p.toolbarWhenConnected)
-        XCTAssertTrue(p.toolbarWhenDisconnected)
+        XCTAssertEqual(p.toolbarWhenConnected, .ball)
+        XCTAssertEqual(p.toolbarWhenDisconnected, .toolbar)
         XCTAssertTrue(p.autoFillWindowsOnRemote)
         let encoded = try JSONEncoder().encode(p)
         let object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
@@ -54,17 +54,36 @@ final class ToolbarPresenceTests: XCTestCase {
 
     // MARK: Connect / disconnect / 5 s grace
 
-    private func prefs(connected: Bool, disconnected: Bool) -> Preferences {
+    private func prefs(connected: ToolbarVisibility, disconnected: ToolbarVisibility) -> Preferences {
         var p = Preferences(); p.toolbarWhenConnected = connected; p.toolbarWhenDisconnected = disconnected; return p
     }
 
-    func testShowsFollowsTheSettingForTheContext() {
-        let p = prefs(connected: true, disconnected: false)
-        XCTAssertTrue(ToolbarPresence.shows(.connected, preferences: p))
-        XCTAssertFalse(ToolbarPresence.shows(.disconnected, preferences: p))
-        let q = prefs(connected: false, disconnected: true)
-        XCTAssertFalse(ToolbarPresence.shows(.connected, preferences: q))
-        XCTAssertTrue(ToolbarPresence.shows(.disconnected, preferences: q))
+    func testLevelFollowsTheSettingForTheContext() {
+        let p = prefs(connected: .toolbar, disconnected: .hidden)
+        XCTAssertEqual(ToolbarPresence.level(.connected, preferences: p), .toolbar)
+        XCTAssertEqual(ToolbarPresence.level(.disconnected, preferences: p), .hidden)
+        let q = prefs(connected: .ball, disconnected: .toolbar)
+        XCTAssertEqual(ToolbarPresence.level(.connected, preferences: q), .ball)
+        XCTAssertEqual(ToolbarPresence.level(.disconnected, preferences: q), .toolbar)
+    }
+
+    func testHiddenBecomesBallWhileVirtualResolutionIsOutstanding() {
+        XCTAssertEqual(ToolbarPresence.surface(level: .hidden, virtualResolutionOutstanding: false), .hidden)
+        XCTAssertEqual(ToolbarPresence.surface(level: .hidden, virtualResolutionOutstanding: true), .ball)
+        XCTAssertEqual(ToolbarPresence.surface(level: .ball, virtualResolutionOutstanding: false), .ball)
+        XCTAssertEqual(ToolbarPresence.surface(level: .ball, virtualResolutionOutstanding: true), .ball)
+        XCTAssertEqual(ToolbarPresence.surface(level: .toolbar, virtualResolutionOutstanding: true), .toolbar)
+    }
+
+    func testConnectedOffMigratesToBallAndDisconnectedOffStaysHidden() throws {
+        let p = try decode("{\"toolbarWhenConnected\":false,\"toolbarWhenDisconnected\":false}")
+        XCTAssertEqual(p.toolbarWhenConnected, .ball)
+        XCTAssertEqual(p.toolbarWhenDisconnected, .hidden)
+        let encoded = try JSONEncoder().encode(p)
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        XCTAssertEqual(object["toolbarWhenConnected"] as? String, "ball")
+        XCTAssertEqual(object["toolbarWhenDisconnected"] as? String, "hidden")
+        XCTAssertEqual(try JSONDecoder().decode(Preferences.self, from: encoded).toolbarWhenConnected, .ball)
     }
 
     func testLaunchStartsDisconnected() {

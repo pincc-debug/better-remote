@@ -68,14 +68,14 @@ final class DeviceTemplateCatalogTests: XCTestCase {
     }
     func testAutomaticSwitchCanWaitForDefaultAndExplicitToolbarOffSurvivesReload() throws {
         var p = Preferences()
-        XCTAssertTrue(p.toolbarWhenConnected)
+        XCTAssertEqual(p.toolbarWhenConnected, .toolbar)
         p.autoResolutionPresetID = nil
         p.autoResolutionEnabled = true
         XCTAssertFalse(p.hasAutomaticDefault)
-        p.toolbarWhenConnected = false
+        p.toolbarWhenConnected = .ball
         let loaded = try JSONDecoder().decode(Preferences.self, from: JSONEncoder().encode(p))
         XCTAssertTrue(loaded.autoResolutionEnabled)
         XCTAssertNil(loaded.autoResolutionPresetID)
-        XCTAssertFalse(loaded.toolbarWhenConnected)
+        XCTAssertEqual(loaded.toolbarWhenConnected, .ball)
     }
 }

@@ -44,13 +44,13 @@ final class DeviceConfigurationSummaryTests: XCTestCase {
 
     func testToolbarSideOnlyWhenShown() {
         var base = Preferences().configuration(for: nil)
-        base.toolbarWhenConnected = true
+        base.toolbarWhenConnected = .toolbar
         base.toolbarSide = .right
         var c = base
         c.toolbarSide = .left
         XCTAssertEqual(DeviceConfigurationSummary.items(c, comparedTo: base) { _ in nil }, ["工具条：左侧"])
-        c.toolbarWhenConnected = false
-        XCTAssertEqual(DeviceConfigurationSummary.items(c, comparedTo: base) { _ in nil }, ["工具条：关"])
+        c.toolbarWhenConnected = .ball
+        XCTAssertEqual(DeviceConfigurationSummary.items(c, comparedTo: base) { _ in nil }, ["工具条：悬浮球"])
     }
 
     func testClearingResolutionShowsNoSwitch() {

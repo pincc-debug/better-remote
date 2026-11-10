@@ -27,10 +27,10 @@ final class ApplicationHistoryTests: XCTestCase {
     }
     func testFloatingPreferenceMigrationAndRoundTrip() throws {
         let old = try JSONDecoder().decode(Preferences.self, from: Data("{}".utf8))
-        XCTAssertTrue(old.toolbarWhenConnected)
-        XCTAssertFalse(old.toolbarWhenDisconnected)
-        var current = old; current.toolbarWhenDisconnected = true
+        XCTAssertEqual(old.toolbarWhenConnected, .toolbar)
+        XCTAssertEqual(old.toolbarWhenDisconnected, .hidden)
+        var current = old; current.toolbarWhenDisconnected = .toolbar
         let decoded = try JSONDecoder().decode(Preferences.self, from: JSONEncoder().encode(current))
-        XCTAssertTrue(decoded.toolbarWhenDisconnected)
+        XCTAssertEqual(decoded.toolbarWhenDisconnected, .toolbar)
     }
 }

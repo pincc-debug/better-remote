@@ -69,6 +69,18 @@ final class VirtualDisplayReadinessTests: XCTestCase {
         }
     }
 
+    func testOneEmptySampleAfterAReadyDisplayIsFlickerNotAMiss() throws {
+        var samples = [
+            VirtualDisplayProbe(source: nil, modes: []),
+            probe(false),
+            VirtualDisplayProbe(source: nil, modes: [])
+        ]
+        let ready = try VirtualDisplayReadiness.wait(dimensions: dimensions, policy: policy,
+            sample: { samples.removeFirst() }, pause: { _ in })
+        XCTAssertEqual(ready.mode, mode(hidpi: false))
+        XCTAssertTrue(samples.isEmpty)
+    }
+
     func testDisappearedDisplayDoesNotReturnStaleModes() {
         var samples = [probe(false), .init(source: nil, modes: []), .init(source: nil, modes: [])]
         XCTAssertThrowsError(try VirtualDisplayReadiness.wait(dimensions: dimensions, policy: policy,

@@ -62,7 +62,7 @@ final class WindowLayoutTests: XCTestCase {
         for enabled in [true, false] {
             let data = Data("{\"leftWorkspaceEnabled\":\(enabled),\"floatingSwitcherEnabled\":true,\"toolbarSide\":\"bottom\",\"floatingActions\":[\"leftWorkspace\",\"resolution\",\"runningApplications\"],\"operationOrder\":[\"builtin:leftWorkspace\",\"builtin:resolution\",\"builtin:runningApplications\"]}".utf8)
             let preferences = try JSONDecoder().decode(Preferences.self, from: data)
-            XCTAssertTrue(preferences.toolbarWhenConnected)
+            XCTAssertEqual(preferences.toolbarWhenConnected, .toolbar)
             XCTAssertEqual(preferences.toolbarSide, .bottom)
             XCTAssertEqual(preferences.floatingActions, [.runningApplications])
             XCTAssertEqual(preferences.operationOrder, ["builtin:runningApplications"])

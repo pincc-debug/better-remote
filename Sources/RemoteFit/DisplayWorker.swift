@@ -25,6 +25,9 @@ enum DisplayWorker {
     static func snapshot() throws -> [DisplayState] {
         var ids = [CGDirectDisplayID](repeating: 0, count: 32), count: UInt32 = 0
         try check(CGGetOnlineDisplayList(32, &ids, &count), "读取显示器")
+        // A mirrored panel often has no current mode, and may be missing from this list while
+        // still scanning out the virtual framebuffer. Activation keeps this mode-complete view
+        // so topology checks stay stable. Restore uses census(), which keeps those panels.
         return ids.prefix(Int(count)).compactMap { id in
             guard let m = CGDisplayCopyDisplayMode(id) else { return nil }
             let bounds = CGDisplayBounds(id)
@@ -40,6 +43,42 @@ enum DisplayWorker {
                                 physical: physical, main: CGDisplayIsMain(id) != 0,
                                 x: Int32(bounds.origin.x), y: Int32(bounds.origin.y),
                                 mirror: CGDisplayMirrorsDisplay(id), mode: mode(m))
+        }
+    }
+    /// Online displays plus any id in 1...256 that CGDisplayIsOnline still answers.
+    /// Mode-less and unlisted panels are kept so disconnect restore can find the physical screen.
+    static func census() -> [DisplaySample] {
+        var listed = Set<CGDirectDisplayID>()
+        var buffer = [CGDirectDisplayID](repeating: 0, count: 128)
+        var count: UInt32 = 0
+        if CGGetOnlineDisplayList(UInt32(buffer.count), &buffer, &count) == .success, count < buffer.count {
+            for id in buffer.prefix(Int(count)) { listed.insert(id) }
+        }
+        var ids: [CGDirectDisplayID] = []
+        var seen = Set<CGDirectDisplayID>()
+        func add(_ id: CGDirectDisplayID) {
+            guard id != 0, seen.insert(id).inserted else { return }
+            ids.append(id)
+        }
+        for id in listed { add(id) }
+        for raw in 1...256 {
+            let id = CGDirectDisplayID(raw)
+            if CGDisplayIsOnline(id) { add(id) }
+        }
+        return ids.map { id in
+            let vendor = CGDisplayVendorNumber(id)
+            let modelNumber = CGDisplayModelNumber(id)
+            let serial = CGDisplaySerialNumber(id)
+            let builtin = CGDisplayIsBuiltin(id) != 0
+            let bounds = CGDisplayBounds(id)
+            return DisplaySample(id: id, uuid: RFDisplayUUID(id),
+                                 hardwareKey: "\(vendor):\(modelNumber):\(serial):\(builtin)",
+                                 ownVirtual: vendor == ActivationBase.ownVendor,
+                                 main: CGDisplayIsMain(id) != 0,
+                                 x: Int32(bounds.origin.x), y: Int32(bounds.origin.y),
+                                 mirror: CGDisplayMirrorsDisplay(id),
+                                 mode: CGDisplayCopyDisplayMode(id).map(mode),
+                                 listedOnline: listed.contains(id))
         }
     }
     static func probeVirtualDisplay(_ id: UInt32) throws -> VirtualDisplayProbe {
@@ -125,6 +164,8 @@ enum DisplayWorker {
                 result = try JSONEncoder().encode(occupiedVirtualSerials())
             case "snapshot":
                 result = try JSONEncoder().encode(snapshot())
+            case "census":
+                result = try JSONEncoder().encode(census())
             case "probe-virtual":
                 guard args.count == 2, let id = UInt32(args[1]) else { throw FitError.message("缺少显示器 ID") }
                 result = try JSONEncoder().encode(probeVirtualDisplay(id))

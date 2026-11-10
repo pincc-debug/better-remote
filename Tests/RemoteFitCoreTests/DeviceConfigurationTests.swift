@@ -24,12 +24,12 @@ final class DeviceConfigurationTests: XCTestCase {
         computer.uuScrollSpeedPercent = 100
         computer.autoFillWindowsOnRemote = true
         computer.connectionDockMode = .keep
-        computer.toolbarWhenConnected = false
+        computer.toolbarWhenConnected = .ball
         computer.toolbarSide = .left
         preferences.setConfiguration(computer, for: id)
         preferences.uuTouchScrollEnabled = true
         preferences.uuScrollSpeedPercent = 25
-        preferences.toolbarWhenConnected = true
+        preferences.toolbarWhenConnected = .toolbar
         preferences.toolbarSide = .right
         preferences = try JSONDecoder().decode(Preferences.self, from: JSONEncoder().encode(preferences))
         preferences.remember(.init(id: id, name: "Computer"))
@@ -45,7 +45,7 @@ final class DeviceConfigurationTests: XCTestCase {
         preferences.autoResolutionEnabled = true
         preferences.defaultResolutionEnabled = false
         preferences.uuTouchScrollEnabled = true
-        preferences.toolbarWhenConnected = false
+        preferences.toolbarWhenConnected = .ball
         preferences.toolbarSide = .left
         preferences.remoteDevices = [.init(id: "uu:window:Phone", name: "Phone", presetID: preset.id)]
         let restored = try JSONDecoder().decode(Preferences.self, from: JSONEncoder().encode(preferences))

@@ -55,8 +55,8 @@ final class ControlPanelModel: ObservableObject {
     var onDeleteRemoteDevice: (String) -> Void = { _ in }
     var onDeviceResolutionPreset: (String, String?) -> Void = { _, _ in }
     var onAutoResolutionPreset: (String) -> Void = { _ in }
-    var onToolbarWhenConnectedToggle: (Bool) -> Void = { _ in }
-    var onToolbarWhenDisconnectedToggle: (Bool) -> Void = { _ in }
+    var onToolbarWhenConnected: (ToolbarVisibility) -> Void = { _ in }
+    var onToolbarWhenDisconnected: (ToolbarVisibility) -> Void = { _ in }
     var onConnectionDockMode: (ConnectionDockMode) -> Void = { _ in }
     var onAutoFillWindowsToggle: (Bool) -> Void = { _ in }
     var onWindowControlsToggle: (Bool) -> Void = { _ in }

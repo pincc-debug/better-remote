@@ -135,10 +135,10 @@ public struct Preferences: Codable, Equatable, Sendable {
     public var autoResolutionPresetID: String? = CustomPreset.recommendedLandscapeID
     /// 连接自动化 · 连接时的程序坞. Replaces the 0.8.145-and-earlier 「连接时显示」 toggle (on → 始终显示).
     public var connectionDockMode: ConnectionDockMode = .keep
-    /// 桌面工具条 · 远程连接时显示: expanded toolbar while a remote session is connected. On by default.
-    public var toolbarWhenConnected: Bool = true
-    /// 桌面工具条 · 未连接时显示: expanded toolbar while nobody is connected. Off by default.
-    public var toolbarWhenDisconnected: Bool = false
+    /// 桌面工具条 · 连接时显示. 工具条 expands on connect. Default 工具条.
+    public var toolbarWhenConnected: ToolbarVisibility = .toolbar
+    /// 桌面工具条 · 未连接时显示. Default 不显示 (fully hidden).
+    public var toolbarWhenDisconnected: ToolbarVisibility = .hidden
     /// 连接自动化 · 远程时窗口自动铺满: fill newly opened / activated standard windows while connected. Off by default.
     public var autoFillWindowsOnRemote: Bool = false
     /// Restore the computer screen when the remote connection ends. On by default.
@@ -160,7 +160,7 @@ public struct Preferences: Codable, Equatable, Sendable {
     public var resolutionAdjustment: ResolutionAdjustment { selectedCustom?.adjustment ?? ResolutionAdjustment(preset.dimensions(size)) }
     public var hasAutomaticDefault: Bool { customPresets.contains { $0.id == autoResolutionPresetID } }
     public var needsRemoteConnectionMonitoring: Bool {
-        uuTouchScrollEnabled || connectionDockMode != .keep || toolbarWhenConnected || toolbarWhenDisconnected || autoFillWindowsOnRemote || autoRestoreOnDisconnect || (autoResolutionEnabled && hasAutomaticDefault)
+        uuTouchScrollEnabled || connectionDockMode != .keep || toolbarWhenConnected != .hidden || toolbarWhenDisconnected != .hidden || autoFillWindowsOnRemote || autoRestoreOnDisconnect || (autoResolutionEnabled && hasAutomaticDefault)
     }
     public mutating func setAutomaticResolutionEnabled(_ enabled: Bool) {
         autoResolutionEnabled = enabled
@@ -171,9 +171,11 @@ public struct Preferences: Codable, Equatable, Sendable {
     private enum CodingKeys: String, CodingKey { case applicationShortcutsEnabled, applicationShortcuts, theme, toolbarSide, preset, size, customPresets, selectedCustomID, floatingActions, namedShortcuts, operationOrder, floatingActionIcons, seededFactorySpecs, autoResolutionEnabled, remoteDevices, deviceResolutionEnabled, defaultResolutionEnabled, autoResolutionPresetID, connectionDockMode, toolbarWhenConnected, toolbarWhenDisconnected, autoFillWindowsOnRemote, uuTouchScrollEnabled, uuScrollSpeedPercent, remoteScrollReversed, autoRestoreOnDisconnect, showWindowControls, seededMinimizeAction, seededShowDesktopAction }
     /// Pre-0.8.138 toolbar keys and the pre-0.8.146 Dock toggle, read once to migrate and never written again.
     private enum LegacyKeys: String, CodingKey { case autoExpandToolbarOnConnect, autoManageToolbarOnDisconnect, autoShowDockOnConnect, uuScrollSpeedEnabled }
-    /// 连接时展开 on → 远程连接时显示 on; 断开时收起 off → 未连接时显示 on. Missing keys use the old defaults (on / on).
-    public static func migratedToolbarVisibility(expandOnConnect: Bool?, manageOnDisconnect: Bool?) -> (whenConnected: Bool, whenDisconnected: Bool) {
-        (expandOnConnect ?? true, !(manageOnDisconnect ?? true))
+    /// 连接时展开 on → 工具条, off → 悬浮球. 断开时收起 on → 不显示, off → 工具条.
+    /// Missing keys use the old defaults (expand on, manage on) → 工具条 / 不显示.
+    public static func migratedToolbarVisibility(expandOnConnect: Bool?, manageOnDisconnect: Bool?) -> (whenConnected: ToolbarVisibility, whenDisconnected: ToolbarVisibility) {
+        (ToolbarVisibility.migratedConnected(expandOnConnect ?? true),
+         ToolbarVisibility.migratedDisconnected(!(manageOnDisconnect ?? true)))
     }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -213,8 +215,8 @@ public struct Preferences: Codable, Equatable, Sendable {
         let migrated = Self.migratedToolbarVisibility(
             expandOnConnect: try? legacy.decodeIfPresent(Bool.self, forKey: .autoExpandToolbarOnConnect),
             manageOnDisconnect: try? legacy.decodeIfPresent(Bool.self, forKey: .autoManageToolbarOnDisconnect))
-        toolbarWhenConnected = (try? c.decodeIfPresent(Bool.self, forKey: .toolbarWhenConnected)) ?? migrated.whenConnected
-        toolbarWhenDisconnected = (try? c.decodeIfPresent(Bool.self, forKey: .toolbarWhenDisconnected)) ?? migrated.whenDisconnected
+        toolbarWhenConnected = ToolbarVisibility.decode(c, forKey: .toolbarWhenConnected, connected: true) ?? migrated.whenConnected
+        toolbarWhenDisconnected = ToolbarVisibility.decode(c, forKey: .toolbarWhenDisconnected, connected: false) ?? migrated.whenDisconnected
         autoFillWindowsOnRemote = (try? c.decodeIfPresent(Bool.self, forKey: .autoFillWindowsOnRemote)) ?? false
         uuTouchScrollEnabled = try c.decodeIfPresent(Bool.self, forKey: .uuTouchScrollEnabled) ?? false
         uuScrollSpeedPercent = UUScrollScaling.clampedPercent(try c.decodeIfPresent(Int.self, forKey: .uuScrollSpeedPercent) ?? UUScrollScaling.defaultPercent)

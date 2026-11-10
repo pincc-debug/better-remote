@@ -26,6 +26,14 @@ final class ZeroDisplayActivationTests: XCTestCase {
         XCTAssertEqual(ZeroDisplayActivation.standard.createAttempts, 1)
     }
 
+    func testReplacementRetryPollsLongerAndWakesTheDisplay() {
+        let retry = ZeroDisplayActivation.replacementRetry
+        let first = Double(ZeroDisplayActivation.standard.readyPolls) * ZeroDisplayActivation.standard.readyPollInterval
+        XCTAssertGreaterThan(retry.createAttempts, 1)
+        XCTAssertGreaterThan(Double(retry.readyPolls) * retry.readyPollInterval, first)
+        XCTAssertTrue(retry.wakeDisplays)
+    }
+
     /// The transition for a zero-display Mac is just the virtual source as main.
     func testTransitionWithNoPhysicalDisplays() throws {
         var source = display(300, vendor: ActivationBase.ownVendor)

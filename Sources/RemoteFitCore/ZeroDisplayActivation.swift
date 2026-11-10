@@ -20,6 +20,11 @@ public struct ZeroDisplayActivation: Equatable, Sendable {
     public static let noDisplayOnline = ZeroDisplayActivation(createAttempts: 5, createRetryDelay: 0.5, readyPolls: 60,
                                                               readyPollInterval: 0.15,
                                                               wakeDisplays: true)
+    /// Second acquisition after the display came online but its exact mode never appeared.
+    /// Recreate the display and poll longer. Never substitute a nearby size.
+    public static let replacementRetry = ZeroDisplayActivation(createAttempts: 2, createRetryDelay: 0.5, readyPolls: 40,
+                                                               readyPollInterval: 0.5,
+                                                               wakeDisplays: true)
 
     /// `live` is the snapshot taken right before creating the virtual display (after any
     /// leftover of ours was released).

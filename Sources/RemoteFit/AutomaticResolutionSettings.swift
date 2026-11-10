@@ -334,7 +334,15 @@ struct DeviceConfigurationSettings: View {
                 }
                 section("桌面工具条") {
                     VStack(spacing: 0) {
-                        toggle("连接时显示", symbol: "sidebar.right", key: \.toolbarWhenConnected)
+                        SettingsView.wideControlRow("连接时显示", symbol: "sidebar.right", narrow: narrow, controlWidth: 240) {
+                            Picker("连接时显示", selection: binding(\.toolbarWhenConnected)) {
+                                ForEach(ToolbarVisibility.allCases, id: \.self) { level in
+                                    Text(level.title).tag(level)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                            .labelsHidden()
+                        }
                         Divider().padding(.leading, 54)
                         SettingsView.wideControlRow("停靠位置", symbol: "arrow.up.and.down.and.arrow.left.and.right", narrow: narrow, controlWidth: 240) {
                             Picker("停靠位置", selection: binding(\.toolbarSide)) {

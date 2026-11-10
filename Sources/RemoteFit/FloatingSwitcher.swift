@@ -717,10 +717,22 @@ final class FloatingSwitcher: NSObject {
         }
         onExpansionChanged()
     }
-    /// Shows the full bar (ON in the 桌面工具条 settings), whatever state it was in.
+    /// Shows the full bar (工具条), whatever state it was in.
     func showExpanded() {
         setEnabled(true)
         if !expanded { toggleList() }
+    }
+    /// 工具条, 悬浮球, or 不显示. 不显示 while a virtual resolution is outstanding is passed as `.ball`.
+    func apply(_ surface: ToolbarPresence.Surface) {
+        switch surface {
+        case .hidden:
+            setEnabled(false)
+        case .ball:
+            setEnabled(true)
+            if expanded { toggleList() }
+        case .toolbar:
+            showExpanded()
+        }
     }
     func toggleList() {
         guard enabled else { return }

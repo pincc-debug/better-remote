@@ -106,9 +106,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let previous = appliedDeviceConfiguration
         appliedDeviceConfiguration = next
         sessionToolbarConfiguration = next
-        connectionToolbarPolicy.setEnabled(next.toolbarWhenConnected)
+        connectionToolbarPolicy.setEnabled(next.toolbarWhenConnected == .toolbar)
         floatingSwitcher.configure(preferences: toolbarPreferences)
-        if !next.toolbarWhenConnected || (previous != nil && previous?.toolbarWhenConnected != next.toolbarWhenConnected) {
+        if next.toolbarWhenConnected != .toolbar || (previous != nil && previous?.toolbarWhenConnected != next.toolbarWhenConnected) {
             _ = connectionToolbarPolicy.takeAction(busy: false)
             applyToolbarSetting()
         }
@@ -157,8 +157,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var connectionDockTask: Task<Void, Never>?
     private var connectionDockSyncAgain = false
     private var dockPermissionNoticeShown = false
-    /// 远程连接时显示 / 未连接时显示: which setting applies now (disconnects wait 5 s).
+    /// 连接时显示 / 未连接时显示: which setting applies now (disconnects wait 5 s).
     private var toolbarPresence = ToolbarPresence()
+    /// Virtual mode still applied, or a restore that was deferred. Forces the floating ball.
+    private var virtualResolutionOutstanding = false
     private var toolbarPresenceTimer: Timer?
     private let autoFill = AutoFillController()
     private var automaticPolicy = AutomaticResolutionPolicy()
@@ -268,7 +270,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         Task {
             let result = await engine.initialize()
             guard !terminating else { return }
-            status = result; applying = false; renderMenu(); runAutomaticResolutionIfNeeded()
+            status = result; applying = false
+            await pullVirtualResolutionState()
+            renderMenu(); runAutomaticResolutionIfNeeded()
         }
     }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
@@ -527,21 +531,24 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             renderMenu()
         }
         // Menu bar 显示工具条: a manual, temporary override; the next connect / disconnect applies the settings again.
+        // Hiding is refused while a virtual resolution is still outstanding: the ball is the way back.
         panelModel.onFloatingToggle = { [weak self] enabled in
             guard let self, !terminating else { return }
-            if enabled { floatingSwitcher.showExpanded() } else { floatingSwitcher.setEnabled(false) }
+            if enabled { floatingSwitcher.showExpanded() }
+            else if virtualResolutionOutstanding { floatingSwitcher.apply(.ball) }
+            else { floatingSwitcher.setEnabled(false) }
             renderMenu()
         }
-        panelModel.onToolbarWhenConnectedToggle = { [weak self] enabled in
+        panelModel.onToolbarWhenConnected = { [weak self] level in
             guard let self else { return }
             var next = preferences
-            next.toolbarWhenConnected = enabled
+            next.toolbarWhenConnected = level
             saveAutomaticPreferences(next)
         }
-        panelModel.onToolbarWhenDisconnectedToggle = { [weak self] enabled in
+        panelModel.onToolbarWhenDisconnected = { [weak self] level in
             guard let self else { return }
             var next = preferences
-            next.toolbarWhenDisconnected = enabled
+            next.toolbarWhenDisconnected = level
             saveAutomaticPreferences(next)
         }
         panelModel.onDeviceViewed = { [weak self] deviceID in
@@ -1212,6 +1219,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 self.dismissToolPanels()
             }
             self.applying = false
+            await self.pullVirtualResolutionState()
             self.floatingSwitcher.redock()
             runAutomaticResolutionIfNeeded()
             self.renderMenu()
@@ -1233,16 +1241,18 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 else { status = await engine.report("显示器接回后自动还原") }
             }
             catch { status = .init(title: "还原未完成", detail: error.localizedDescription) }
-            applying = false; renderMenu(); floatingSwitcher.redock(); runAutomaticResolutionIfNeeded()
+            applying = false
+            await pullVirtualResolutionState()
+            renderMenu(); floatingSwitcher.redock(); runAutomaticResolutionIfNeeded()
         }
     }
     private func saveAutomaticPreferences(_ next: Preferences) {
         do {
             try JSONEncoder().encode(next).write(to: root.appendingPathComponent("preferences.json"), options: .atomic)
-            let previousToolbarVisible = ToolbarPresence.shows(toolbarPresence.context, preferences: toolbarPreferences)
+            let previousSurface = toolbarSurface(toolbarPreferences)
             preferences = next
-            connectionToolbarPolicy.setEnabled(toolbarPreferences.toolbarWhenConnected)
-            if previousToolbarVisible != ToolbarPresence.shows(toolbarPresence.context, preferences: toolbarPreferences) {
+            connectionToolbarPolicy.setEnabled(toolbarPreferences.toolbarWhenConnected == .toolbar)
+            if previousSurface != toolbarSurface(toolbarPreferences) {
                 _ = connectionToolbarPolicy.takeAction(busy: false)
                 applyToolbarSetting()
             }
@@ -1265,7 +1275,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         awaitingConfirmedDisconnect = false
         // Detection restarts from scratch; a session that is still there reconfirms within the 5 s grace.
         remoteToolbarTransition(connected: false)
-        connectionToolbarPolicy.setEnabled(preferences.toolbarWhenConnected)
+        connectionToolbarPolicy.setEnabled(preferences.toolbarWhenConnected == .toolbar)
         startTouchScroll()
         // UU device collection remains active even when screen automation is disabled.
         guard !terminating else { return }
@@ -1302,7 +1312,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     automaticPolicy.setEnabled(configuration.autoResolutionEnabled)
                     automaticPolicy.restoreOnDisconnect = configuration.autoRestoreOnDisconnect
                     connectionDockPolicy.setEnabled(configuration.connectionDockMode != .keep)
-                    connectionToolbarPolicy.setEnabled(configuration.toolbarWhenConnected)
+                    connectionToolbarPolicy.setEnabled(configuration.toolbarWhenConnected == .toolbar)
                 }
                 automaticPolicy.connectionChanged(transition == .connected)
                 connectionDockPolicy.connectionChanged(transition == .connected)
@@ -1397,6 +1407,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
             applying = true; renderMenu()
             let done = await engine.resumePendingRestore()
             applying = false
+            await pullVirtualResolutionState()
             if done {
                 await engine.log("deferred_restore_complete")
                 status = .init(title: "已还原屏幕")
@@ -1452,6 +1463,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 guard !terminating, generation == applyGeneration else { return }
                 status = result
                 applying = false
+                await pullVirtualResolutionState()
                 floatingSwitcher.redock()
                 let success = result.detail == nil && result.applied == dimensions
                 automaticPolicy.applied(success: success)
@@ -1491,6 +1503,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 guard !terminating, generation == applyGeneration else { return }
                 status = result
                 applying = false
+                await pullVirtualResolutionState()
                 floatingSwitcher.redock()
                 let success = result.detail == nil
                 automaticPolicy.restored(success: success)
@@ -1579,11 +1592,21 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         renderMenu()
     }
 
-    /// ON = expanded bar, OFF = fully hidden (no ball), for the setting that applies right now.
+    private func toolbarSurface(_ preferences: Preferences) -> ToolbarPresence.Surface {
+        ToolbarPresence.surface(level: ToolbarPresence.level(toolbarPresence.context, preferences: preferences),
+                                virtualResolutionOutstanding: virtualResolutionOutstanding)
+    }
+    private func pullVirtualResolutionState() async {
+        let outstanding = await engine.virtualResolutionOutstanding()
+        guard outstanding != virtualResolutionOutstanding else { return }
+        virtualResolutionOutstanding = outstanding
+        guard !terminating else { return }
+        applyToolbarSetting()
+    }
+    /// 工具条 expands, 悬浮球 stays collapsed, 不显示 hides both unless a virtual resolution is still outstanding.
     private func applyToolbarSetting() {
         guard !terminating else { return }
-        if ToolbarPresence.shows(toolbarPresence.context, preferences: toolbarPreferences) { floatingSwitcher.showExpanded() }
-        else { floatingSwitcher.setEnabled(false) }
+        floatingSwitcher.apply(toolbarSurface(toolbarPreferences))
         renderMenu()
     }
 
@@ -1615,7 +1638,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         connectionToolbarPolicy.connectionChanged(context == .connected)
         // Connected + 远程连接时显示: the monitor's runAutomaticResolutionIfNeeded expands it once
         // connection-time display work has finished (runPendingToolbarExpansion).
-        if context == .connected && toolbarPreferences.toolbarWhenConnected { renderMenu() } else { applyToolbarSetting() }
+        if context == .connected && toolbarPreferences.toolbarWhenConnected == .toolbar { renderMenu() } else { applyToolbarSetting() }
     }
 
     private func restoreAutomaticSelection() {

@@ -32,8 +32,8 @@ final class InputLatencyTests: XCTestCase {
     func testTouchScrollingKeepsRemoteDetectionAliveWithoutAutomaticResolution() {
         var preferences = Preferences()
         preferences.autoResolutionEnabled = false
-        preferences.toolbarWhenConnected = false
-        preferences.toolbarWhenDisconnected = false
+        preferences.toolbarWhenConnected = .hidden
+        preferences.toolbarWhenDisconnected = .hidden
         preferences.autoFillWindowsOnRemote = false
         preferences.autoRestoreOnDisconnect = false
         preferences.uuTouchScrollEnabled = false
