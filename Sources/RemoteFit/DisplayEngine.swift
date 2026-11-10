@@ -324,7 +324,7 @@ actor DisplayEngine {
     }
     private func replaceDisplay(_ dimensions: Dimensions, injectFailure: Bool, injectFailureAfterSwitch: Bool) throws {
         guard let previous = applied, let previousID = virtualDisplay?.displayID else { throw FitError.message("尚未应用分辨率") }
-        let recoveryData = try Data(contentsOf: sessionURL)
+        _ = try Data(contentsOf: sessionURL)
         let before = HeadlessPlaceholder.ignoringPlaceholders(try snapshot())
         guard let oldSource = before.first(where: { $0.id == previousID }), oldSource.main,
               before.filter({ $0.id != previousID }).allSatisfy({ $0.physical && ($0.mirror == previousID || $0.mirror == 0) }),

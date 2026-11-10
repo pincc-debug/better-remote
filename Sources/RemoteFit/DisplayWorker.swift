@@ -63,7 +63,7 @@ enum DisplayWorker {
         for id in listed { add(id) }
         for raw in 1...256 {
             let id = CGDirectDisplayID(raw)
-            if CGDisplayIsOnline(id) { add(id) }
+            if CGDisplayIsOnline(id) != 0 { add(id) }
         }
         return ids.map { id in
             let vendor = CGDisplayVendorNumber(id)
