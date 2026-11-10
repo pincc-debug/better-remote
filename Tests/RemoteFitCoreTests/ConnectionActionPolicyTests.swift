@@ -37,10 +37,10 @@ final class ConnectionActionPolicyTests: XCTestCase {
     }
     func testLegacyDockSettingIsDiscardedAndNewSettingsRoundTrip() throws {
         var preferences = try JSONDecoder().decode(Preferences.self, from: Data("{\"autoShowDockEnabled\":true,\"floatingSwitcherEnabled\":false}".utf8))
-        XCTAssertTrue(preferences.toolbarWhenConnected)
-        XCTAssertFalse(preferences.toolbarWhenDisconnected)
-        preferences.toolbarWhenConnected = false
-        preferences.toolbarWhenDisconnected = false
+        XCTAssertEqual(preferences.toolbarWhenConnected, .toolbar)
+        XCTAssertEqual(preferences.toolbarWhenDisconnected, .hidden)
+        preferences.toolbarWhenConnected = .hidden
+        preferences.toolbarWhenDisconnected = .hidden
         preferences.autoRestoreOnDisconnect = false
         preferences.autoResolutionEnabled = false
         XCTAssertFalse(preferences.needsRemoteConnectionMonitoring)

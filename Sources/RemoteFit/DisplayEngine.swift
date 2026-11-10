@@ -178,12 +178,42 @@ actor DisplayEngine {
             log("display_created", "id=\(id) uuid=\(ready.source.uuid ?? "nil") target=\(dimensions.label)")
             return ready
         } catch {
-            log("display_mode_unavailable", "id=\(id) target=\(dimensions.label) online=\(lastProbe?.source != nil) reason=\(error.localizedDescription)")
+            log("display_mode_unavailable", "id=\(id) target=\(dimensions.label) online=\(lastProbe?.source != nil) modes=\(lastProbe?.modes.count ?? 0) reason=\(error.localizedDescription)")
             throw error
         }
     }
+    /// First try uses `initial` (fast when a panel is already online). If the new display is
+    /// created but its exact mode never shows up, release it and try once more for longer.
+    /// A nearby resolution is never substituted. The same-day 1600×900 failure came back
+    /// after another create, not after picking a different size.
+    private func acquireDisplay(_ dimensions: Dimensions, reason: String, initial: ZeroDisplayActivation) throws -> (RFVirtualDisplay, ReadyVirtualDisplay) {
+        let policies = [initial, ZeroDisplayActivation.replacementRetry]
+        var last: Error = FitError.message("虚拟屏幕未就绪。")
+        for (index, policy) in policies.enumerated() {
+            let display: RFVirtualDisplay?
+            do {
+                display = try createDisplay(dimensions, reason: index == 0 ? reason : "\(reason)_retry", policy: policy)
+            } catch {
+                display = nil
+                last = error
+                log("display_acquire_retry", "stage=create attempt=\(index + 1)/\(policies.count) \(error.localizedDescription)")
+            }
+            if let display {
+                do {
+                    let ready = try readySource(id: display.displayID, dimensions: dimensions, policy: policy)
+                    return (display, ready)
+                } catch {
+                    last = error
+                    log("display_acquire_retry", "stage=ready attempt=\(index + 1)/\(policies.count) id=\(display.displayID) \(error.localizedDescription)")
+                }
+            }
+            if index + 1 < policies.count { Thread.sleep(forTimeInterval: 0.6) }
+        }
+        throw last
+    }
 
-    private func verifyTransition(_ targets: [DisplayState], sourceID: UInt32, disappearingID: UInt32? = nil) throws {
+    private func verifyTransition(_ targets: [DisplayState], sourceID: UInt32, disappearingID: UInt32? = nil,
+                                  tolerateUnspecifiedRefresh: Bool = false) throws {
         let expectedIDs = Set(targets.map(\.id))
         var consecutiveMatches = 0
         for attempt in 0..<10 {
@@ -193,7 +223,7 @@ actor DisplayEngine {
                 log("display_topology_changed", "expected=\(expectedIDs.sorted()) disappearing=\(disappearingID ?? 0) actual=\(Self.layout(live))")
                 throw FitError.message("适配期间显示器硬件拓扑发生变化，操作已中止。")
             }
-            if DisplayTransition.matches(live, targets: targets, sourceID: sourceID) {
+            if DisplayTransition.matches(live, targets: targets, sourceID: sourceID, tolerateUnspecifiedRefresh: tolerateUnspecifiedRefresh) {
                 consecutiveMatches += 1
                 if consecutiveMatches >= 2 {
                     log("display_mode_verified", "source=\(sourceID) actual=\(Self.layout(live))")
@@ -268,9 +298,10 @@ actor DisplayEngine {
             wakeDisplays()
         }
         do {
-            virtualDisplay = try createDisplay(dimensions, reason: "activation", policy: policy)
+            let acquired = try acquireDisplay(dimensions, reason: "activation", initial: policy)
+            virtualDisplay = acquired.0
+            let ready = acquired.1
             guard let sourceID = virtualDisplay?.displayID else { throw FitError.message("无法创建虚拟屏幕。") }
-            let ready = try readySource(id: sourceID, dimensions: dimensions, policy: policy)
             let mirrorable = HeadlessPlaceholder.mirrorable(saved)
             if mirrorable.count != saved.count {
                 log("headless_placeholder_skipped", "ids=\(saved.filter(HeadlessPlaceholder.isPlaceholder).map(\.id))")
@@ -293,7 +324,7 @@ actor DisplayEngine {
     }
     private func replaceDisplay(_ dimensions: Dimensions, injectFailure: Bool, injectFailureAfterSwitch: Bool) throws {
         guard let previous = applied, let previousID = virtualDisplay?.displayID else { throw FitError.message("尚未应用分辨率") }
-        let recoveryData = try Data(contentsOf: sessionURL)
+        _ = try Data(contentsOf: sessionURL)
         let before = HeadlessPlaceholder.ignoringPlaceholders(try snapshot())
         guard let oldSource = before.first(where: { $0.id == previousID }), oldSource.main,
               before.filter({ $0.id != previousID }).allSatisfy({ $0.physical && ($0.mirror == previousID || $0.mirror == 0) }),
@@ -308,9 +339,10 @@ actor DisplayEngine {
         var retiredOld = false
         do {
             // Keep the current desktop until the new capture identity is ready.
-            candidate = try createDisplay(dimensions, reason: "replacement")
+            let acquired = try acquireDisplay(dimensions, reason: "replacement", initial: .standard)
+            candidate = acquired.0
+            let ready = acquired.1
             guard let candidateID = candidate?.displayID else { throw FitError.message("无法创建虚拟屏幕。") }
-            let ready = try readySource(id: candidateID, dimensions: dimensions)
             let targets = try DisplayTransition.targets(source: ready.source, dimensions: dimensions, physical: physical, retiring: oldSource, selectedMode: ready.mode)
             candidateTarget = targets.first(where: { $0.id == candidateID })
             if injectFailure { throw FitError.message("测试：模拟屏幕切换失败") }
@@ -333,27 +365,35 @@ actor DisplayEngine {
             var recoveredInPlace = false
             if !retiredOld {
                 do {
+                    let selected = RollbackMode.selected(applied: appliedMode, live: oldSource.mode, dimensions: previous)
                     if attemptedSwitch, let candidateTarget {
-                        let rollback = try DisplayTransition.targets(source: oldSource, dimensions: previous, physical: physical, retiring: candidateTarget, selectedMode: oldSource.mode)
+                        let rollback = try DisplayTransition.targets(source: oldSource, dimensions: previous, physical: physical, retiring: candidateTarget, selectedMode: selected)
                         try commit(rollback)
-                        try verifyTransition(rollback, sourceID: previousID)
+                        try verifyTransition(rollback, sourceID: previousID, tolerateUnspecifiedRefresh: true)
                     }
                     let disappearingID = candidate?.displayID
                     candidate = nil
-                    let rollback = try DisplayTransition.targets(source: oldSource, dimensions: previous, physical: physical, selectedMode: oldSource.mode)
-                    try verifyTransition(rollback, sourceID: previousID, disappearingID: disappearingID)
+                    let rollback = try DisplayTransition.targets(source: oldSource, dimensions: previous, physical: physical, selectedMode: selected)
+                    try verifyTransition(rollback, sourceID: previousID, disappearingID: disappearingID, tolerateUnspecifiedRefresh: true)
                     applied = previous
-                    appliedMode = oldSource.mode
+                    appliedMode = rollback.first { $0.id == previousID }?.mode ?? selected
                     recoveredInPlace = true
-                    log("display_replacement_rolled_back", "\(previous.label) source_retained=true")
-                } catch { log("display_handoff_recovery_failed", error.localizedDescription) }
+                    log("display_replacement_rolled_back", "\(previous.label) source_retained=true mode=\(appliedMode?.width ?? 0)x\(appliedMode?.height ?? 0)@\(appliedMode?.refresh ?? 0)")
+                } catch {
+                    log("display_handoff_recovery_failed", "\(error.localizedDescription) live=\(oldSource.mode.pixelWidth)x\(oldSource.mode.pixelHeight)/\(oldSource.mode.width)x\(oldSource.mode.height)@\(oldSource.mode.refresh) applied=\(appliedMode.map { "\($0.pixelWidth)x\($0.pixelHeight)/\($0.width)x\($0.height)@\($0.refresh)" } ?? "nil")")
+                }
             }
             if recoveredInPlace { throw failure }
+            // Do not activate(previous) here. That re-entered replaceDisplay at the same
+            // size (604→604), logged a rollback, and left the portrait virtual mode in place
+            // when no physical panel was visible to the mode-based snapshot.
             candidate = nil
             do {
-                try restore()
-                try activate(previous, recoveryData: recoveryData)
-                log("display_replacement_rolled_back", "\(previous.label) source_retained=false")
+                if try restore() {
+                    log("display_replacement_rolled_back", "\(previous.label) source_retained=false physical_restored=true")
+                } else {
+                    log("display_replacement_rollback_kept_virtual", "\(previous.label) reason=no_physical_display virtual_kept=\(virtualDisplay != nil)")
+                }
             } catch {
                 log("display_replacement_rollback_failed", error.localizedDescription)
                 throw FitError.message("切换及恢复上次规格失败：\(error.localizedDescription)")
@@ -372,26 +412,33 @@ actor DisplayEngine {
             applied = nil; pendingRestore = false; try restoreFullHeightIfNeeded(); return true
         }
         let saved = try JSONDecoder().decode([DisplayState].self, from: Data(contentsOf: sessionURL))
-        if try headless(saved: saved) {
+        let prepared = try prepareRestore(saved: saved)
+        if case .deferred = prepared {
             pendingRestore = true
-            log("restore_deferred", "no_physical_display virtual_kept=\(virtualDisplay != nil)")
+            log("restore_deferred", "no_physical_display virtual_kept=\(virtualDisplay != nil) \(lastRestoreCensus)")
             return false
         }
         let start = ProcessInfo.processInfo.systemUptime
         var last: Error = FitError.message("桌面还原未能完成。")
+        var plan = prepared
         for attempt in 1...3 {
             do {
                 virtualDisplay = nil
                 applied = nil
                 Thread.sleep(forTimeInterval: 0.2)
-                var live = try snapshot()
-                // Migrate recovery snapshots from earlier versions using hardware identity.
-                let savedKeys = Set(saved.map(\.hardwareKey))
-                for i in live.indices where savedKeys.contains(live[i].hardwareKey) { live[i].physical = true }
+                if attempt > 1 {
+                    plan = try RestorePlan.outcome(saved: saved, live: try restoreStates(saved: saved))
+                    if case .deferred = plan { throw FitError.message("显示器已断开，稍后自动还原。") }
+                }
                 var targets: [DisplayState]
-                switch try RestorePlan.outcome(saved: saved, live: live) {
-                case .restore(let planned): targets = try restorationTargets(planned)
-                case .release: targets = []; log("restore_release", "original_displays_absent")
+                switch plan {
+                case .restore(let states): targets = try restorationTargets(states)
+                case .release:
+                    log("restore_release", "original_displays_absent")
+                    if let native = NativeLayoutFallback.targets(live: try restoreStates(saved: saved), stable: stableModes) {
+                        targets = try restorationTargets(native)
+                        log("restore_stable_layout", Self.layout(targets))
+                    } else { targets = [] }
                 case .deferred: throw FitError.message("显示器已断开，稍后自动还原。")
                 }
                 if !targets.isEmpty { try commit(targets) }
@@ -465,11 +512,40 @@ actor DisplayEngine {
     static func layout(_ states: [DisplayState]) -> String {
         states.map { "\($0.id)\($0.main ? "*" : ""):\($0.mode.pixelWidth)x\($0.mode.pixelHeight)/\($0.mode.width)x\($0.mode.height)@\($0.x),\($0.y)m\($0.mirror)" }.joined(separator: " ")
     }
-    private func headless(saved: [DisplayState]) throws -> Bool {
-        var live = try snapshot()
+    private var lastRestoreCensus = ""
+    private func displayCensus() throws -> [DisplaySample] {
+        let data = try ProcessRunner.run(executable, ["--worker", "census"], timeout: 12)
+        return try JSONDecoder().decode([DisplaySample].self, from: data)
+    }
+    /// Saved hardware keys are marked physical so an older snapshot can still match.
+    private func restoreStates(saved: [DisplayState]) throws -> [DisplayState] {
+        let samples = try displayCensus()
+        lastRestoreCensus = DisplayCensus.summary(samples)
+        var live = DisplayCensus.states(from: samples)
         let savedKeys = Set(saved.map(\.hardwareKey))
         for i in live.indices where savedKeys.contains(live[i].hardwareKey) { live[i].physical = true }
-        return try RestorePlan.outcome(saved: saved, live: live) == .deferred
+        return live
+    }
+    /// Poll briefly before deferring. A mirrored panel can be missing from the mode-based
+    /// snapshot for a moment, or only answer CGDisplayIsOnline, and still be the physical screen.
+    private func prepareRestore(saved: [DisplayState]) throws -> RestorePlan.Outcome {
+        var last: RestorePlan.Outcome = .deferred
+        for attempt in 0..<4 {
+            let live = try restoreStates(saved: saved)
+            last = try RestorePlan.outcome(saved: saved, live: live)
+            if last != .deferred {
+                if attempt > 0 { log("restore_physical_found", "attempt=\(attempt + 1) \(Self.layout(live)) \(lastRestoreCensus)") }
+                return last
+            }
+            if attempt == 0 { log("restore_census", lastRestoreCensus) }
+            if attempt < 3 { Thread.sleep(forTimeInterval: 0.35) }
+        }
+        return last
+    }
+    /// True while a virtual mode is still up or a restore has been deferred.
+    /// The floating ball stays available for 还原本机 until this is false.
+    func virtualResolutionOutstanding() -> Bool {
+        pendingRestore || applied != nil || virtualDisplay != nil || hasSession()
     }
     /// Called when displays change: finishes a deferred restore once a monitor is back.
     func resumePendingRestore() -> Bool {

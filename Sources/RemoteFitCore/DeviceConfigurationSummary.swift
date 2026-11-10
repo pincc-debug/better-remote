@@ -29,8 +29,8 @@ public enum DeviceConfigurationSummary {
             items.append("窗口铺满：\(onOff(configuration.autoFillWindowsOnRemote))")
         }
         if configuration.toolbarWhenConnected != base.toolbarWhenConnected {
-            items.append("工具条：\(onOff(configuration.toolbarWhenConnected))")
-        } else if configuration.toolbarWhenConnected, configuration.toolbarSide != base.toolbarSide {
+            items.append("工具条：\(configuration.toolbarWhenConnected.title)")
+        } else if configuration.toolbarWhenConnected == .toolbar, configuration.toolbarSide != base.toolbarSide {
             items.append("工具条：\(configuration.toolbarSide.title)")
         }
         if configuration.connectionDockMode != base.connectionDockMode {

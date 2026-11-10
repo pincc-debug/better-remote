@@ -93,7 +93,8 @@ public struct DeviceConfiguration: Codable, Equatable, Sendable {
     public var remoteScrollReversed: Bool
     public var autoFillWindowsOnRemote: Bool
     public var connectionDockMode: ConnectionDockMode
-    public var toolbarWhenConnected: Bool
+    /// 连接时显示. Stored per device. Old bool on → 工具条, off → 悬浮球.
+    public var toolbarWhenConnected: ToolbarVisibility
     public var toolbarSide: ToolbarSide
 
     public init(preferences: Preferences) {
@@ -141,7 +142,7 @@ public struct DeviceConfiguration: Codable, Equatable, Sendable {
         remoteScrollReversed = try c.decodeIfPresent(Bool.self, forKey: .remoteScrollReversed) ?? false
         autoFillWindowsOnRemote = try c.decode(Bool.self, forKey: .autoFillWindowsOnRemote)
         connectionDockMode = try c.decode(ConnectionDockMode.self, forKey: .connectionDockMode)
-        toolbarWhenConnected = try c.decode(Bool.self, forKey: .toolbarWhenConnected)
+        toolbarWhenConnected = ToolbarVisibility.decode(c, forKey: .toolbarWhenConnected, connected: true) ?? .toolbar
         toolbarSide = try c.decode(ToolbarSide.self, forKey: .toolbarSide)
     }
 }

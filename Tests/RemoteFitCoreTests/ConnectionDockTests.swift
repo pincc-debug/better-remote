@@ -12,7 +12,7 @@ final class ConnectionDockTests: XCTestCase {
         // New installs enable 默认配置 · 分辨率规格, which alone needs monitoring.
         XCTAssertTrue(p.autoResolutionEnabled && p.hasAutomaticDefault)
         XCTAssertTrue(p.needsRemoteConnectionMonitoring)
-        p.toolbarWhenConnected = false; p.autoRestoreOnDisconnect = false; p.autoResolutionEnabled = false
+        p.toolbarWhenConnected = .hidden; p.toolbarWhenDisconnected = .hidden; p.autoRestoreOnDisconnect = false; p.autoResolutionEnabled = false
         XCTAssertFalse(p.needsRemoteConnectionMonitoring)
         p.connectionDockMode = .autoHide
         XCTAssertTrue(p.needsRemoteConnectionMonitoring)

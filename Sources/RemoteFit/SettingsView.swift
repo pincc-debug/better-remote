@@ -555,15 +555,18 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
 
                     VStack(spacing: 0) {
-                        Self.settingRow("未连接时显示", symbol: "sidebar.right") {
-                            Toggle("未连接时显示", isOn: Binding(
+                        Self.wideControlRow("未连接时显示", symbol: "sidebar.right", narrow: narrow, controlWidth: 240) {
+                            Picker("未连接时显示", selection: Binding(
                                 get: { model.preferences.toolbarWhenDisconnected },
-                                set: { model.onToolbarWhenDisconnectedToggle($0) }
-                            ))
-                            .toggleStyle(StableBlueSwitchStyle())
+                                set: { model.onToolbarWhenDisconnected($0) }
+                            )) {
+                                ForEach(ToolbarVisibility.allCases, id: \.self) { level in
+                                    Text(level.title).tag(level)
+                                }
+                            }
+                            .pickerStyle(.segmented)
                             .labelsHidden()
                         }
-
                     }
                     .cardSurface()
                 }

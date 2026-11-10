@@ -40,7 +40,8 @@ public enum DisplayTransition {
         return targets
     }
 
-    public static func matches(_ live: [DisplayState], targets: [DisplayState], sourceID: UInt32) -> Bool {
+    public static func matches(_ live: [DisplayState], targets: [DisplayState], sourceID: UInt32,
+                               tolerateUnspecifiedRefresh: Bool = false) -> Bool {
         guard live.count == targets.count, Set(live.map(\.id)).count == live.count,
               Set(live.map(\.id)) == Set(targets.map(\.id)),
               let source = live.first(where: { $0.id == sourceID }), !source.physical,
@@ -51,11 +52,22 @@ public enum DisplayTransition {
                   actual.physical == target.physical, actual.main == target.main,
                   actual.mirror == target.mirror else { return false }
             if target.physical {
-                if target.mirror == 0 { return actual.mirror == 0 && actual.mode.matches(target.mode) }
+                if target.mirror == 0 {
+                    return actual.mirror == 0 && modesMatch(actual.mode, target.mode, tolerateUnspecifiedRefresh: tolerateUnspecifiedRefresh)
+                }
                 return actual.mirror == sourceID
             }
             return (target.skipOrigin || (actual.x == target.x && actual.y == target.y)) &&
-                (target.skipMode || actual.mode.matches(target.mode))
+                (target.skipMode || modesMatch(actual.mode, target.mode, tolerateUnspecifiedRefresh: tolerateUnspecifiedRefresh))
         }
+    }
+
+    /// Refresh 0 means the driver did not report a rate. Rollback may treat that as the same desktop.
+    static func modesMatch(_ actual: DisplayMode, _ target: DisplayMode, tolerateUnspecifiedRefresh: Bool) -> Bool {
+        if tolerateUnspecifiedRefresh, actual.refresh <= 0 || target.refresh <= 0 {
+            return actual.width == target.width && actual.height == target.height &&
+                actual.pixelWidth == target.pixelWidth && actual.pixelHeight == target.pixelHeight
+        }
+        return actual.matches(target)
     }
 }
