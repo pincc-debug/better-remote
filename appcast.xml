@@ -5,6 +5,15 @@
     <language>zh-CN</language>
 <!-- ITEMS -->
     <item>
+      <title>0.9.7</title>
+      <pubDate>Tue, 10 Nov 2026 09:18:53 +0000</pubDate>
+      <sparkle:version>205</sparkle:version>
+      <sparkle:shortVersionString>0.9.7</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<h3>0.9.7 更新内容</h3><ul><li>断线后能还原本机分辨率，工具条可按工具条、悬浮球或不显示三档选择。</li></ul>]]></description>
+      <enclosure url="https://github.com/pincc-debug/better-remote/releases/download/v0.9.7/Better-Remote-0.9.7.dmg" type="application/octet-stream" sparkle:edSignature="1PO+h3z8AhycPHh6SDQfj6txEfqmsYdn4qY/2Bg5vJbrSXyX5GEdSqbbeCeNZ9nNuUC0ZaRTc9J8/5phfNZzAg==" length="8731520" />
+    </item>
+    <item>
       <title>0.9.6</title>
       <pubDate>Thu, 05 Nov 2026 09:58:21 +0000</pubDate>
       <sparkle:version>203</sparkle:version>
