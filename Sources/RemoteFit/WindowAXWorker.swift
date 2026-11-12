@@ -1,6 +1,12 @@
 import AppKit
 import RemoteFitCore
 
+/// Title and full-screen flag of the window the layout traffic lights describe.
+struct LayoutTargetDescription: Equatable, Sendable {
+    var title: String?
+    var isFullScreen: Bool
+}
+
 /// Blocking cross-process queries run off the UI actor. AX handles never drive
 /// our own NSWindows; those remain in WindowControlPerformer on the main actor.
 actor WindowAXWorker {
@@ -88,6 +94,17 @@ actor WindowAXWorker {
                 usable: frame(of: window).map(ApplicationTargetPolicy.isUsableWindow) ?? false)
         }
         return WindowControlTarget.select(candidates).map { elements[$0] }
+    }
+
+    /// Title and full-screen state of the same window `perform` / `prepareSnap` act on.
+    func describeLayoutTarget(pid: pid_t) -> LayoutTargetDescription? {
+        let app = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(app, 0.5)
+        guard let window = targetWindow(app) else { return nil }
+        AXUIElementSetMessagingTimeout(window, 0.5)
+        let title = value(kAXTitleAttribute, of: window) as? String
+        let fullScreen = (value("AXFullScreen", of: window) as? Bool) ?? false
+        return LayoutTargetDescription(title: title, isFullScreen: fullScreen)
     }
 
     func prepareSnap(pid: pid_t) async throws -> (WindowAXHandle, CGRect) {
