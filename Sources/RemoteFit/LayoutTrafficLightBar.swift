@@ -93,7 +93,7 @@ private struct WindowActionButton: View {
         .opacity(enabled ? 1 : LayoutTrafficLights.disabledOpacity)
         .pointerHover("layout-action-\(id)") { hovering = enabled && $0 }
         .onChange(of: enabled) { _, now in if !now { hovering = false } }
-        .modifier(OptionalHelp(toolTip))
+        .modifier(OptionalHelp(text: toolTip))
         .accessibilityLabel(title)
         .accessibilityIdentifier("layout-action-\(symbol)")
         .accessibilityRespondsToUserInteraction(enabled)
