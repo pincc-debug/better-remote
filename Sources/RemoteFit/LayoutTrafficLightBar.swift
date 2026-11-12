@@ -52,17 +52,19 @@ struct LayoutFlyoutSeparator: View {
     }
 
     /// Same colour as `DesignTokens.NS.toolbarSurfaceHairline`, baked for `scheme` so a preview's colour scheme wins over the app appearance.
+    /// Success is `usingColorSpace(.sRGB)` returning a colour. `getRed` fills the components and its result is unused (macOS 27 SDK returns `Void`).
     static func color(for scheme: ColorScheme) -> Color {
         let fallback = scheme == .dark ? Color.white.opacity(0.15) : Color.black.opacity(DesignTokens.NS.toolbarLightHairlineAlpha)
         guard let appearance = NSAppearance(named: scheme == .dark ? .darkAqua : .aqua) else { return fallback }
-        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
-        var didResolve = false
+        var components: (red: CGFloat, green: CGFloat, blue: CGFloat, alpha: CGFloat)?
         appearance.performAsCurrentDrawingAppearance {
-            let resolved = DesignTokens.NS.toolbarSurfaceHairline.usingColorSpace(.sRGB) ?? DesignTokens.NS.toolbarSurfaceHairline
-            didResolve = resolved.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+            guard let resolved = DesignTokens.NS.toolbarSurfaceHairline.usingColorSpace(.sRGB) else { return }
+            var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+            resolved.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+            components = (red, green, blue, alpha)
         }
-        guard didResolve else { return fallback }
-        return Color(red: red, green: green, blue: blue, opacity: alpha)
+        guard let components else { return fallback }
+        return Color(red: components.red, green: components.green, blue: components.blue, opacity: components.alpha)
     }
 }
 
