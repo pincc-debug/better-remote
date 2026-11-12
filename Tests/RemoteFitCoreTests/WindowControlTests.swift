@@ -142,7 +142,7 @@ final class WindowSnapTests: XCTestCase {
         XCTAssertEqual(bottom.minY, 112)
     }
 
-    /// The layout popover grows by the traffic-light row. The edge against the toolbar does not move;
+    /// The layout popover grows by the window-action row. The edge against the toolbar does not move;
     /// a short screen shortens the far side instead of pushing the flyout off or over the bar.
     func testTallerFlyoutKeepsTheEdgeAgainstTheToolbar() {
         let screen = CGRect(x: 0, y: 0, width: 1728, height: 1084)
@@ -194,57 +194,49 @@ final class WindowSnapTests: XCTestCase {
 final class LayoutTrafficLightTests: XCTestCase {
     func testRowFitsThePopoverWithoutChangingItsWidth() {
         XCTAssertEqual(LayoutTrafficLights.popoverWidth, 304)
+        XCTAssertEqual(LayoutTrafficLights.contentWidth, 280)
+        XCTAssertEqual(LayoutTrafficLights.buttonSpacing, 8)
+        XCTAssertEqual(LayoutTrafficLights.buttonWidth, 88)
+        XCTAssertEqual(LayoutTrafficLights.buttonWidth * 3 + LayoutTrafficLights.buttonSpacing * 2, LayoutTrafficLights.contentWidth)
         XCTAssertEqual(LayoutTrafficLights.gridPopoverHeight, 288)
-        XCTAssertEqual(LayoutTrafficLights.addedHeight, 48)
-        XCTAssertEqual(LayoutTrafficLights.popoverHeight, 336)
         XCTAssertEqual(LayoutTrafficLights.rowHeight, 32)
-        XCTAssertEqual(LayoutTrafficLights.separatorBand, 16)
-        XCTAssertEqual(LayoutTrafficLights.rowHeight + LayoutTrafficLights.separatorBand, LayoutTrafficLights.addedHeight)
-        XCTAssertEqual(LayoutTrafficLights.diameter, 18)
-        XCTAssertEqual(LayoutTrafficLights.hit, 32)
-        XCTAssertEqual(LayoutTrafficLights.centerSpacing, 28)
+        XCTAssertEqual(LayoutTrafficLights.separatorGap, 8)
+        XCTAssertEqual(LayoutTrafficLights.separatorThickness, 1)
+        XCTAssertEqual(LayoutTrafficLights.addedHeight, 49)
+        XCTAssertEqual(LayoutTrafficLights.popoverHeight, 337)
+        XCTAssertEqual(LayoutTrafficLights.rowHeight + LayoutTrafficLights.separatorGap * 2 + LayoutTrafficLights.separatorThickness, LayoutTrafficLights.addedHeight)
+        XCTAssertEqual(LayoutTrafficLights.iconPointSize, 14)
+        XCTAssertEqual(LayoutTrafficLights.labelPointSize, 12)
+        XCTAssertEqual(LayoutTrafficLights.labelSpacing, 6)
+        XCTAssertEqual(LayoutTrafficLights.lightFillOpacity, 0.05, accuracy: 0.001)
+        XCTAssertEqual(LayoutTrafficLights.darkFillOpacity, 0.08, accuracy: 0.001)
+        XCTAssertEqual(LayoutTrafficLights.hoverOverlay, 0.08, accuracy: 0.001)
+        XCTAssertEqual(LayoutTrafficLights.pressedOverlay, 0.12, accuracy: 0.001)
         XCTAssertEqual(LayoutTrafficLights.disabledOpacity, 0.35, accuracy: 0.001)
-        XCTAssertEqual(LayoutTrafficLights.pressedShade, 0.10, accuracy: 0.001)
-        XCTAssertGreaterThan(LayoutTrafficLights.hoverShade, 0)
-        XCTAssertLessThan(LayoutTrafficLights.hoverShade, LayoutTrafficLights.pressedShade)
-        XCTAssertEqual(LayoutTrafficLights.glyphPointSize, 9)
-        XCTAssertEqual(LayoutTrafficLights.captionPointSize, 12)
-        let close = LayoutTrafficLights.rgb(.close)
-        XCTAssertEqual(close.red, 1, accuracy: 0.0001)
-        XCTAssertEqual(close.green, 95.0 / 255, accuracy: 0.0001)
-        XCTAssertEqual(close.blue, 87.0 / 255, accuracy: 0.0001)
-        let minimize = LayoutTrafficLights.rgb(.minimize)
-        XCTAssertEqual(minimize.red, 254.0 / 255, accuracy: 0.0001)
-        XCTAssertEqual(minimize.green, 188.0 / 255, accuracy: 0.0001)
-        XCTAssertEqual(minimize.blue, 46.0 / 255, accuracy: 0.0001)
-        let fullScreen = LayoutTrafficLights.rgb(.fullScreen)
-        XCTAssertEqual(fullScreen.red, 40.0 / 255, accuracy: 0.0001)
-        XCTAssertEqual(fullScreen.green, 200.0 / 255, accuracy: 0.0001)
-        XCTAssertEqual(fullScreen.blue, 64.0 / 255, accuracy: 0.0001)
     }
 
-    func testCaptionUsesTitleThenAppNameAndMiddleTruncates() {
-        XCTAssertEqual(LayoutTrafficLights.State.unavailable.caption, "没有可操作的窗口")
-        XCTAssertFalse(LayoutTrafficLights.State.unavailable.operable)
-        let titled = LayoutTrafficLights.State(windowTitle: "  报告  ", applicationName: "文本编辑", operable: true)
-        XCTAssertEqual(titled.caption, "报告")
-        let fallback = LayoutTrafficLights.State(windowTitle: " \n ", applicationName: " Safari ", operable: true)
-        XCTAssertEqual(fallback.caption, "Safari")
-        let nameless = LayoutTrafficLights.State(windowTitle: "", applicationName: nil, operable: true)
-        XCTAssertEqual(nameless.caption, "窗口")
-        let long = "季度报告最终版不要外发.docx"
-        XCTAssertEqual(LayoutTrafficLights.State(windowTitle: long, applicationName: "文本编辑", operable: true).caption, long)
-        XCTAssertEqual(LayoutTrafficLights.middleTruncated(long, limit: 9), "季度报告…docx")
-        XCTAssertEqual(LayoutTrafficLights.middleTruncated("短", limit: 9), "短")
-        XCTAssertEqual(LayoutTrafficLights.middleTruncated("ABCDEFGHIJKLMNOP", limit: 9), "ABCD…MNOP")
-    }
-
-    func testToolTipsNameTheActionAndFullScreenToggle() {
+    func testButtonTitlesSwapWhenTheWindowIsFullScreen() {
         let window = LayoutTrafficLights.State(windowTitle: "文稿", operable: true)
-        XCTAssertEqual(window.toolTip(for: .close), "关闭窗口")
-        XCTAssertEqual(window.toolTip(for: .minimize), "最小化")
-        XCTAssertEqual(window.toolTip(for: .fullScreen), "全屏")
-        XCTAssertEqual(LayoutTrafficLights.State(windowTitle: "文稿", isFullScreen: true, operable: true).toolTip(for: .fullScreen), "退出全屏")
+        XCTAssertEqual(WindowControl.allCases.map { window.title(for: $0) }, ["关闭窗口", "最小化", "全屏"])
+        XCTAssertEqual(WindowControl.allCases.map { window.symbol(for: $0) }, ["xmark", "minus", "arrow.up.left.and.arrow.down.right"])
+        let full = LayoutTrafficLights.State(windowTitle: "文稿", isFullScreen: true, operable: true)
+        XCTAssertEqual(full.title(for: .fullScreen), "退出全屏")
+        XCTAssertEqual(full.symbol(for: .fullScreen), "arrow.down.right.and.arrow.up.left")
+        XCTAssertEqual(full.title(for: .close), "关闭窗口")
+    }
+
+    func testTooltipIsTheWindowNameAndHiddenWhenNothingIsOperable() {
+        XCTAssertFalse(LayoutTrafficLights.State.unavailable.operable)
+        XCTAssertNil(LayoutTrafficLights.State.unavailable.windowName)
+        XCTAssertNil(LayoutTrafficLights.State.unavailable.toolTip(for: .close))
+        let titled = LayoutTrafficLights.State(windowTitle: "  报告  ", applicationName: "文本编辑", operable: true)
+        XCTAssertEqual(titled.windowName, "报告")
+        XCTAssertEqual(titled.toolTip(for: .minimize), "报告")
+        let fallback = LayoutTrafficLights.State(windowTitle: " \n ", applicationName: " Safari ", operable: true)
+        XCTAssertEqual(fallback.windowName, "Safari")
+        XCTAssertEqual(fallback.toolTip(for: .fullScreen), "Safari")
+        XCTAssertNil(LayoutTrafficLights.State(windowTitle: " ", applicationName: "", operable: true).toolTip(for: .close))
+        XCTAssertNil(LayoutTrafficLights.State(windowTitle: "文稿", isFullScreen: true, operable: false).toolTip(for: .fullScreen))
     }
 }
 

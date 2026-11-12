@@ -250,7 +250,7 @@ private struct LayoutFlyoutHost: View {
     }
 }
 
-/// Mirrors the native macOS window-layout menu: traffic lights for the front window, then icon-only tiles.
+/// Layout menu: window actions for the front window, then icon-only tiles.
 private struct LayoutFlyoutView: View {
     var state: LayoutTrafficLights.State = .unavailable
     var perform: (WindowControl) -> Void = { _ in }
@@ -296,7 +296,8 @@ private struct LayoutFlyoutView: View {
     }
 }
 
-private struct LayoutFlyoutPreview: View {
+/// Renderable layout flyout. Internal so tests can draw the light, dark, full-screen, and disabled states.
+struct LayoutFlyoutPreview: View {
     let state: LayoutTrafficLights.State
     var body: some View {
         LayoutFlyoutView(state: state, pick: { _ in })
@@ -316,11 +317,13 @@ private struct LayoutFlyoutPreview: View {
         .preferredColorScheme(.dark)
 }
 
-#Preview("长窗口名") {
-    LayoutFlyoutPreview(state: .init(
-        windowTitle: "季度报告-最终版-不要发给客户-2026-11-12-修订.docx",
-        applicationName: "文本编辑",
-        operable: true))
+#Preview("全屏") {
+    LayoutFlyoutPreview(state: .init(windowTitle: "文稿", applicationName: "文本编辑", isFullScreen: true, operable: true))
+        .preferredColorScheme(.light)
+}
+
+#Preview("禁用") {
+    LayoutFlyoutPreview(state: .unavailable)
         .preferredColorScheme(.light)
 }
 
