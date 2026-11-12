@@ -93,20 +93,52 @@ public enum DesktopToolbarLayout {
     }
 
     /// A flyout opens beside a toolbar button, inward from the docked edge, inside the screen.
+    /// The edge against the toolbar stays put when `size` grows: a bottom bar grows upward, a top bar
+    /// downward, and a side bar keeps its inner edge. If the screen cannot hold it, the far side shortens.
     public static func flyout(beside button: CGRect, toolbar: CGRect, in screen: CGRect, size: CGSize, side: ToolbarSide) -> CGRect {
-        let width = min(size.width, screen.width - margin * 2), height = min(size.height, screen.height - margin * 2)
         func clamp(_ v: CGFloat, _ lo: CGFloat, _ hi: CGFloat) -> CGFloat { min(max(v, lo), max(lo, hi)) }
-        let x: CGFloat, y: CGFloat
+        let minX = screen.minX + margin, minY = screen.minY + margin
+        let maxX = screen.maxX - margin, maxY = screen.maxY - margin
+        let maxWidth = max(1, maxX - minX), maxHeight = max(1, maxY - minY)
         switch side {
-        case .right, .left:
-            x = side == .right ? toolbar.minX - margin - width : toolbar.maxX + margin
-            y = button.midY - height / 2
-        case .top, .bottom:
-            x = button.midX - width / 2
-            y = side == .top ? toolbar.minY - margin - height : toolbar.maxY + margin
+        case .bottom:
+            let anchoredY = toolbar.maxY + margin
+            let width = min(size.width, maxWidth)
+            let x = clamp(button.midX - width / 2, minX, maxX - width)
+            let room = maxY - anchoredY
+            if room >= 1 {
+                return CGRect(x: x, y: anchoredY, width: width, height: min(size.height, room))
+            }
+            let height = min(size.height, maxHeight)
+            return CGRect(x: x, y: clamp(anchoredY, minY, maxY - height), width: width, height: height)
+        case .top:
+            let anchoredMaxY = toolbar.minY - margin
+            let width = min(size.width, maxWidth)
+            let x = clamp(button.midX - width / 2, minX, maxX - width)
+            let room = anchoredMaxY - minY
+            if room >= 1 {
+                let height = min(size.height, room)
+                return CGRect(x: x, y: anchoredMaxY - height, width: width, height: height)
+            }
+            let height = min(size.height, maxHeight)
+            return CGRect(x: x, y: clamp(anchoredMaxY - height, minY, maxY - height), width: width, height: height)
+        case .right:
+            let anchoredMaxX = toolbar.minX - margin
+            let room = anchoredMaxX - minX
+            let width = room >= 1 ? min(size.width, room) : min(size.width, maxWidth)
+            let height = min(size.height, maxHeight)
+            let y = clamp(button.midY - height / 2, minY, maxY - height)
+            let x = room >= 1 ? anchoredMaxX - width : clamp(anchoredMaxX - width, minX, maxX - width)
+            return CGRect(x: x, y: y, width: width, height: height)
+        case .left:
+            let anchoredX = toolbar.maxX + margin
+            let room = maxX - anchoredX
+            let width = room >= 1 ? min(size.width, room) : min(size.width, maxWidth)
+            let height = min(size.height, maxHeight)
+            let y = clamp(button.midY - height / 2, minY, maxY - height)
+            let x = room >= 1 ? anchoredX : clamp(anchoredX, minX, maxX - width)
+            return CGRect(x: x, y: y, width: width, height: height)
         }
-        return CGRect(x: clamp(x, screen.minX + margin, screen.maxX - margin - width),
-                      y: clamp(y, screen.minY + margin, screen.maxY - margin - height), width: width, height: height)
     }
 
     public static func toolbar(in screen: CGRect, centerY: CGFloat, expanded: Bool, count: Int, side: ToolbarSide = .right, centerX: CGFloat? = nil, windowControls: Bool = false) -> CGRect {

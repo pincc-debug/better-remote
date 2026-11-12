@@ -141,6 +141,111 @@ final class WindowSnapTests: XCTestCase {
                                                  in: screen, size: CGSize(width: 280, height: 200), side: .bottom)
         XCTAssertEqual(bottom.minY, 112)
     }
+
+    /// The layout popover grows by the traffic-light row. The edge against the toolbar does not move;
+    /// a short screen shortens the far side instead of pushing the flyout off or over the bar.
+    func testTallerFlyoutKeepsTheEdgeAgainstTheToolbar() {
+        let screen = CGRect(x: 0, y: 0, width: 1728, height: 1084)
+        let before = CGSize(width: LayoutTrafficLights.popoverWidth, height: LayoutTrafficLights.gridPopoverHeight)
+        let after = CGSize(width: LayoutTrafficLights.popoverWidth, height: LayoutTrafficLights.popoverHeight)
+        let button = CGRect(x: 800, y: 16, width: 44, height: 44)
+
+        let bottomBar = CGRect(x: 0, y: 0, width: 1728, height: 74)
+        let oldBottom = DesktopToolbarLayout.flyout(beside: button, toolbar: bottomBar, in: screen, size: before, side: .bottom)
+        let newBottom = DesktopToolbarLayout.flyout(beside: button, toolbar: bottomBar, in: screen, size: after, side: .bottom)
+        XCTAssertEqual(newBottom.minY, oldBottom.minY)
+        XCTAssertEqual(newBottom.minY, bottomBar.maxY + DesktopToolbarLayout.margin)
+        XCTAssertEqual(newBottom.height, oldBottom.height + LayoutTrafficLights.addedHeight)
+        XCTAssertEqual(newBottom.width, oldBottom.width)
+        XCTAssertTrue(screen.insetBy(dx: DesktopToolbarLayout.margin, dy: DesktopToolbarLayout.margin).contains(newBottom))
+
+        let topBar = CGRect(x: 0, y: screen.maxY - 74, width: 1728, height: 74)
+        let oldTop = DesktopToolbarLayout.flyout(beside: CGRect(x: 800, y: topBar.minY + 16, width: 44, height: 44), toolbar: topBar, in: screen, size: before, side: .top)
+        let newTop = DesktopToolbarLayout.flyout(beside: CGRect(x: 800, y: topBar.minY + 16, width: 44, height: 44), toolbar: topBar, in: screen, size: after, side: .top)
+        XCTAssertEqual(newTop.maxY, oldTop.maxY)
+        XCTAssertEqual(newTop.maxY, topBar.minY - DesktopToolbarLayout.margin)
+        XCTAssertEqual(newTop.height, oldTop.height + LayoutTrafficLights.addedHeight)
+        XCTAssertTrue(screen.insetBy(dx: DesktopToolbarLayout.margin, dy: DesktopToolbarLayout.margin).contains(newTop))
+
+        let rightBar = CGRect(x: screen.maxX - 72, y: 0, width: 72, height: screen.height)
+        let rightButton = CGRect(x: rightBar.minX + 8, y: screen.maxY - 80, width: 56, height: 58)
+        let oldRight = DesktopToolbarLayout.flyout(beside: rightButton, toolbar: rightBar, in: screen, size: before, side: .right)
+        let newRight = DesktopToolbarLayout.flyout(beside: rightButton, toolbar: rightBar, in: screen, size: after, side: .right)
+        XCTAssertEqual(newRight.maxX, oldRight.maxX)
+        XCTAssertEqual(newRight.maxX, rightBar.minX - DesktopToolbarLayout.margin)
+        XCTAssertTrue(screen.insetBy(dx: DesktopToolbarLayout.margin, dy: DesktopToolbarLayout.margin).contains(newRight))
+
+        let leftBar = CGRect(x: 0, y: 0, width: 72, height: screen.height)
+        let leftButton = CGRect(x: 8, y: 4, width: 56, height: 58)
+        let newLeft = DesktopToolbarLayout.flyout(beside: leftButton, toolbar: leftBar, in: screen, size: after, side: .left)
+        XCTAssertEqual(newLeft.minX, leftBar.maxX + DesktopToolbarLayout.margin)
+        XCTAssertTrue(screen.insetBy(dx: DesktopToolbarLayout.margin, dy: DesktopToolbarLayout.margin).contains(newLeft))
+
+        let short = CGRect(x: 0, y: 0, width: 800, height: 360)
+        let shortBar = CGRect(x: 0, y: 0, width: 800, height: 74)
+        let fitted = DesktopToolbarLayout.flyout(beside: button, toolbar: shortBar, in: short, size: after, side: .bottom)
+        XCTAssertEqual(fitted.minY, shortBar.maxY + DesktopToolbarLayout.margin)
+        XCTAssertEqual(fitted.maxY, short.maxY - DesktopToolbarLayout.margin)
+        XCTAssertLessThan(fitted.height, after.height)
+        XCTAssertTrue(short.insetBy(dx: DesktopToolbarLayout.margin, dy: DesktopToolbarLayout.margin).contains(fitted))
+    }
+}
+
+final class LayoutTrafficLightTests: XCTestCase {
+    func testRowFitsThePopoverWithoutChangingItsWidth() {
+        XCTAssertEqual(LayoutTrafficLights.popoverWidth, 304)
+        XCTAssertEqual(LayoutTrafficLights.gridPopoverHeight, 288)
+        XCTAssertEqual(LayoutTrafficLights.addedHeight, 48)
+        XCTAssertEqual(LayoutTrafficLights.popoverHeight, 336)
+        XCTAssertEqual(LayoutTrafficLights.rowHeight, 32)
+        XCTAssertEqual(LayoutTrafficLights.separatorBand, 16)
+        XCTAssertEqual(LayoutTrafficLights.rowHeight + LayoutTrafficLights.separatorBand, LayoutTrafficLights.addedHeight)
+        XCTAssertEqual(LayoutTrafficLights.diameter, 18)
+        XCTAssertEqual(LayoutTrafficLights.hit, 32)
+        XCTAssertEqual(LayoutTrafficLights.centerSpacing, 28)
+        XCTAssertEqual(LayoutTrafficLights.disabledOpacity, 0.35, accuracy: 0.001)
+        XCTAssertEqual(LayoutTrafficLights.pressedShade, 0.10, accuracy: 0.001)
+        XCTAssertGreaterThan(LayoutTrafficLights.hoverShade, 0)
+        XCTAssertLessThan(LayoutTrafficLights.hoverShade, LayoutTrafficLights.pressedShade)
+        XCTAssertEqual(LayoutTrafficLights.glyphPointSize, 9)
+        XCTAssertEqual(LayoutTrafficLights.captionPointSize, 12)
+        let close = LayoutTrafficLights.rgb(.close)
+        XCTAssertEqual(close.red, 1, accuracy: 0.0001)
+        XCTAssertEqual(close.green, 95.0 / 255, accuracy: 0.0001)
+        XCTAssertEqual(close.blue, 87.0 / 255, accuracy: 0.0001)
+        let minimize = LayoutTrafficLights.rgb(.minimize)
+        XCTAssertEqual(minimize.red, 254.0 / 255, accuracy: 0.0001)
+        XCTAssertEqual(minimize.green, 188.0 / 255, accuracy: 0.0001)
+        XCTAssertEqual(minimize.blue, 46.0 / 255, accuracy: 0.0001)
+        let fullScreen = LayoutTrafficLights.rgb(.fullScreen)
+        XCTAssertEqual(fullScreen.red, 40.0 / 255, accuracy: 0.0001)
+        XCTAssertEqual(fullScreen.green, 200.0 / 255, accuracy: 0.0001)
+        XCTAssertEqual(fullScreen.blue, 64.0 / 255, accuracy: 0.0001)
+    }
+
+    func testCaptionUsesTitleThenAppNameAndMiddleTruncates() {
+        XCTAssertEqual(LayoutTrafficLights.State.unavailable.caption, "没有可操作的窗口")
+        XCTAssertFalse(LayoutTrafficLights.State.unavailable.operable)
+        let titled = LayoutTrafficLights.State(windowTitle: "  报告  ", applicationName: "文本编辑", operable: true)
+        XCTAssertEqual(titled.caption, "报告")
+        let fallback = LayoutTrafficLights.State(windowTitle: " \n ", applicationName: " Safari ", operable: true)
+        XCTAssertEqual(fallback.caption, "Safari")
+        let nameless = LayoutTrafficLights.State(windowTitle: "", applicationName: nil, operable: true)
+        XCTAssertEqual(nameless.caption, "窗口")
+        let long = "季度报告最终版不要外发.docx"
+        XCTAssertEqual(LayoutTrafficLights.State(windowTitle: long, applicationName: "文本编辑", operable: true).caption, long)
+        XCTAssertEqual(LayoutTrafficLights.middleTruncated(long, limit: 9), "季度报告…docx")
+        XCTAssertEqual(LayoutTrafficLights.middleTruncated("短", limit: 9), "短")
+        XCTAssertEqual(LayoutTrafficLights.middleTruncated("ABCDEFGHIJKLMNOP", limit: 9), "ABCD…MNOP")
+    }
+
+    func testToolTipsNameTheActionAndFullScreenToggle() {
+        let window = LayoutTrafficLights.State(windowTitle: "文稿", operable: true)
+        XCTAssertEqual(window.toolTip(for: .close), "关闭窗口")
+        XCTAssertEqual(window.toolTip(for: .minimize), "最小化")
+        XCTAssertEqual(window.toolTip(for: .fullScreen), "全屏")
+        XCTAssertEqual(LayoutTrafficLights.State(windowTitle: "文稿", isFullScreen: true, operable: true).toolTip(for: .fullScreen), "退出全屏")
+    }
 }
 
 final class WindowTilingTests: XCTestCase {

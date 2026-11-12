@@ -242,24 +242,41 @@ final class ToolbarButton: NSButton {
 
 enum LayoutChoice { case snap(WindowSnap), arrange(WindowArrangement) }
 
-/// Mirrors the native macOS window-layout menu: icon-only tiles, no section title (the divider separates it).
-private struct LayoutFlyoutView: View {
+private struct LayoutFlyoutHost: View {
+    @ObservedObject var lights: LayoutTrafficLightModel
     let pick: (LayoutChoice) -> Void
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            let arrangeItems: [(LayoutChoice, String, LayoutGlyph.Region)] =
-                [(.snap(.fill), "铺满", .all([CGRect(x: 0, y: 0, width: 1, height: 1)])),
-                 (.snap(.center), "居中", .all([CGRect(x: 0.15, y: 0.1, width: 0.7, height: 0.8)]))]
-                + WindowArrangement.allCases.map { arrangement in
-                    let units = arrangement.units
-                    return (.arrange(arrangement), arrangement.title, .split(front: units[0], others: Array(units.dropFirst())))
-                }
-            ForEach(Array(stride(from: 0, to: arrangeItems.count, by: 4)), id: \.self) { start in
-                row(Array(arrangeItems[start..<min(start + 4, arrangeItems.count)]))
+        LayoutFlyoutView(state: lights.state, perform: { lights.perform($0) }, pick: pick)
+    }
+}
+
+/// Mirrors the native macOS window-layout menu: traffic lights for the front window, then icon-only tiles.
+private struct LayoutFlyoutView: View {
+    var state: LayoutTrafficLights.State = .unavailable
+    var perform: (WindowControl) -> Void = { _ in }
+    let pick: (LayoutChoice) -> Void
+    var body: some View {
+        let arrangeItems: [(LayoutChoice, String, LayoutGlyph.Region)] =
+            [(.snap(.fill), "铺满", .all([CGRect(x: 0, y: 0, width: 1, height: 1)])),
+             (.snap(.center), "居中", .all([CGRect(x: 0.15, y: 0.1, width: 0.7, height: 0.8)]))]
+            + WindowArrangement.allCases.map { arrangement in
+                let units = arrangement.units
+                return (.arrange(arrangement), arrangement.title, .split(front: units[0], others: Array(units.dropFirst())))
             }
+        VStack(alignment: .leading, spacing: 0) {
+            LayoutTrafficLightBar(state: state, perform: perform)
+                .padding(.horizontal, 12)
+                .padding(.top, 12)
+            LayoutFlyoutSeparator()
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(Array(stride(from: 0, to: arrangeItems.count, by: 4)), id: \.self) { start in
+                    row(Array(arrangeItems[start..<min(start + 4, arrangeItems.count)]))
+                }
+            }
+            // 12pt inset on the grid; 4 × 64 + 3 × 8 + 24 = 304 wide, so every row shares one grid.
+            .padding(.horizontal, 12)
+            .padding(.bottom, 12)
         }
-        // Uniform 12pt inset; 4 × 64 + 3 × 8 + 24 = 304 wide, so every row (the lone last one too) shares one grid.
-        .padding(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
     private func row(_ items: [(LayoutChoice, String, LayoutGlyph.Region)]) -> some View {
@@ -277,6 +294,34 @@ private struct LayoutFlyoutView: View {
             }
         }
     }
+}
+
+private struct LayoutFlyoutPreview: View {
+    let state: LayoutTrafficLights.State
+    var body: some View {
+        LayoutFlyoutView(state: state, pick: { _ in })
+            .frame(width: LayoutTrafficLights.popoverWidth, height: LayoutTrafficLights.popoverHeight)
+            .background(Color(nsColor: .windowBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.radiusXl, style: .continuous))
+    }
+}
+
+#Preview("浅色") {
+    LayoutFlyoutPreview(state: .init(windowTitle: "文稿", applicationName: "文本编辑", operable: true))
+        .preferredColorScheme(.light)
+}
+
+#Preview("深色") {
+    LayoutFlyoutPreview(state: .init(windowTitle: "文稿", applicationName: "文本编辑", operable: true))
+        .preferredColorScheme(.dark)
+}
+
+#Preview("长窗口名") {
+    LayoutFlyoutPreview(state: .init(
+        windowTitle: "季度报告-最终版-不要发给客户-2026-11-12-修订.docx",
+        applicationName: "文本编辑",
+        operable: true))
+        .preferredColorScheme(.light)
 }
 
 /// Rounded-rect outline (1.5pt). The block the current window goes to: blue line + blue 24% fill (style B);
@@ -582,8 +627,13 @@ final class FloatingSwitcher: NSObject {
     var onArrange: (WindowArrangement) -> Void = { _ in }
 
     private var scrollOffset: CGFloat = 0
-    private static let layoutSize = CGSize(width: 304, height: 288)
+    private static let layoutSize = CGSize(width: LayoutTrafficLights.popoverWidth, height: LayoutTrafficLights.popoverHeight)
     private static var windowPanelSize: CGSize { layoutSize }
+    private let layoutLights: LayoutTrafficLightModel
+    private var layoutTargetTask: Task<Void, Never>?
+    private var layoutTargetTimer: Timer?
+    private var layoutTargetGeneration = 0
+    private var layoutTargetRefreshAgain = false
     private var windowPanel: NSPanel?
     private func toggleWindowControls(from button: NSView) {
         if windowPanel?.isVisible == true { hideWindowControls(); return }
@@ -598,9 +648,16 @@ final class FloatingSwitcher: NSObject {
         flyout.hasShadow = true; flyout.hidesOnDeactivate = false
         flyout.isReleasedWhenClosed = false
         flyout.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
-        let size = Self.windowPanelSize
+        let size = frame.size
         let container = ToolbarDocumentView(frame: CGRect(origin: .zero, size: size))
-        let layouts = NSHostingView(rootView: LayoutFlyoutView { [weak self] choice in
+        layoutLights.state = .unavailable
+        layoutLights.perform = { [weak self] control in
+            guard let self else { return }
+            onWindowControl(control)
+            refreshLayoutTarget()
+            refreshLayoutTarget(after: 0.6)
+        }
+        let layouts = NSHostingView(rootView: LayoutFlyoutHost(lights: layoutLights) { [weak self] choice in
             guard let self else { return }
             hideWindowControls()
             switch choice {
@@ -608,7 +665,8 @@ final class FloatingSwitcher: NSObject {
             case .arrange(let arrangement): onArrange(arrangement)
             }
         })
-        layouts.frame = CGRect(x: 0, y: 0, width: size.width, height: Self.layoutSize.height)
+        layouts.sizingOptions = []
+        layouts.frame = container.bounds
         container.addSubview(layouts)
         flyout.contentView = NativeGlassView(content: container, cornerRadius: DesignTokens.radiusXl, frame: CGRect(origin: .zero, size: frame.size),
                                              contentBackdrop: DesignTokens.NS.glassBackdrop)
@@ -617,14 +675,66 @@ final class FloatingSwitcher: NSObject {
         flyout.orderFrontRegardless()
         windowPanel = flyout
         updateDismissalMonitors()
+        startLayoutTargetTracking()
     }
-    func hideWindowControls() { windowPanel?.orderOut(nil); hideApplicationShortcuts() }
+    func hideWindowControls() {
+        stopLayoutTargetTracking()
+        windowPanel?.orderOut(nil)
+        hideApplicationShortcuts()
+    }
+
+    /// Reads the front window when the flyout opens, when the front app changes, and while the flyout stays up.
+    private func startLayoutTargetTracking() {
+        guard layoutTargetTimer == nil else { refreshLayoutTarget(); return }
+        let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshLayoutTarget() }
+        }
+        timer.tolerance = 0.25
+        layoutTargetTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+        refreshLayoutTarget()
+    }
+    private func stopLayoutTargetTracking() {
+        layoutTargetGeneration += 1
+        layoutTargetRefreshAgain = false
+        layoutTargetTimer?.invalidate()
+        layoutTargetTimer = nil
+        layoutTargetTask?.cancel()
+        layoutTargetTask = nil
+    }
+    private func refreshLayoutTarget(after delay: TimeInterval = 0) {
+        guard delay <= 0 else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                MainActor.assumeIsolated { self?.refreshLayoutTarget() }
+            }
+            return
+        }
+        guard windowPanel?.isVisible == true else { return }
+        if layoutTargetTask != nil { layoutTargetRefreshAgain = true; return }
+        let generation = layoutTargetGeneration
+        let pid = fillTargetPID()
+        layoutTargetTask = Task { @MainActor [weak self] in
+            let state = await WindowControlPerformer.layoutTarget(pid: pid)
+            guard let self, !Task.isCancelled, generation == self.layoutTargetGeneration else { return }
+            self.layoutTargetTask = nil
+            guard self.windowPanel?.isVisible == true else { return }
+            if self.layoutLights.state != state {
+                OperationDiagnostics.write("layout-target pid=\(pid.map(String.init) ?? "nil") operable=\(state.operable) fullScreen=\(state.isFullScreen)")
+                self.layoutLights.state = state
+            }
+            if self.layoutTargetRefreshAgain {
+                self.layoutTargetRefreshAgain = false
+                self.refreshLayoutTarget()
+            }
+        }
+    }
     var onDismissPanels: () -> Void = {}
     var onWillCollapse: () -> Void = {}
     var onExpansionChanged: () -> Void = {}
     var companionFrame: (() -> CGRect?)?
 
     override init() {
+        layoutLights = LayoutTrafficLightModel()
         super.init()
         panel.title = "Better Remote 快捷操作"
         panel.level = .floating
@@ -770,8 +880,9 @@ final class FloatingSwitcher: NSObject {
         if !toolbarHitFrame.contains(point), companionFrame?()?.contains(point) != true { onDismissPanels() }
     }
     @objc private func appChanged(_ notification: Notification) {
-        if notification.name == NSWorkspace.didActivateApplicationNotification { refreshFillState(after: 0.15) }
         if notification.name == NSWorkspace.didActivateApplicationNotification {
+            refreshFillState(after: 0.15)
+            refreshLayoutTarget()
             sender.releaseHeld()
             if let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
                app.activationPolicy == .regular, app.processIdentifier != ownPID {
@@ -1204,7 +1315,9 @@ final class FloatingSwitcher: NSObject {
     /// The window-layout flyout for offscreen renders: same content and size as the live flyout, on a tint surface.
     static func reviewLayoutFlyout(backdrop: NSColor = DesignTokens.NS.glassBackdrop) -> NSView {
         let size = windowPanelSize
-        let layouts = NSHostingView(rootView: LayoutFlyoutView { _ in })
+        let sample = LayoutTrafficLights.State(windowTitle: "文稿", applicationName: "文本编辑", isFullScreen: false, operable: true)
+        let layouts = NSHostingView(rootView: LayoutFlyoutView(state: sample, pick: { _ in }))
+        layouts.sizingOptions = []
         layouts.frame = CGRect(x: 0, y: 0, width: size.width, height: layoutSize.height)
         let surface = NSView(frame: CGRect(origin: .zero, size: layouts.frame.size))
         surface.wantsLayer = true

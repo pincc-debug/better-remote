@@ -64,6 +64,21 @@ enum WindowControlPerformer {
         return nil
     }
 
+    /// The window the layout tiles act on: our own real window, or that app's AX target.
+    /// Panels and the toolbar are never targets. Without Accessibility permission the other app's window is not readable.
+    static func layoutTarget(pid: pid_t?) async -> LayoutTrafficLights.State {
+        guard let pid else { return .unavailable }
+        if pid == ProcessInfo.processInfo.processIdentifier {
+            guard let window = ownTarget() else { return .unavailable }
+            return .init(windowTitle: window.title, applicationName: NSRunningApplication.current.localizedName,
+                         isFullScreen: window.styleMask.contains(.fullScreen), operable: true)
+        }
+        let appName = NSRunningApplication(processIdentifier: pid)?.localizedName
+        guard AXIsProcessTrusted() else { return .unavailable }
+        guard let described = await WindowAXWorker.shared.describeLayoutTarget(pid: pid) else { return .unavailable }
+        return .init(windowTitle: described.title, applicationName: appName, isFullScreen: described.isFullScreen, operable: true)
+    }
+
     /// Returns a short notice to show, if any.
     @discardableResult
     static func perform(_ control: WindowControl, pid: pid_t) async throws -> String? {
