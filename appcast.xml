@@ -5,6 +5,15 @@
     <language>zh-CN</language>
 <!-- ITEMS -->
     <item>
+      <title>0.9.8</title>
+      <pubDate>Thu, 12 Nov 2026 06:31:49 +0000</pubDate>
+      <sparkle:version>208</sparkle:version>
+      <sparkle:shortVersionString>0.9.8</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<h3>0.9.8 更新内容</h3><ul><li>布局浮层顶部新增居中的红黄绿圆点，可直接关闭、最小化或全屏当前窗口。</li></ul>]]></description>
+      <enclosure url="https://github.com/pincc-debug/better-remote/releases/download/v0.9.8/Better-Remote-0.9.8.dmg" type="application/octet-stream" sparkle:edSignature="xS9t/SRBB47Q71m7YZWspSq6XBXhJ3n9xKScHM1oYxmA7SixKO57Rh4bIB4muYuJuY1C4EIlWBlSaagixlMDCg==" length="8821127" />
+    </item>
+    <item>
       <title>0.9.7</title>
       <pubDate>Tue, 10 Nov 2026 09:18:53 +0000</pubDate>
       <sparkle:version>205</sparkle:version>
