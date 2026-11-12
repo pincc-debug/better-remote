@@ -265,8 +265,7 @@ private struct LayoutFlyoutView: View {
             }
         VStack(alignment: .leading, spacing: 0) {
             LayoutTrafficLightBar(state: state, perform: perform)
-                .padding(.horizontal, 12)
-                .padding(.top, 12)
+                .padding(.top, LayoutTrafficLights.topInset)
             LayoutFlyoutSeparator()
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(Array(stride(from: 0, to: arrangeItems.count, by: 4)), id: \.self) { start in

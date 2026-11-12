@@ -1,34 +1,44 @@
 import Foundation
 import CoreGraphics
 
-/// The three window actions on the layout flyout: metrics, labels, and the tooltip window name.
+/// Centred traffic-light dots on the layout flyout: metrics, glyphs, and tooltips.
 public enum LayoutTrafficLights {
-    /// Width of the layout flyout. Unchanged by the action row.
     public static let popoverWidth: CGFloat = 304
-    /// Layout grid flyout before the row: 12pt padding, four 60pt tiles, three 8pt gaps, 12pt padding.
+    /// Layout grid flyout before this row: 12pt padding, four 60pt tiles, three 8pt gaps, 12pt padding.
     public static let gridPopoverHeight: CGFloat = 288
-    /// 12pt inset on each side, so the three buttons share 280pt.
-    public static let contentInset: CGFloat = 12
-    public static let contentWidth: CGFloat = popoverWidth - contentInset * 2
-    public static let buttonSpacing: CGFloat = 8
-    public static let buttonWidth: CGFloat = (contentWidth - buttonSpacing * 2) / 3
-    public static let rowHeight: CGFloat = 32
+    /// Tile stack under the rule: 4 × 60 + 3 × 8.
+    public static let gridBody: CGFloat = 264
+    public static let topInset: CGFloat = 12
+    public static let bottomInset: CGFloat = 12
+    /// The grid the formula adds after the rule: tiles plus the existing 12pt bottom inset.
+    public static let gridSection: CGFloat = gridBody + bottomInset
+    public static let rowHeight: CGFloat = 44
+    public static let diameter: CGFloat = 28
+    public static let hit: CGFloat = 44
+    /// Space between the 44pt hit targets, not between the circle edges.
+    public static let hitSpacing: CGFloat = 32
+    public static let groupWidth: CGFloat = hit * 3 + hitSpacing * 2
     public static let separatorGap: CGFloat = 8
     /// Counted as 1pt in the panel height. The drawn rule is still one physical pixel.
     public static let separatorThickness: CGFloat = 1
-    /// 32pt row, 8pt, 1pt line, 8pt.
-    public static let addedHeight: CGFloat = rowHeight + separatorGap + separatorThickness + separatorGap
-    public static let popoverHeight: CGFloat = gridPopoverHeight + addedHeight
-    public static let iconPointSize: CGFloat = 14
-    public static let labelPointSize: CGFloat = 12
-    public static let labelSpacing: CGFloat = 6
-    /// Neutral button fill: black 5% in light, white 8% in dark.
-    public static let lightFillOpacity: Double = 0.05
-    public static let darkFillOpacity: Double = 0.08
-    /// Same hover / press wash as the layout tiles.
-    public static let hoverOverlay: Double = 0.08
-    public static let pressedOverlay: Double = 0.12
+    /// 12 + 44 + 8 + 1 + 8 + grid section (tiles and the bottom inset).
+    public static let popoverHeight: CGFloat = topInset + rowHeight + separatorGap + separatorThickness + separatorGap + gridSection
+    /// How much taller the flyout is than the grid-only panel. The original 12pt top inset stays.
+    public static let addedHeight: CGFloat = popoverHeight - gridPopoverHeight
+    public static let glyphPointSize: CGFloat = 14
+    public static let glyphOpacity: Double = 0.5
+    public static let hoverDarken: Double = 0.08
+    public static let pressedDarken: Double = 0.15
     public static let disabledOpacity: Double = 0.35
+
+    /// sRGB of #FF5F57, #FEBC2E, #28C840.
+    public static func rgb(_ control: WindowControl) -> (red: Double, green: Double, blue: Double) {
+        switch control {
+        case .close: (Double(0xFF) / 255, Double(0x5F) / 255, Double(0x57) / 255)
+        case .minimize: (Double(0xFE) / 255, Double(0xBC) / 255, Double(0x2E) / 255)
+        case .fullScreen: (Double(0x28) / 255, Double(0xC8) / 255, Double(0x40) / 255)
+        }
+    }
 
     /// What the row knows about the window the layout tiles act on.
     public struct State: Equatable, Sendable {
@@ -46,7 +56,7 @@ public enum LayoutTrafficLights {
 
         public static let unavailable = State()
 
-        /// Window title, otherwise the app name. Shown only in the button tooltip.
+        /// Window title, otherwise the app name. Used only inside the tooltip.
         public var windowName: String? {
             let title = windowTitle?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             if !title.isEmpty { return title }
@@ -70,10 +80,11 @@ public enum LayoutTrafficLights {
             }
         }
 
-        /// Tooltip names the window these buttons will act on. No operable window has none.
-        public func toolTip(for control: WindowControl) -> String? {
-            guard operable else { return nil }
-            return windowName
+        /// Action name, with the window name when one can be operated.
+        public func toolTip(for control: WindowControl) -> String {
+            let action = title(for: control)
+            guard operable, let windowName else { return action }
+            return "\(action) · \(windowName)"
         }
     }
 }

@@ -9,16 +9,16 @@ final class LayoutTrafficLightModel: ObservableObject {
     var perform: (WindowControl) -> Void = { _ in }
 }
 
-/// Close, minimize, and full-screen for the front window. Neutral buttons, no window-name text.
+/// Close, minimize, and full-screen as centred traffic-light dots. No window-name text.
 struct LayoutTrafficLightBar: View {
     let state: LayoutTrafficLights.State
     let perform: (WindowControl) -> Void
 
     var body: some View {
-        HStack(spacing: LayoutTrafficLights.buttonSpacing) {
+        HStack(spacing: LayoutTrafficLights.hitSpacing) {
             ForEach(WindowControl.allCases, id: \.rawValue) { control in
-                WindowActionButton(
-                    id: control.rawValue,
+                TrafficLightButton(
+                    control: control,
                     title: state.title(for: control),
                     symbol: state.symbol(for: control),
                     enabled: state.operable,
@@ -26,9 +26,9 @@ struct LayoutTrafficLightBar: View {
                 ) {
                     perform(control)
                 }
-                .frame(maxWidth: .infinity)
             }
         }
+        .frame(maxWidth: .infinity)
         .frame(height: LayoutTrafficLights.rowHeight)
         .accessibilityElement(children: .contain)
     }
@@ -63,46 +63,40 @@ struct LayoutFlyoutSeparator: View {
     }
 }
 
-private struct WindowActionButton: View {
-    let id: String
+private struct TrafficLightButton: View {
+    let control: WindowControl
     let title: String
     let symbol: String
     let enabled: Bool
-    let toolTip: String?
+    let toolTip: String
     let action: () -> Void
-    @Environment(\.colorScheme) private var colorScheme
     @State private var hovering = false
 
     var body: some View {
+        let rgb = LayoutTrafficLights.rgb(control)
         Button(action: { if enabled { action() } }) {
-            HStack(spacing: LayoutTrafficLights.labelSpacing) {
-                Image(systemName: symbol)
-                    .font(.system(size: LayoutTrafficLights.iconPointSize))
-                Text(title)
-                    .font(.system(size: LayoutTrafficLights.labelPointSize, weight: .medium))
-                    .lineLimit(1)
-            }
-            .foregroundStyle(Color.primary)
-            .frame(maxWidth: .infinity)
-            .frame(height: LayoutTrafficLights.rowHeight)
-            .background(fill, in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous))
-            .contentShape(RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous))
+            Circle()
+                .fill(Color(red: rgb.red, green: rgb.green, blue: rgb.blue))
+                .frame(width: LayoutTrafficLights.diameter, height: LayoutTrafficLights.diameter)
+                .overlay {
+                    Image(systemName: symbol)
+                        .font(.system(size: LayoutTrafficLights.glyphPointSize, weight: .bold))
+                        .symbolRenderingMode(.monochrome)
+                        .foregroundStyle(Color.black.opacity(LayoutTrafficLights.glyphOpacity))
+                }
+                .clipShape(Circle())
+                .frame(width: LayoutTrafficLights.hit, height: LayoutTrafficLights.hit)
+                .contentShape(Rectangle())
         }
-        .buttonStyle(WindowActionPressStyle(enabled: enabled, hovering: hovering))
+        .buttonStyle(TrafficLightPressStyle(enabled: enabled, hovering: hovering))
         .focusEffectDisabled()
         .opacity(enabled ? 1 : LayoutTrafficLights.disabledOpacity)
-        .pointerHover("layout-action-\(id)") { hovering = enabled && $0 }
+        .pointerHover("layout-traffic-\(control.rawValue)") { hovering = enabled && $0 }
         .onChange(of: enabled) { _, now in if !now { hovering = false } }
         .modifier(OptionalHelp(text: toolTip))
         .accessibilityLabel(title)
-        .accessibilityIdentifier("layout-action-\(symbol)")
+        .accessibilityIdentifier("layout-traffic-\(control.rawValue)")
         .accessibilityRespondsToUserInteraction(enabled)
-    }
-
-    private var fill: Color {
-        colorScheme == .dark
-            ? Color.white.opacity(LayoutTrafficLights.darkFillOpacity)
-            : Color.black.opacity(LayoutTrafficLights.lightFillOpacity)
     }
 }
 
@@ -117,16 +111,17 @@ private struct OptionalHelp: ViewModifier {
     }
 }
 
-/// Layout-tile wash: primary 8% on hover, 12% while pressed. No colour of its own.
-private struct WindowActionPressStyle: ButtonStyle {
+/// Darkens only the coloured circle: about 8% on hover, about 15% while pressed.
+private struct TrafficLightPressStyle: ButtonStyle {
     let enabled: Bool
     let hovering: Bool
     func makeBody(configuration: Configuration) -> some View {
-        let overlay = !enabled ? 0 : (configuration.isPressed ? LayoutTrafficLights.pressedOverlay : (hovering ? LayoutTrafficLights.hoverOverlay : 0))
+        let shade = !enabled ? 0 : (configuration.isPressed ? LayoutTrafficLights.pressedDarken : (hovering ? LayoutTrafficLights.hoverDarken : 0))
         configuration.label
             .overlay {
-                RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous)
-                    .fill(Color.primary.opacity(overlay))
+                Circle()
+                    .fill(Color.black.opacity(shade))
+                    .frame(width: LayoutTrafficLights.diameter, height: LayoutTrafficLights.diameter)
                     .allowsHitTesting(false)
             }
     }
