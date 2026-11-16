@@ -6,20 +6,20 @@ public enum DeviceConfigurationSummary {
     public static let defaultCard = "新设备沿用这套"
 
     public static func items(_ configuration: DeviceConfiguration, comparedTo base: DeviceConfiguration,
-                             presetName: (String) -> String?) -> [String] {
+                             software: RemoteSoftware? = nil, presetName: (String) -> String?) -> [String] {
         func onOff(_ value: Bool) -> String { value ? "开" : "关" }
         var items: [String] = []
         if configuration.selectedResolutionID != base.selectedResolutionID {
             let name = configuration.selectedResolutionID.map { presetName($0) ?? "自定义" } ?? "不切换"
             items.append("分辨率：\(name)")
         }
-        if configuration.uuTouchScrollEnabled != base.uuTouchScrollEnabled {
+        if software?.supportsSingleFingerScroll != false, configuration.uuTouchScrollEnabled != base.uuTouchScrollEnabled {
             items.append("单指滚动：\(onOff(configuration.uuTouchScrollEnabled))")
         }
-        if configuration.uuScrollSpeedPercent != base.uuScrollSpeedPercent {
+        if software?.supportsScrollSpeed != false, configuration.uuScrollSpeedPercent != base.uuScrollSpeedPercent {
             items.append("滚动速度：\(configuration.uuScrollSpeedPercent)%")
         }
-        if configuration.remoteScrollReversed != base.remoteScrollReversed {
+        if software?.supportsScrollReversal != false, configuration.remoteScrollReversed != base.remoteScrollReversed {
             items.append("反转滚动：\(onOff(configuration.remoteScrollReversed))")
         }
         if configuration.selectedResolutionID != nil, configuration.autoRestoreOnDisconnect != base.autoRestoreOnDisconnect {
@@ -42,7 +42,8 @@ public enum DeviceConfigurationSummary {
     public static func text(for deviceID: String?, in preferences: Preferences) -> String {
         guard let deviceID else { return defaultCard }
         let names = Dictionary(preferences.customPresets.map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a })
-        let list = items(preferences.configuration(for: deviceID), comparedTo: preferences.configuration(for: nil)) { names[$0] }
+        let list = items(preferences.configuration(for: deviceID), comparedTo: preferences.configuration(for: nil),
+                         software: RemoteSoftware.savedDeviceSoftware(for: deviceID)) { names[$0] }
         return list.isEmpty ? usesDefault : list.joined(separator: " · ")
     }
 }

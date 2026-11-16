@@ -354,14 +354,24 @@ struct DeviceConfigurationSettings: View {
                         }
                     }
                 }
-                section("触控") {
-                    VStack(spacing: 0) {
-                        toggle("单指滚动", symbol: "hand.draw", key: \.uuTouchScrollEnabled)
-                        Divider().padding(.leading, 54)
-                        toggle("反转滚动方向", symbol: "arrow.up.arrow.down", key: \.remoteScrollReversed)
+                if device?.software?.supportsSingleFingerScroll != false || device?.software?.supportsScrollReversal != false {
+                    section("触控") {
+                        VStack(spacing: 0) {
+                            if device?.software?.supportsSingleFingerScroll != false {
+                                toggle("单指滚动", symbol: "hand.draw", key: \.uuTouchScrollEnabled)
+                            }
+                            if device?.software?.supportsSingleFingerScroll != false && device?.software?.supportsScrollReversal != false {
+                                Divider().padding(.leading, 54)
+                            }
+                            if device?.software?.supportsScrollReversal != false {
+                                toggle("反转滚动方向", symbol: "arrow.up.arrow.down", key: \.remoteScrollReversed)
+                            }
+                        }
                     }
                 }
-                UUScrollSpeedSettings(percent: binding(\.uuScrollSpeedPercent))
+                if device?.software?.supportsScrollSpeed != false {
+                    UUScrollSpeedSettings(percent: binding(\.uuScrollSpeedPercent))
+                }
                 section("窗口") {
                     toggle("远程时窗口自动铺满", symbol: "arrow.up.left.and.arrow.down.right.square", key: \.autoFillWindowsOnRemote)
                 }

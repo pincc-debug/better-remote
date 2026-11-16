@@ -127,4 +127,18 @@ final class NarrowSettingsShotsTests: XCTestCase {
             try shot(BuiltinIconSheet(title: "应用", selected: .copy, saveError: false, onCancel: {}, onPick: { _ in }), "builtin-icon")
         }
     }
+    func testRenderSoftwareSpecificDeviceSettings() throws {
+        guard let folder else { throw XCTSkip("BR_SETTINGS_SHOTS not set") }
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        for (name, id) in [("uu", "uu:window:Phone"), ("rustdesk", "rustdesk:id:123456789")] {
+            let model = sampleModel()
+            model.preferences.remember(.init(id: id, name: name == "uu" ? "测试手机" : "123456789"))
+            for width in [760.0, 360.0] {
+                _ = try render(DeviceConfigurationSettings(model: model, deviceID: id)
+                    .frame(width: width, height: 1400), size: CGSize(width: width, height: 1400),
+                    to: "software-settings-\(name)-\(Int(width))")
+            }
+        }
+    }
+
 }

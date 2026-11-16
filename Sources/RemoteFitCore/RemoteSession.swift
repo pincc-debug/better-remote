@@ -11,6 +11,10 @@ public enum RemoteSoftware: String, Codable, CaseIterable, Sendable {
         }
     }
 
+    public var supportsSingleFingerScroll: Bool { self == .uu || self == .toDesk }
+    public var supportsScrollReversal: Bool { self == .uu }
+    public var supportsScrollSpeed: Bool { self == .uu }
+
     /// Software that mints a saved device row. ToDesk and AnyDesk stay session-only.
     public static func savedDeviceSoftware(for id: String) -> RemoteSoftware? {
         if id.hasPrefix("uu:") { return .uu }

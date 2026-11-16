@@ -60,4 +60,49 @@ final class DeviceConfigurationSummaryTests: XCTestCase {
         c.selectResolution(nil)
         XCTAssertEqual(DeviceConfigurationSummary.items(c, comparedTo: base) { _ in "iPhone 15" }, ["分辨率：不切换"])
     }
+    func testRustDeskSummaryOmitsUnsupportedScrollButKeepsCommonSettings() {
+        var p = preferences()
+        let id = "rustdesk:id:123456789"
+        p.remember(.init(id: id, name: "123456789"))
+        var c = p.configuration(for: nil)
+        c.uuTouchScrollEnabled.toggle()
+        c.uuScrollSpeedPercent = 50
+        c.remoteScrollReversed.toggle()
+        p.setConfiguration(c, for: id)
+        XCTAssertEqual(DeviceConfigurationSummary.text(for: id, in: p), "使用默认")
+        c.selectResolution("p15")
+        p.setConfiguration(c, for: id)
+        XCTAssertEqual(DeviceConfigurationSummary.text(for: id, in: p), "分辨率：iPhone 15")
+        XCTAssertEqual(p.configuration(for: id), c)
+    }
+
+    func testUUSummaryKeepsAllSupportedScrollSettings() {
+        var p = preferences()
+        let id = "uu:window:Phone"
+        var c = p.configuration(for: id)
+        c.uuTouchScrollEnabled.toggle()
+        c.uuScrollSpeedPercent = 50
+        c.remoteScrollReversed.toggle()
+        p.setConfiguration(c, for: id)
+        let summary = DeviceConfigurationSummary.text(for: id, in: p)
+        XCTAssertTrue(summary.contains("单指滚动："))
+        XCTAssertTrue(summary.contains("滚动速度：50%"))
+        XCTAssertTrue(summary.contains("反转滚动："))
+    }
+
+    func testSoftwareScrollCapabilities() {
+        XCTAssertTrue(RemoteSoftware.uu.supportsSingleFingerScroll)
+        XCTAssertTrue(RemoteSoftware.uu.supportsScrollReversal)
+        XCTAssertTrue(RemoteSoftware.uu.supportsScrollSpeed)
+        XCTAssertFalse(RemoteSoftware.rustDesk.supportsSingleFingerScroll)
+        XCTAssertFalse(RemoteSoftware.rustDesk.supportsScrollReversal)
+        XCTAssertFalse(RemoteSoftware.rustDesk.supportsScrollSpeed)
+        XCTAssertTrue(RemoteSoftware.toDesk.supportsSingleFingerScroll)
+        XCTAssertFalse(RemoteSoftware.toDesk.supportsScrollReversal)
+        XCTAssertFalse(RemoteSoftware.toDesk.supportsScrollSpeed)
+        XCTAssertFalse(RemoteSoftware.anyDesk.supportsSingleFingerScroll)
+        XCTAssertFalse(RemoteSoftware.anyDesk.supportsScrollReversal)
+        XCTAssertFalse(RemoteSoftware.anyDesk.supportsScrollSpeed)
+    }
+
 }
