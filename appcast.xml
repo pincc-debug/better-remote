@@ -5,6 +5,15 @@
     <language>zh-CN</language>
 <!-- ITEMS -->
     <item>
+      <title>0.9.9</title>
+      <pubDate>Mon, 16 Nov 2026 12:11:28 +0000</pubDate>
+      <sparkle:version>211</sparkle:version>
+      <sparkle:shortVersionString>0.9.9</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<h3>0.9.9 更新内容</h3><ul><li>支持 RustDesk 按设备应用配置，设备卡新增远程软件标识。</li></ul>]]></description>
+      <enclosure url="https://github.com/pincc-debug/better-remote/releases/download/v0.9.9/Better-Remote-0.9.9.dmg" type="application/octet-stream" sparkle:edSignature="8Cejy/7sqkFr7pzQeEOeyJ1Cjrr/5vFkH55p96Us/nWWZc60IA6mobPZWPXanZQ9MXxgmdv9OhTZA2tlGZI8Bw==" length="8900570" />
+    </item>
+    <item>
       <title>0.9.8</title>
       <pubDate>Thu, 12 Nov 2026 06:31:49 +0000</pubDate>
       <sparkle:version>208</sparkle:version>
