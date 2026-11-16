@@ -146,7 +146,7 @@ struct DeviceListSettings: View {
                     .accessibilityLabel("配置\(name)")
             }.frame(height: 28)
             Button { navigate(id ?? defaultID) } label: {
-                DeviceScreenPreview(dimensions: dimensions, identity: id ?? defaultID)
+                DeviceScreenPreview(dimensions: dimensions, identity: id ?? defaultID, software: id.flatMap(RemoteSoftware.savedDeviceSoftware(for:)))
                     .frame(maxWidth: .infinity)
                     .contentShape(Rectangle())
             }.buttonStyle(.plain).accessibilityLabel("配置\(name)")
@@ -179,10 +179,36 @@ struct DeviceListSettings: View {
     }
 }
 
+/// 16pt software mark on the preview silhouette’s bottom-left corner.
+private struct RemoteSoftwareBadge: View {
+    var software: RemoteSoftware
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        if let image = RemoteSoftwareIcon.image(for: software) {
+            let shape = RoundedRectangle(cornerRadius: RemoteSoftwareIcon.cornerRadius, style: .continuous)
+            Image(nsImage: image)
+                .interpolation(.high)
+                .frame(width: RemoteSoftwareIcon.pointSize, height: RemoteSoftwareIcon.pointSize)
+                .clipShape(shape)
+                .overlay {
+                    shape.strokeBorder(
+                        (colorScheme == .dark ? Color.white : Color.black).opacity(RemoteSoftwareIcon.borderOpacity),
+                        lineWidth: RemoteSoftwareIcon.borderWidth
+                    )
+                }
+                .accessibilityLabel(software.title)
+                .help(software.title)
+        }
+    }
+}
+
 /// All previews occupy the same area. Only the screen inside it changes aspect ratio.
 private struct DeviceScreenPreview: View {
     var dimensions: Dimensions
     var identity: String
+    /// UU or RustDesk only. Nil on the default-configuration card.
+    var software: RemoteSoftware? = nil
 
     /// Main display point size (what Better Remote treats as the live desktop resolution).
     static var currentScreenDimensions: Dimensions {
@@ -234,6 +260,13 @@ private struct DeviceScreenPreview: View {
         .overlay { RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.black.opacity(0.85), lineWidth: 3) }
         .overlay { RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.white.opacity(0.65), lineWidth: 0.7) }
         .frame(width: size.width, height: size.height)
+        .overlay(alignment: .bottomLeading) {
+            if let software {
+                RemoteSoftwareBadge(software: software)
+                    .padding(.leading, RemoteSoftwareIcon.inset)
+                    .padding(.bottom, RemoteSoftwareIcon.inset)
+            }
+        }
         .frame(width: 164, height: 152)
     }
 
@@ -297,7 +330,7 @@ struct DeviceConfigurationSettings: View {
                                     .accessibilityLabel("设备名称")
                             }
                             Divider().padding(.leading, 54)
-                            SettingsView.wideControlRow("设备型号", symbol: "iphone", narrow: narrow, controlWidth: nil) {
+                            SettingsView.wideControlRow(device.software == .rustDesk ? "RustDesk ID" : "设备型号", symbol: "iphone", narrow: narrow, controlWidth: nil) {
                                 Text(device.name).foregroundStyle(.secondary).textSelection(.enabled)
                             }
                         }

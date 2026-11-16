@@ -34,8 +34,14 @@ public enum UUWindowDeviceParser {
             name = texts.prefix(controlIndex).first { !$0.hasPrefix("连接时长") }
         }
         guard let name, !name.isEmpty, name.count <= 256, !name.contains("本机被控中") else { return nil }
-        return RemoteDevice(id: "uu:window:" + name, name: name)
+        return RemoteDevice(id: RemoteDeviceKey.uuWindow(name), name: name)
     }
+}
+
+extension RemoteDevice {
+    /// Which remote software minted this row. UU and RustDesk never share a key,
+    /// so the same phone can appear once for each.
+    public var software: RemoteSoftware? { RemoteSoftware.savedDeviceSoftware(for: id) }
 }
 
 extension Preferences {

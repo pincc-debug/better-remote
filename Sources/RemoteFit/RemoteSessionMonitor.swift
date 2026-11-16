@@ -32,7 +32,7 @@ final class RemoteSessionMonitor {
             let relevant = { (apps: [NSRunningApplication]) in
                 Set(apps.filter { app in
                     let path = app.bundleURL?.path ?? ""
-                    return path.contains("/ToDesk") || path.contains("/UURemote") || path.contains("/AnyDesk")
+                    return path.contains("/ToDesk") || path.contains("/UURemote") || path.contains("/AnyDesk") || path.contains("/RustDesk.app")
                 }.map(\.processIdentifier))
             }
             guard relevant(change.oldValue ?? []) != relevant(change.newValue ?? []) else { return }

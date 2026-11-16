@@ -53,7 +53,10 @@ struct Entry {
                 let snapshot = await RemoteSessionProbe().sample()
                 let result: [String: Any] = [
                     "active": RemoteSoftware.allCases.filter { snapshot.active.contains($0) }.map(\.rawValue),
-                    "unknown": RemoteSoftware.allCases.filter { snapshot.unknown.contains($0) }.map(\.rawValue)
+                    "unknown": RemoteSoftware.allCases.filter { snapshot.unknown.contains($0) }.map(\.rawValue),
+                    "uuDevice": snapshot.uuDevice?.id ?? "",
+                    "rustDeskDevice": snapshot.rustDeskDevice?.id ?? "",
+                    "rustDeskDevices": snapshot.rustDeskDevices.map(\.id)
                 ]
                 if let data = try? JSONSerialization.data(withJSONObject: result, options: [.sortedKeys]) {
                     print(String(decoding: data, as: UTF8.self))
