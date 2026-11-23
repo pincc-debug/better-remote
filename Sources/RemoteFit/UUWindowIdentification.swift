@@ -25,13 +25,39 @@ struct UUWindowReadResult: Sendable {
 }
 
 enum UUWindowIdentification {
+    static let bundleIdentifier = "com.netease.uuremote"
+
+    /// Resolves `UURemote.app` from a running instance, the live `UURemoteServer` helper path, LaunchServices, or `/Applications`.
+    static func appBundleURL(fromServerPath serverPath: String? = nil,
+                             fileExists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) }) -> URL? {
+        if let serverPath, let range = serverPath.range(of: "/Contents/Helpers/UURemoteServer") {
+            let candidate = String(serverPath[..<range.lowerBound])
+            if fileExists(candidate) { return URL(fileURLWithPath: candidate, isDirectory: true) }
+        }
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) {
+            return url
+        }
+        let fallback = "/Applications/UURemote.app"
+        return fileExists(fallback) ? URL(fileURLWithPath: fallback, isDirectory: true) : nil
+    }
+
     @MainActor
-    static func identify() async -> UUWindowReadResult {
-        guard AXIsProcessTrusted() else { return .init(status: "permission_missing") }
-        guard let app = NSRunningApplication.runningApplications(withBundleIdentifier: "com.netease.uuremote").first,
-              let url = app.bundleURL else { return .init(status: "app_missing") }
-        let result = await run(access: UUAXWindowAccess(pid: app.processIdentifier, url: url))
-        OperationDiagnostics.write("uu-window status=\(result.status) identified=\(result.device != nil) minimized=\(result.minimized.map(String.init) ?? "skipped")")
+    static func identify(serverPath: String? = nil) async -> UUWindowReadResult {
+        guard AXIsProcessTrusted() else {
+            OperationDiagnostics.write("uu-window status=permission_missing identified=false minimized=skipped launched=false")
+            return .init(status: "permission_missing")
+        }
+        let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first
+        guard let url = running?.bundleURL ?? appBundleURL(fromServerPath: serverPath) else {
+            OperationDiagnostics.write("uu-window status=app_missing identified=false minimized=skipped launched=false")
+            return .init(status: "app_missing")
+        }
+        let coldLaunch = running == nil
+        let result = await run(
+            access: UUAXWindowAccess(pid: running?.processIdentifier, url: url),
+            timeout: coldLaunch ? 12 : 8
+        )
+        OperationDiagnostics.write("uu-window status=\(result.status) identified=\(result.device != nil) minimized=\(result.minimized.map(String.init) ?? "skipped") launched=\(coldLaunch)")
         return result
     }
 
@@ -87,11 +113,11 @@ enum UUWindowIdentification {
 /// AX work is off the main actor and bounded. Window reopening goes through
 /// LaunchServices; cleanup presses only the AX minimize button, never close.
 private actor UUAXWindowAccess: UUWindowAccess {
-    let pid: pid_t
+    private var pid: pid_t?
     let url: URL
     private var mainWindows: [AXUIElement] = []
 
-    init(pid: pid_t, url: URL) { self.pid = pid; self.url = url }
+    init(pid: pid_t?, url: URL) { self.pid = pid; self.url = url }
 
     func connected() -> Bool { RemoteSessionProbe.uuConnectedNow() }
 
@@ -100,7 +126,12 @@ private actor UUAXWindowAccess: UUWindowAccess {
         return AXUIElementCopyAttributeValue(element, key as CFString, &value) == .success ? value : nil
     }
 
-    private func windows() -> [AXUIElement]? {
+    @MainActor
+    private static func runningPID() -> pid_t? {
+        NSRunningApplication.runningApplications(withBundleIdentifier: UUWindowIdentification.bundleIdentifier).first?.processIdentifier
+    }
+
+    private func windows(for pid: pid_t) -> [AXUIElement]? {
         let ax = AXUIElementCreateApplication(pid)
         AXUIElementSetMessagingTimeout(ax, 0.5)
         var raw: CFTypeRef?
@@ -108,9 +139,12 @@ private actor UUAXWindowAccess: UUWindowAccess {
         return raw as? [AXUIElement] ?? []
     }
 
-    func inspect() -> UUWindowInspection {
+    func inspect() async -> UUWindowInspection {
         guard AXIsProcessTrusted() else { return .init(permitted: false, axAvailable: false) }
-        guard let windows = windows() else { return .init(permitted: true, axAvailable: false) }
+        if pid == nil { pid = await Self.runningPID() }
+        // GUI process is not running yet (only UURemoteServer daemon is active); treat as no window so `run()` opens it.
+        guard let pid else { return .init(permitted: true, axAvailable: true, hasWindow: false, devices: []) }
+        guard let windows = windows(for: pid) else { return .init(permitted: true, axAvailable: false) }
         var devices: [RemoteDevice] = []
         let deadline = Date().addingTimeInterval(1)
         var visited = 0
@@ -152,22 +186,23 @@ private actor UUAXWindowAccess: UUWindowAccess {
     func open() async -> Bool {
         let url = url
         do {
-            try await Self.reopen(url)
+            let launched = try await Self.reopen(url)
+            if pid == nil { pid = launched.processIdentifier }
             return true
         } catch { return false }
     }
 
     @MainActor
-    private static func reopen(_ url: URL) async throws {
+    private static func reopen(_ url: URL) async throws -> NSRunningApplication {
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = false
         configuration.createsNewApplicationInstance = false
-        _ = try await NSWorkspace.shared.openApplication(at: url, configuration: configuration)
+        return try await NSWorkspace.shared.openApplication(at: url, configuration: configuration)
     }
 
     func minimize() async -> Bool {
         // Reacquire once if opening was followed immediately by cancellation.
-        if mainWindows.isEmpty { _ = inspect() }
+        if mainWindows.isEmpty { _ = await inspect() }
         guard !mainWindows.isEmpty else { return false }
         for window in mainWindows {
             if (attribute(window, kAXMinimizedAttribute) as? Bool) == true { continue }

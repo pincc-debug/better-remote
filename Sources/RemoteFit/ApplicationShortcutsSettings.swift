@@ -20,17 +20,15 @@ struct ApplicationShortcutsSettings: View {
 
     var body: some View {
         SettingsView.shortcutSection {
-            HStack {
-                SettingsView.sectionTitle("应用快捷操作")
-                Spacer()
-                Toggle("显示应用快捷操作", isOn: Binding(
-                    get: { model.preferences.applicationShortcutsEnabled },
-                    set: { _ = save(model.preferences.applicationShortcuts, enabled: $0) }
-                )).labelsHidden().toggleStyle(StableBlueSwitchStyle()).controlSize(.small)
-                    .help("显示应用快捷操作")
+            SettingsView.settingCard {
+                SettingsView.settingRow("应用快捷操作", symbol: "app.badge") {
+                    Toggle("显示应用快捷操作", isOn: Binding(
+                        get: { model.preferences.applicationShortcutsEnabled },
+                        set: { _ = save(model.preferences.applicationShortcuts, enabled: $0) }
+                    )).labelsHidden().toggleStyle(StableBlueSwitchStyle()).controlSize(.small)
+                        .help("显示应用快捷操作")
+                }
             }
-            // Same right inset as the switches inside cards (settingRow pads 14).
-            .padding(.trailing, 14)
             ForEach(model.preferences.applicationShortcuts) { group in
                 applicationCard(group)
             }

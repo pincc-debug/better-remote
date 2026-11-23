@@ -1089,7 +1089,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
         dismissToolPanels()
         let window = settingsWindow ?? NSWindow(contentRect: NSRect(x: 0, y: 0, width: 900, height: 720),
                                                 styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
-        let destination = createNew ? .resolution : (page ?? .resolution)
+        let destination = createNew ? .resolution : (page ?? .connection)
         let content = SettingsView(model: panelModel, startNew: createNew, page: destination)
         if settingsWindow == nil || createNew || page != nil {
             let host = NSHostingController(rootView: content)
@@ -1328,6 +1328,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 deviceCollection.remember(device, in: &next)
             }
             if next != preferences { saveAutomaticPreferences(next) }
+            panelModel.isRemoteConnected = remoteStability.isConnected
             panelModel.connectedDeviceID = remoteStability.isConnected ? remoteDeviceID : nil
             syncDeviceConfiguration()
             updateIdentifyHint(from: snapshot)

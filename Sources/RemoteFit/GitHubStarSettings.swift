@@ -106,23 +106,26 @@ struct GitHubStarSettings: View {
         Button {
             if allowsNetwork { Task { await model.star() } }
         } label: {
-            HStack(spacing: 10) {
+            HStack(spacing: DesignTokens.spacingSm) {
+                IconArt.blueImage(model.starred ? "star.fill" : "star", pointSize: DesignTokens.fontBody)
+                    .frame(width: 16, alignment: .center)
                 Text("在 GitHub 上支持项目")
                     .font(.system(size: DesignTokens.fontBody, weight: .medium))
                 Spacer(minLength: 0)
                 // Only the user click shows a spinner; cache / quiet refresh never do.
                 if model.working {
                     ProgressView().controlSize(.small)
+                } else if model.starred {
+                    Text("感谢你的支持！")
+                        .font(.system(size: DesignTokens.fontCaption)).foregroundStyle(.secondary)
                 } else {
-                    Image(systemName: model.starred ? "star.fill" : "star")
-                        .foregroundStyle(model.starred ? Color.yellow : Color.secondary)
-                    if model.starred {
-                        Text("感谢你的支持！")
-                            .font(.system(size: DesignTokens.fontCaption)).foregroundStyle(.secondary)
-                    }
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: DesignTokens.fontCaption, weight: .semibold))
+                        .foregroundStyle(.secondary)
                 }
             }
-            .padding(14)
+            .padding(.horizontal, DesignTokens.spacingMd)
+            .frame(minHeight: 40)
             .cardSurface()
         }
         .buttonStyle(.plain)

@@ -55,59 +55,67 @@ final class FeedbackModel: ObservableObject {
     }
 }
 
-/// About page actions: three equal pills, then a lighter coffee row.
+/// About page actions: responsive action cards (row on desktop, stacked on narrow), then a lighter coffee row.
 struct FeedbackSettings: View {
     @ObservedObject var model: FeedbackModel
     var showsCheckUpdate: Bool = true
+    @Environment(\.settingsNarrow) private var narrow
     @State private var hoveringCheck = false
     @State private var hoveringHelp = false
     @State private var hoveringFeedback = false
     @State private var hoveringCoffee = false
 
-    private let pillRowWidth: CGFloat = 460
+    @ViewBuilder
+    private var actionPills: some View {
+        if showsCheckUpdate {
+            aboutPill(
+                title: FeedbackCopy.checkUpdate,
+                symbol: "arrow.triangle.2.circlepath",
+                hovering: hoveringCheck
+            ) {
+                AppUpdater.shared.checkForUpdates()
+            }
+            .onHover { hoveringCheck = $0 }
+            .disabled(!AppUpdater.shared.isAvailable)
+            .accessibilityLabel(FeedbackCopy.checkUpdate)
+        }
+
+        aboutPill(
+            title: FeedbackCopy.help,
+            symbol: "questionmark.circle",
+            hovering: hoveringHelp
+        ) {
+            NSWorkspace.shared.open(BetterRemoteSite.help)
+        }
+        .onHover { hoveringHelp = $0 }
+        .accessibilityLabel(FeedbackCopy.help)
+
+        aboutPill(
+            title: FeedbackCopy.section,
+            symbol: "bubble.left",
+            hovering: hoveringFeedback
+        ) {
+            FeedbackWindowController.shared.present(model: model)
+        }
+        .onHover { hoveringFeedback = $0 }
+        .accessibilityLabel(FeedbackCopy.section)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: DesignTokens.spacingSm) {
-                if showsCheckUpdate {
-                    aboutPill(
-                        title: FeedbackCopy.checkUpdate,
-                        symbol: "arrow.triangle.2.circlepath",
-                        hovering: hoveringCheck
-                    ) {
-                        AppUpdater.shared.checkForUpdates()
-                    }
-                    .onHover { hoveringCheck = $0 }
-                    .disabled(!AppUpdater.shared.isAvailable)
-                    .accessibilityLabel(FeedbackCopy.checkUpdate)
+            Group {
+                if narrow {
+                    VStack(spacing: DesignTokens.spacingSm) { actionPills }
+                } else {
+                    HStack(spacing: DesignTokens.spacingSm) { actionPills }
                 }
-
-                aboutPill(
-                    title: FeedbackCopy.help,
-                    symbol: "questionmark.circle",
-                    hovering: hoveringHelp
-                ) {
-                    NSWorkspace.shared.open(BetterRemoteSite.help)
-                }
-                .onHover { hoveringHelp = $0 }
-                .accessibilityLabel(FeedbackCopy.help)
-
-                aboutPill(
-                    title: FeedbackCopy.section,
-                    symbol: "bubble.left",
-                    hovering: hoveringFeedback
-                ) {
-                    FeedbackWindowController.shared.present(model: model)
-                }
-                .onHover { hoveringFeedback = $0 }
-                .accessibilityLabel(FeedbackCopy.section)
             }
-            .frame(width: pillRowWidth)
+            .frame(maxWidth: .infinity)
 
             Rectangle()
                 .fill(DesignTokens.Colors.separator)
                 .frame(height: 1)
-                .frame(width: pillRowWidth)
+                .frame(maxWidth: .infinity)
                 .padding(.top, DesignTokens.spacingMd)
                 .padding(.bottom, DesignTokens.spacingMd)
 
@@ -139,7 +147,7 @@ struct FeedbackSettings: View {
     ) -> some View {
         Button(action: action) {
             HStack(spacing: DesignTokens.spacingSm) {
-                // Pills are entry points: whole systemBlue at 13pt, no layering.
+                // Entry points: whole systemBlue at 13pt, no layering.
                 IconArt.blueImage(symbol, pointSize: DesignTokens.fontBody)
                     .frame(width: 16, alignment: .center)
                 Text(title)
@@ -148,19 +156,19 @@ struct FeedbackSettings: View {
                     .lineLimit(1)
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: DesignTokens.fontCaption, weight: .semibold))
                     .foregroundStyle(.secondary)
             }
             .padding(.horizontal, DesignTokens.spacingMd)
             .frame(maxWidth: .infinity)
-            .frame(height: 36)
-            .background(
-                hovering ? DesignTokens.Colors.secondaryFillPressed : DesignTokens.Colors.secondaryFill,
-                in: Capsule()
-            )
+            .frame(height: 40)
+            .cardSurface()
             .overlay(
-                Capsule().strokeBorder(DesignTokens.Colors.cardBorder, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous)
+                    .fill(hovering ? DesignTokens.Colors.secondaryFill : Color.clear)
+                    .allowsHitTesting(false)
             )
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity)
@@ -272,7 +280,7 @@ struct FeedbackFormView: View {
                 .lineLimit(4...8)
                 .disabled(model.sending)
                 .padding(8)
-                .background(DesignTokens.Colors.secondaryFill, in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous))
+                .dsInputField()
 
             VStack(alignment: .leading, spacing: 4) {
                 Toggle(FeedbackCopy.attach, isOn: $model.attachLogs)
@@ -400,7 +408,7 @@ struct CoffeeTipView: View {
                     .scaledToFit()
                     .frame(width: 232, height: 232)
                     .padding(8)
-                    .background(Color.white, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .background(Color.white, in: RoundedRectangle(cornerRadius: DesignTokens.radiusSm, style: .continuous))
                     .accessibilityLabel(FeedbackCopy.coffee)
             } else {
                 Text("打不开赞赏码，请稍后再试")

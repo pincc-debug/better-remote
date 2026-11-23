@@ -18,15 +18,24 @@ enum OperationDiagnostics {
     private static let queue = DispatchQueue(label: "local.RemoteFit.operation-diagnostics", qos: .utility)
     private static let url = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Application Support/RemoteFit/Operations.log")
+    private static let previousURL = FileManager.default.homeDirectoryForCurrentUser
+        .appendingPathComponent("Library/Application Support/RemoteFit/Operations.previous.log")
 
     static func write(_ message: String) {
         let line = "\(Date().timeIntervalSince1970) \(message)\n"
         queue.async {
-            if !FileManager.default.fileExists(atPath: url.path) {
-                FileManager.default.createFile(atPath: url.path, contents: nil)
+            let fm = FileManager.default
+            if !fm.fileExists(atPath: url.path) {
+                fm.createFile(atPath: url.path, contents: nil)
             }
             if let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize, size > 1_000_000 {
-                try? Data().write(to: url, options: .atomic)
+                try? fm.removeItem(at: previousURL)
+                do {
+                    try fm.moveItem(at: url, to: previousURL)
+                    fm.createFile(atPath: url.path, contents: nil)
+                } catch {
+                    try? Data().write(to: url, options: .atomic)
+                }
             }
             guard let handle = try? FileHandle(forWritingTo: url) else { return }
             defer { try? handle.close() }

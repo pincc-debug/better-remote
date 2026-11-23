@@ -61,7 +61,7 @@ struct SettingsView: View {
         }
     }
 
-    init(model: ControlPanelModel, startNew: Bool = false, page: SettingsPage = .general) {
+    init(model: ControlPanelModel, startNew: Bool = false, page: SettingsPage = .connection) {
         self.model = model
         _page = State(initialValue: startNew ? .resolution : page)
         _draft = State(initialValue: startNew ? SpecDraft.adding(dimensions: model.preferences.dimensions) : nil)
@@ -145,10 +145,10 @@ struct SettingsView: View {
                 .padding(.bottom, 12)
                 .accessibilityLabel("Better Remote")
 
-            sidebarRow("常规", symbol: "gearshape", page: .general)
+            sidebarRow("设备", symbol: "macbook.and.iphone", page: .connection)
+            sidebarRow("工具条", symbol: "sidebar.right", page: .floating)
             sidebarRow("分辨率", symbol: "display.2", page: .resolution)
-            sidebarRow("快捷操作", symbol: "sidebar.right", page: .floating)
-            sidebarRow("连接自动化", symbol: "gearshape.2", page: .connection)
+            sidebarRow("常规", symbol: "gearshape", page: .general)
             sidebarRow(FeedbackCopy.page, symbol: "info.circle", page: .about)
             Spacer()
 
@@ -197,7 +197,7 @@ struct SettingsView: View {
         .padding(.horizontal, narrow ? 6 : 8)
         .frame(width: narrow ? SettingsWindowLayout.compactSidebarWidth : SettingsWindowLayout.regularSidebarWidth)
         .frame(maxHeight: .infinity)
-        .background(DesignTokens.Colors.pageBackground.opacity(0.5))
+        .background(DesignTokens.Colors.sidebarBackground)
     }
 
     /// Coloured at 15pt (B art for 常规 / 分辨率 / 连接自动化, palette or whole systemBlue otherwise);
@@ -323,28 +323,35 @@ struct SettingsView: View {
 
     private func presetRowContent(_ preset: CustomPreset, hovering: Bool) -> some View {
         let applied = Self.activeSelection(in: model) == preset.id
-        return HStack(spacing: 12) {
+        let usedBy = DeviceConfigurationSummary.users(of: preset.id, in: model.preferences)
+        let detailLine = usedBy.isEmpty ? preset.sizeLabel : "\(preset.sizeLabel) · \(usedBy.prefix(2).joined(separator: "、"))\(usedBy.count > 2 ? " 等" : "")"
+        return HStack(spacing: narrow ? 8 : 12) {
             ScreenGlyph(dimensions: preset.dimensions(.standard), selected: applied, maximumWidth: 20, maximumHeight: 16, strokeOpacity: applied ? 0.85 : 0.55)
-                .frame(width: 28, height: 28)
+                .frame(width: narrow ? 24 : 28, height: 28)
             VStack(alignment: .leading, spacing: 3) {
                 Text(preset.title).font(.system(size: DesignTokens.fontBody, weight: applied ? .medium : .regular)).lineLimit(1)
-                Text(verbatim: preset.sizeLabel)
+                Text(verbatim: detailLine)
                     .font(.system(size: DesignTokens.fontCaption).monospacedDigit()).foregroundStyle(.secondary).lineLimit(1)
                     .accessibilityLabel(Text(verbatim: "\(preset.width) × \(preset.height)，显示大小\(preset.scalePercent)%"))
             }
             .help(preset.title)
-            Spacer(minLength: 0)
-            Button { draft = SpecDraft.editing(preset) } label: {
-                Image(systemName: "pencil").frame(width: 28, height: 32).contentShape(Rectangle())
-            }.buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("编辑\(preset.title)")
-            // Slot stays laid out; only the glyph's opacity switches, so nothing shifts on hover.
-            HoverRevealButton(hovering: hovering, label: "删除\(preset.title)") {
-                pendingDeletion = .preset(id: preset.id, name: preset.title)
-            } content: {
-                Image(systemName: "trash").frame(width: 28, height: 32).contentShape(Rectangle())
+            Spacer(minLength: 4)
+            HStack(spacing: 2) {
+                Button { draft = SpecDraft.editing(preset) } label: {
+                    Image(systemName: "pencil").frame(width: 28, height: 32).contentShape(Rectangle())
+                }.buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("编辑\(preset.title)")
+                // On wide layouts the trash slot stays laid out so nothing shifts on hover; on narrow phone screens
+                // only reserve it while hovered so long preset titles keep full horizontal space.
+                if !narrow || hovering {
+                    HoverRevealButton(hovering: hovering, label: "删除\(preset.title)") {
+                        pendingDeletion = .preset(id: preset.id, name: preset.title)
+                    } content: {
+                        Image(systemName: "trash").frame(width: 28, height: 32).contentShape(Rectangle())
+                    }
+                }
             }
         }
-        .padding(.horizontal, 12).padding(.vertical, 8)
+        .padding(.horizontal, narrow ? 10 : 12).padding(.vertical, 8)
         .contentShape(Rectangle())
         .background(applied ? DesignTokens.Colors.accent.opacity(0.07) : Color.clear,
                     in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous))
@@ -359,60 +366,72 @@ struct SettingsView: View {
     }
 
     private var connectionSettings: some View {
-        DeviceListSettings(model: model)
-            .padding(pagePadding)
+        DeviceListSettings(model: model, onManageResolutions: {
+            withAnimation(reduceMotion ? nil : .snappy(duration: 0.2)) {
+                page = .resolution
+            }
+        })
+        .padding(pagePadding)
     }
 
     private var touchSettings: some View { connectionSettings }
 
     private var aboutSettings: some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: 0)
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
 
-            VStack(spacing: 0) {
-                Image(nsImage: NSImage(named: "AppIcon") ?? NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath))
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 80, height: 80)
-                    .accessibilityHidden(true)
+                    VStack(spacing: 0) {
+                        Image(nsImage: NSImage(named: "AppIcon") ?? NSWorkspace.shared.icon(forFile: Bundle.main.bundlePath))
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: narrow ? 64 : 80, height: narrow ? 64 : 80)
+                            .accessibilityHidden(true)
 
-                HStack(alignment: .center, spacing: 8) {
-                    Text("Better Remote")
-                        .font(.system(size: DesignTokens.fontTitle, weight: .semibold))
-                        .lineLimit(1)
-                    Text(review?.version ?? appVersion)
-                        .font(.system(size: DesignTokens.fontCaption, weight: .medium).monospacedDigit())
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 7)
-                        .padding(.top, 1)
-                        .padding(.bottom, 2)
-                        .background(DesignTokens.Colors.secondaryFill, in: Capsule())
-                        .overlay(
-                            Capsule().strokeBorder(DesignTokens.Colors.cardBorder, lineWidth: 0.5)
-                        )
-                        .accessibilityLabel("版本 \(review?.version ?? appVersion)")
+                        HStack(alignment: .center, spacing: 8) {
+                            Text("Better Remote")
+                                .font(.system(size: DesignTokens.fontTitle, weight: .semibold))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.85)
+                            Text(review?.version ?? appVersion)
+                                .font(.system(size: DesignTokens.fontCaption, weight: .medium).monospacedDigit())
+                                .foregroundStyle(.secondary)
+                                .padding(.horizontal, 7)
+                                .padding(.top, 1)
+                                .padding(.bottom, 2)
+                                .background(DesignTokens.Colors.secondaryFill, in: Capsule())
+                                .overlay(
+                                    Capsule().strokeBorder(DesignTokens.Colors.cardBorder, lineWidth: 0.5)
+                                )
+                                .accessibilityLabel("版本 \(review?.version ?? appVersion)")
+                        }
+                        .padding(.top, 14)
+
+                        Text(FeedbackCopy.slogan)
+                            .font(.system(size: DesignTokens.fontCaption))
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 8)
+
+                        FeedbackSettings(model: feedback, showsCheckUpdate: review == nil)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, DesignTokens.spacingXl)
+                        GitHubStarSettings(allowsNetwork: review == nil)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 16)
+                    }
+                    .frame(maxWidth: 480)
+
+                    Spacer(minLength: 0)
                 }
-                .padding(.top, 14)
-
-                Text(FeedbackCopy.slogan)
-                    .font(.system(size: DesignTokens.fontCaption))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 8)
-
-                FeedbackSettings(model: feedback, showsCheckUpdate: review == nil)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, DesignTokens.spacingXl)
-                GitHubStarSettings(allowsNetwork: review == nil)
-                    .padding(.top, 16)
+                .padding(.horizontal, pagePadding)
+                .padding(.vertical, pagePadding)
+                .frame(maxWidth: .infinity, minHeight: geometry.size.height)
             }
-            .frame(maxWidth: 480)
-
-            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.horizontal, pagePadding)
     }
 
 
@@ -493,14 +512,9 @@ struct SettingsView: View {
                     .font(.system(size: DesignTokens.fontTitle, weight: .semibold))
 
                 Self.wideControlRow("主题", symbol: "circle.lefthalf.filled", narrow: narrow, controlWidth: 240, verticalPadding: 12) {
-                    Picker("主题", selection: Binding(
-                        get: { model.preferences.theme }, set: { model.onTheme($0) }
-                    )) {
-                        ForEach(AppTheme.allCases, id: \.self) { theme in
-                            Text(theme.title).tag(theme)
-                        }
-                    }
-                    .pickerStyle(.segmented).labelsHidden()
+                    DSSegmentedControl("主题",
+                                       options: AppTheme.allCases.map { .init(value: $0, title: $0.title) },
+                                       selection: Binding(get: { model.preferences.theme }, set: { model.onTheme($0) }))
                 }
                 .cardSurface()
 
@@ -548,30 +562,7 @@ struct SettingsView: View {
                     .cardSurface()
                 }
 
-                // Section 2: Screen Floating Toolbar
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("桌面工具条")
-                        .font(.system(size: DesignTokens.fontBody, weight: .semibold))
-                        .foregroundStyle(.secondary)
-
-                    VStack(spacing: 0) {
-                        Self.wideControlRow("未连接时显示", symbol: "sidebar.right", narrow: narrow, controlWidth: 240) {
-                            Picker("未连接时显示", selection: Binding(
-                                get: { model.preferences.toolbarWhenDisconnected },
-                                set: { model.onToolbarWhenDisconnected($0) }
-                            )) {
-                                ForEach(ToolbarVisibility.allCases, id: \.self) { level in
-                                    Text(level.title).tag(level)
-                                }
-                            }
-                            .pickerStyle(.segmented)
-                            .labelsHidden()
-                        }
-                    }
-                    .cardSurface()
-                }
-
-                // Section 3: Permissions
+                // Section 2: Permissions
                 VStack(alignment: .leading, spacing: 10) {
                     Text("系统权限")
                         .font(.system(size: DesignTokens.fontBody, weight: .semibold))
@@ -614,12 +605,12 @@ struct SettingsView: View {
 
     private var floatingSettings: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text("快捷操作")
+            Text("工具条")
                 .font(.system(size: DesignTokens.fontTitle, weight: .semibold))
 
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    windowControlSection
+                VStack(alignment: .leading, spacing: 16) {
+                    toolbarDisplaySection
                     Self.shortcutSection {
                         Self.pageHeader(narrow: narrow) {
                             Self.sectionTitle("全局操作")
@@ -693,14 +684,23 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 10, content: content)
     }
 
-    private var windowControlSection: some View {
+    private var toolbarDisplaySection: some View {
         Self.settingCard {
-            Self.settingRow("布局", symbol: "rectangle.split.2x2") {
-                Toggle("显示布局按钮", isOn: Binding(
-                    get: { model.preferences.showWindowControls },
-                    set: { model.onWindowControlsToggle($0) }
-                )).labelsHidden().toggleStyle(StableBlueSwitchStyle()).controlSize(.small)
-                    .help("显示布局按钮")
+            VStack(spacing: 0) {
+                Self.wideControlRow("未连接时显示", symbol: "sidebar.right", narrow: narrow, controlWidth: 240) {
+                    DSSegmentedControl("未连接时显示",
+                                       options: ToolbarVisibility.allCases.map { .init(value: $0, title: $0.title) },
+                                       selection: Binding(get: { model.preferences.toolbarWhenDisconnected },
+                                                          set: { model.onToolbarWhenDisconnected($0) }))
+                }
+                Divider().padding(.leading, narrow ? 14 : 54)
+                Self.settingRow("布局按钮", symbol: "rectangle.split.2x2") {
+                    Toggle("显示布局按钮", isOn: Binding(
+                        get: { model.preferences.showWindowControls },
+                        set: { model.onWindowControlsToggle($0) }
+                    )).labelsHidden().toggleStyle(StableBlueSwitchStyle()).controlSize(.small)
+                        .help("显示布局按钮")
+                }
             }
         }
     }
@@ -844,16 +844,17 @@ struct BuiltinIconSheet: View {
     let onPick: (ShortcutIcon) -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("\(title)图标").font(.system(size: DesignTokens.fontEmphasis, weight: .semibold))
-                Spacer()
-                Button("取消", action: onCancel).buttonStyle(DSSecondaryButtonStyle()).keyboardShortcut(.cancelAction)
+        VStack(alignment: .leading, spacing: 0) {
+            DSSheetHeader(title: "\(title)图标", onClose: onCancel)
+            Divider()
+            VStack(alignment: .leading, spacing: 12) {
+                IconPickerView(selected: selected, choose: onPick)
+                if saveError { Text("保存失败，请重试").font(.system(size: DesignTokens.fontCaption)).foregroundStyle(.red) }
             }
-            IconPickerView(selected: selected, choose: onPick)
-            if saveError { Text("保存失败，请重试").font(.system(size: DesignTokens.fontCaption)).foregroundStyle(.red) }
+            .padding(DesignTokens.spacingXl)
         }
-        .padding(20).dialogFrame(width: 460)
+        .dialogFrame(width: 460)
+        .background(DesignTokens.Colors.pageBackground)
     }
 }
 
@@ -897,56 +898,103 @@ struct SpecEditor: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text(isNew ? "新增规格" : "编辑规格")
-                    .font(.system(size: DesignTokens.fontEmphasis, weight: .semibold))
-                Spacer()
-            }
+        VStack(alignment: .leading, spacing: 0) {
+            DSSheetHeader(title: isNew ? "新增规格" : "编辑规格", onClose: onCancel)
+            Divider()
 
-            TextField("规格名称（如：iPhone 16 Pro、外接显示器）", text: $name)
-                .textFieldStyle(.roundedBorder)
-                .accessibilityLabel("规格名称")
-
-            HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("宽度").font(.system(size: DesignTokens.fontCaption)).foregroundStyle(.secondary)
-                    TextField("宽度", text: $width)
-                        .textFieldStyle(.roundedBorder)
-                        .accessibilityLabel("宽度")
+                    Text("规格名称").font(.system(size: DesignTokens.fontCaption)).foregroundStyle(.secondary)
+                    TextField(text: $name, prompt: Text("如：iPhone 16 Pro、外接显示器").foregroundStyle(DesignTokens.Colors.textTertiary)) { Text("规格名称") }
+                        .textFieldStyle(.plain)
+                        .font(.system(size: DesignTokens.fontBody))
+                        .padding(.horizontal, 10)
+                        .frame(minHeight: 32)
+                        .dsInputField()
+                        .accessibilityLabel("规格名称")
                 }
-                Text("×")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 16)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("高度").font(.system(size: DesignTokens.fontCaption)).foregroundStyle(.secondary)
-                    TextField("高度", text: $height)
-                        .textFieldStyle(.roundedBorder)
-                        .accessibilityLabel("高度")
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 10) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("宽度").font(.system(size: DesignTokens.fontCaption)).foregroundStyle(.secondary)
+                            TextField("宽度", text: $width)
+                                .textFieldStyle(.plain)
+                                .font(.system(size: DesignTokens.fontBody).monospacedDigit())
+                                .padding(.horizontal, 10)
+                                .frame(minHeight: 32)
+                                .dsInputField()
+                                .accessibilityLabel("宽度")
+                        }
+                        Text("×")
+                            .font(.system(size: DesignTokens.fontEmphasis, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 16)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("高度").font(.system(size: DesignTokens.fontCaption)).foregroundStyle(.secondary)
+                            TextField("高度", text: $height)
+                                .textFieldStyle(.plain)
+                                .font(.system(size: DesignTokens.fontBody).monospacedDigit())
+                                .padding(.horizontal, 10)
+                                .frame(minHeight: 32)
+                                .dsInputField()
+                                .accessibilityLabel("高度")
+                        }
+                    }
+                    Text("每边 512–3840")
+                        .font(.system(size: DesignTokens.fontCaption))
+                        .foregroundStyle(.secondary)
+                }
+
+                HStack(spacing: 10) {
+                    Text("显示大小")
+                        .font(.system(size: DesignTokens.fontBody, weight: .medium))
+                    Spacer()
+                    HStack(spacing: 6) {
+                        Button { scalePercent = max(50, scalePercent - 10) } label: {
+                            Image(systemName: "minus")
+                                .font(.system(size: DesignTokens.fontCaption, weight: .semibold))
+                                .frame(width: 28, height: 28)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(DSSecondaryButtonStyle())
+                        .disabled(scalePercent <= 50)
+                        .accessibilityLabel("减小显示大小")
+
+                        Text("\(scalePercent)%")
+                            .font(.system(size: DesignTokens.fontBody, weight: .medium).monospacedDigit())
+                            .frame(minWidth: 44)
+                            .multilineTextAlignment(.center)
+
+                        Button { scalePercent = min(200, scalePercent + 10) } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: DesignTokens.fontCaption, weight: .semibold))
+                                .frame(width: 28, height: 28)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(DSSecondaryButtonStyle())
+                        .disabled(scalePercent >= 200)
+                        .accessibilityLabel("增大显示大小")
+                    }
+                }
+
+                if let error {
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.circle.fill")
+                        Text(error)
+                    }
+                    .font(.system(size: DesignTokens.fontCaption))
+                    .foregroundStyle(.red)
                 }
             }
+            .padding(DesignTokens.spacingXl)
 
-            Stepper("显示大小：\(scalePercent)%", value: $scalePercent, in: 50...200, step: 10)
+            Divider()
 
-            Text("每边 512–3840")
-                .font(.system(size: DesignTokens.fontCaption))
-                .foregroundStyle(.secondary)
-
-            if let error {
-                HStack(spacing: 6) {
-                    Image(systemName: "exclamationmark.circle.fill")
-                    Text(error)
-                }
-                .font(.system(size: DesignTokens.fontCaption))
-                .foregroundStyle(.red)
-            }
-
-            HStack {
+            HStack(spacing: DesignTokens.spacingSm) {
                 Spacer()
                 Button("取消", action: onCancel)
                     .buttonStyle(DSSecondaryButtonStyle())
-                    .keyboardShortcut(.cancelAction)
                 if !isNew {
                     Button("另存为新规格", action: { commit(saveAs: true) })
                         .buttonStyle(DSSecondaryButtonStyle())
@@ -955,9 +1003,11 @@ struct SpecEditor: View {
                     .buttonStyle(DSPrimaryButtonStyle())
                     .keyboardShortcut(.defaultAction)
             }
+            .padding(.horizontal, DesignTokens.spacingXl)
+            .padding(.vertical, 12)
         }
-        .padding(20)
         .dialogFrame(width: 420)
+        .background(DesignTokens.Colors.pageBackground)
     }
 
     private func commit(saveAs: Bool) {
@@ -991,18 +1041,7 @@ struct RecommendedPresetsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("常用快捷操作")
-                        .font(.system(size: DesignTokens.fontEmphasis, weight: .semibold))
-                }
-                Spacer()
-                Button(action: close) { IconArt.closeGlyph() }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 18)
-            .padding(.bottom, 12)
+            DSSheetHeader(title: "常用快捷操作", onClose: close)
 
             Divider()
 
@@ -1058,11 +1097,14 @@ struct RecommendedPresetsView: View {
 
             Divider()
 
-            HStack {
+            HStack(spacing: DesignTokens.spacingSm) {
                 Spacer()
                 let unadded = presets.filter { preset in
                     !model.preferences.namedShortcuts.contains { $0.name == preset.name }
                 }
+                Button("完成", action: close)
+                    .buttonStyle(DSSecondaryButtonStyle())
+                    .controlSize(.regular)
                 if !unadded.isEmpty {
                     Button("全部添加 (\(unadded.count))") {
                         permissions.prepare {
@@ -1074,9 +1116,6 @@ struct RecommendedPresetsView: View {
                     .buttonStyle(DSPrimaryButtonStyle())
                     .controlSize(.regular)
                 }
-                Button("完成", action: close)
-                    .buttonStyle(DSSecondaryButtonStyle())
-                    .controlSize(.regular)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
@@ -1143,54 +1182,75 @@ struct DeviceTemplatesView: View {
     private static let designedWidth: CGFloat = 580
     @Environment(\.dialogLimitOverride) private var dialogLimitOverride
 
-    private var categoryPicker: some View {
-        Picker("设备类型", selection: $categoryID) {
-            Text("全部").tag("")
-            ForEach(catalog?.categories ?? []) { category in Text(category.name).tag(category.id) }
-        }.pickerStyle(.segmented)
+    private var categoryOptions: [DSSegmentedControl<String>.Option] {
+        [.init(value: "", title: "全部")] + (catalog?.categories ?? []).map { .init(value: $0.id, title: $0.name) }
     }
-    private var brandPicker: some View {
-        Picker("品牌", selection: $brandID) {
-            Text("全部品牌").tag("")
-            ForEach(brands) { brand in Text(brand.name).tag(brand.id) }
-        }.labelsHidden().frame(width: 130)
+    private var categoryPicker: some View {
+        DSSegmentedControl("设备类型", options: categoryOptions, selection: $categoryID)
+    }
+    private func brandPicker(flexible: Bool) -> some View {
+        GlassDropdown(
+            label: "品牌",
+            items: [GlassDropdownItem(id: "", title: "全部品牌")] + brands.map { GlassDropdownItem(id: $0.id, title: $0.name) },
+            selection: brandID,
+            placeholder: "全部品牌",
+            minWidth: flexible ? 0 : 124,
+            flexibleWidth: flexible
+        ) { brandID = $0 }
     }
 
     var body: some View {
-        VStack(spacing: 14) {
-            HStack {
-                Text("设备模板").font(.system(size: DesignTokens.fontEmphasis, weight: .medium))
-                Spacer()
-                Button(action: close) { IconArt.closeGlyph() }
-                    .buttonStyle(.plain).accessibilityLabel("关闭")
-            }
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("搜索型号", text: $query).textFieldStyle(.plain).accessibilityLabel("搜索设备型号")
-                if !query.isEmpty {
-                    Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }
-                        .buttonStyle(.plain).accessibilityLabel("清空搜索")
+        VStack(spacing: 0) {
+            DSSheetHeader(title: "设备模板", onClose: close)
+            Divider()
+
+            VStack(spacing: 12) {
+                HStack(spacing: DesignTokens.spacingSm) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: DesignTokens.fontBody))
+                        .foregroundStyle(.secondary)
+                    TextField(text: $query, prompt: Text("搜索型号").foregroundStyle(DesignTokens.Colors.textTertiary)) { Text("搜索型号") }
+                        .textFieldStyle(.plain)
+                        .font(.system(size: DesignTokens.fontBody))
+                        .accessibilityLabel("搜索设备型号")
+                    if !query.isEmpty {
+                        Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }
+                            .buttonStyle(.plain).accessibilityLabel("清空搜索")
+                    }
                 }
-            }.padding(10).background(DesignTokens.Colors.secondaryFill, in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd))
-            // On a narrowed sheet the brand menu moves under the category picker.
-            if DialogLimit.current(dialogLimitOverride).width < Self.designedWidth {
-                VStack(alignment: .leading, spacing: 8) { categoryPicker; brandPicker }
+                .padding(.horizontal, 10)
+                .frame(minHeight: 34)
+                .dsInputField()
+
+                // On a narrowed sheet the brand menu moves under the category picker, both flush left and full width.
+                if DialogLimit.current(dialogLimitOverride).width < Self.designedWidth {
+                    VStack(alignment: .leading, spacing: 8) {
+                        categoryPicker
+                        brandPicker(flexible: true)
+                    }
                     .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                HStack(spacing: 12) { categoryPicker; brandPicker }
-            }
-            ScrollView {
-                LazyVStack(spacing: 6) {
-                    ForEach(entries) { entry in templateRow(entry) }
-                    if entries.isEmpty {
-                        Text(loadError ?? (query.isEmpty ? "暂无匹配的设备" : "未找到与“\(query)”匹配的设备"))
-                            .font(.system(size: DesignTokens.fontBody)).foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, minHeight: 180)
+                } else {
+                    HStack(spacing: 10) {
+                        categoryPicker
+                        brandPicker(flexible: false)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                ScrollView {
+                    LazyVStack(spacing: 6) {
+                        ForEach(entries) { entry in templateRow(entry) }
+                        if entries.isEmpty {
+                            Text(loadError ?? (query.isEmpty ? "暂无匹配的设备" : "未找到与“\(query)”匹配的设备"))
+                                .font(.system(size: DesignTokens.fontBody)).foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, minHeight: 180)
+                        }
                     }
                 }
             }
+            .padding(DesignTokens.spacingXl)
         }
-        .padding(20).dialogFrame(width: Self.designedWidth, height: 510)
+        .dialogFrame(width: Self.designedWidth, height: 510)
         .background(DesignTokens.Colors.pageBackground)
         .onChange(of: categoryID) { _, _ in brandID = "" }
         .onAppear {

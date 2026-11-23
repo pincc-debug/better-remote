@@ -124,13 +124,13 @@ struct ResolutionPanelView: View {
                     if let hint = model.identifyHint {
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
                             Text(hint.message)
-                                .font(.system(size: 12))
+                                .font(.system(size: DesignTokens.fontCaption))
                                 .foregroundStyle(DesignTokens.Colors.textSecondary.opacity(0.75))
                                 .fixedSize(horizontal: false, vertical: true)
                             if let title = hint.actionTitle, let action = hint.action {
                                 Button(title) { model.onIdentifyHintAction(action) }
                                     .buttonStyle(.plain)
-                                    .font(.system(size: 12, weight: .medium))
+                                    .font(.system(size: DesignTokens.fontCaption, weight: .medium))
                                     .foregroundStyle(DesignTokens.Colors.accent)
                             }
                         }
@@ -226,9 +226,9 @@ struct SpecCard: View {
                 .font(Self.nameFont)
                 .foregroundStyle(DesignTokens.Colors.textPrimary)
                 .lineLimit(1)
-                .minimumScaleFactor(0.85)
+                .minimumScaleFactor(0.75)
         }
-        .padding(.horizontal, DesignTokens.spacingXs)
+        .padding(.horizontal, 3)
         .frame(maxWidth: .infinity, minHeight: Self.height, maxHeight: Self.height)
         .cardSurface()
         // Selected: one cue only, a 2pt brand stroke (plus the blue screen glyph).

@@ -106,4 +106,27 @@ final class UUWindowIdentificationTests: XCTestCase {
         let events = await access.recorded()
         XCTAssertEqual(events, ["read", "read", "read"])
     }
+
+    func testResolvesUUAppBundleFromServerHelperPath() {
+        let customPath = "/Users/tester/Applications/UURemote.app/Contents/Helpers/UURemoteServer"
+        let resolved = UUWindowIdentification.appBundleURL(
+            fromServerPath: customPath,
+            fileExists: { $0 == "/Users/tester/Applications/UURemote.app" }
+        )
+        XCTAssertEqual(resolved?.path, "/Users/tester/Applications/UURemote.app")
+    }
+
+    func testColdLaunchWaitsThroughTransientAxUnavailableAndMinimizes() async {
+        let access = Access([
+            .init(permitted: true, axAvailable: true, hasWindow: false),
+            .init(permitted: true, axAvailable: false, hasWindow: false),
+            .init(permitted: true, axAvailable: true, hasWindow: true, devices: [phone])
+        ])
+        let result = await UUWindowIdentification.run(access: access)
+        XCTAssertEqual(result.device, phone)
+        XCTAssertEqual(result.status, "read")
+        XCTAssertEqual(result.minimized, true)
+        let events = await access.recorded()
+        XCTAssertEqual(events, ["read", "open", "read", "read", "minimize"])
+    }
 }

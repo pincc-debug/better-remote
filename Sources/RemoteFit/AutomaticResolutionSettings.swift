@@ -4,6 +4,7 @@ import RemoteFitCore
 
 struct DeviceListSettings: View {
     @ObservedObject var model: ControlPanelModel
+    var onManageResolutions: (() -> Void)? = nil
     @State private var selection: String?
     @State private var deletingDeviceID: String?
     @State private var hoveredCardID: String?
@@ -11,30 +12,36 @@ struct DeviceListSettings: View {
     /// Offscreen review only: open this detail page directly.
     nonisolated(unsafe) static var forcedSelection: String?
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.settingsNarrow) private var narrow
     /// Offscreen review only: render this card ("default" or a device id) in its hover state.
     nonisolated(unsafe) static var forcedHoverCardID: String?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let defaultID = "default"
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 18) {
             if let selection {
                 HStack {
                     Button { navigate(nil) } label: {
-                        Label("连接自动化", systemImage: "chevron.left")
+                        Label("设备", systemImage: "chevron.left")
+                            .font(.system(size: DesignTokens.fontBody, weight: .medium))
                     }.buttonStyle(.plain)
                     Spacer()
                 }
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Text(selection == defaultID ? "默认配置" : model.preferences.remoteDevices.first { $0.id == selection }?.displayName ?? "设备")
-                        .font(.system(size: DesignTokens.fontTitle, weight: .semibold))
-                    if selection == defaultID {
-                        Text("没有对应设备配置时使用")
+                if selection == defaultID {
+                    HStack(alignment: .firstTextBaseline, spacing: 10) {
+                        Text("默认配置")
+                            .font(.system(size: DesignTokens.fontTitle, weight: .semibold))
+                        Text("新设备与未识别设备使用")
                             .font(.system(size: DesignTokens.fontCaption)).foregroundStyle(.secondary)
                     }
                 }
                 ScrollView {
-                    DeviceConfigurationSettings(model: model, deviceID: selection == defaultID ? nil : selection)
+                    DeviceConfigurationSettings(
+                        model: model,
+                        deviceID: selection == defaultID ? nil : selection,
+                        onManageResolutions: onManageResolutions
+                    )
                     if selection != defaultID {
                         VStack(spacing: 0) {
                             Rectangle().fill(Color(nsColor: .separatorColor)).frame(height: 0.5)
@@ -42,37 +49,76 @@ struct DeviceListSettings: View {
                                 .buttonStyle(.plain)
                                 .foregroundStyle(Color(nsColor: .systemRed))
                                 .frame(maxWidth: .infinity)
-                                .padding(.top, 24)
+                                .padding(.top, 20)
                                 .padding(.bottom, 16)
                         }.padding(.top, 8)
                     }
                 }
             } else {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("连接自动化").font(.system(size: DesignTokens.fontTitle, weight: .semibold))
-                    Text("当设备连接到电脑时，自动应用预设的操作和布局。")
-                        .font(.system(size: DesignTokens.fontCaption)).foregroundStyle(.secondary)
+                HStack(alignment: .center, spacing: 10) {
+                    Text("设备").font(.system(size: DesignTokens.fontTitle, weight: .semibold))
+                    if model.isRemoteConnected {
+                        statusPill("远程已连接")
+                    }
+                    Spacer(minLength: 0)
+                }
+                if let hint = model.identifyHint {
+                    HStack(spacing: DesignTokens.spacingSm) {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: DesignTokens.fontBody))
+                            .foregroundStyle(DesignTokens.Colors.accent)
+                        Text(hint.message)
+                            .font(.system(size: DesignTokens.fontBody))
+                            .foregroundStyle(DesignTokens.Colors.textPrimary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
+                        if let title = hint.actionTitle, let action = hint.action {
+                            Button(title) { model.onIdentifyHintAction(action) }
+                                .buttonStyle(DSSecondaryButtonStyle())
+                                .controlSize(.small)
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .cardSurface()
                 }
                 ScrollView {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 210), spacing: 16, alignment: .top)], alignment: .leading, spacing: 16) {
-                        deviceCard("默认配置", id: nil)
+                    VStack(alignment: .leading, spacing: 18) {
+                        defaultConfigurationBanner
                             .contextMenu { Button("编辑默认配置") { navigate(defaultID) } }
-                        ForEach(model.preferences.remoteDevices) { device in
-                            deviceCard(device.displayName, id: device.id)
-                                .contextMenu {
-                                    Button("配置设备") { navigate(device.id) }
-                                    Divider()
-                                    Button("删除设备", role: .destructive) { deletingDeviceID = device.id }
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            SettingsView.sectionTitle("已连接设备")
+                            if model.preferences.remoteDevices.isEmpty {
+                                VStack(spacing: 6) {
+                                    Text("暂无已收录设备")
+                                        .font(.system(size: DesignTokens.fontBody, weight: .medium))
+                                        .foregroundStyle(DesignTokens.Colors.textPrimary)
+                                    Text("远程连接后，设备会自动出现在这里，可分别配置分辨率、触控和工具条。")
+                                        .font(.system(size: DesignTokens.fontCaption))
+                                        .foregroundStyle(.secondary)
+                                        .multilineTextAlignment(.center)
                                 }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 28)
+                                .padding(.horizontal, 20)
+                                .cardSurface()
+                            } else {
+                                LazyVGrid(columns: [GridItem(.adaptive(minimum: 210), spacing: 16, alignment: .top)], alignment: .leading, spacing: 16) {
+                                    ForEach(model.preferences.remoteDevices) { device in
+                                        deviceCard(device.displayName, id: device.id)
+                                            .contextMenu {
+                                                Button("配置设备") { navigate(device.id) }
+                                                Divider()
+                                                Button("删除设备", role: .destructive) { deletingDeviceID = device.id }
+                                            }
+                                    }
+                                }
+                            }
                         }
                     }
                     .padding(.bottom, 8)
                 }
-                Text("新设备会自动出现在这里，点卡片可调单指滚动、分辨率等。")
-                    .font(.system(size: DesignTokens.fontCaption))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -88,6 +134,69 @@ struct DeviceListSettings: View {
         .onChange(of: model.preferences.remoteDevices.map(\.id)) { _, ids in
             if let selection, selection != defaultID, !ids.contains(selection) { navigate(nil) }
         }
+    }
+
+    private func statusPill(_ title: String) -> some View {
+        HStack(spacing: 5) {
+            Circle().fill(Color.green).frame(width: 6, height: 6)
+            Text(title)
+                .font(.system(size: DesignTokens.fontCaption, weight: .medium))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(DesignTokens.Colors.secondaryFill, in: Capsule())
+    }
+
+    private var defaultConfigurationBanner: some View {
+        let configuration = model.preferences.configuration(for: nil)
+        let preset = model.preferences.customPresets.first { $0.id == configuration.selectedResolutionID }
+        let dimensions = preset?.dimensions(.standard) ?? DeviceScreenPreview.currentScreenDimensions
+        let summary = DeviceConfigurationSummary.defaultSummary(in: model.preferences)
+        let activeFallback = model.isRemoteConnected && model.connectedDeviceID == nil
+        let hovered = hoveredCardID == defaultID || Self.forcedHoverCardID == defaultID
+        return Button { navigate(defaultID) } label: {
+            HStack(spacing: 14) {
+                DeviceScreenPreview(dimensions: dimensions, identity: defaultID, compact: true)
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 8) {
+                        Text("默认配置")
+                            .font(.system(size: DesignTokens.fontBody, weight: .semibold))
+                            .foregroundStyle(DesignTokens.Colors.textPrimary)
+                        if activeFallback {
+                            statusPill("生效中")
+                        } else if !narrow {
+                            Text("新设备与未识别时使用")
+                                .font(.system(size: DesignTokens.fontCaption))
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                    Text(summary)
+                        .font(.system(size: DesignTokens.fontCaption))
+                        .foregroundStyle(colorScheme == .dark ? AnyShapeStyle(.secondary) : AnyShapeStyle(mutedText))
+                        .lineLimit(narrow ? 2 : 1)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .truncationMode(.tail)
+                }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: DesignTokens.fontCaption, weight: .semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.primary.opacity(hovered ? 0.035 : 0), in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous))
+            .cardSurface()
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { inside in
+            if inside { hoveredCardID = defaultID; NSCursor.pointingHand.set() }
+            else if hoveredCardID == defaultID { hoveredCardID = nil; NSCursor.arrow.set() }
+        }
+        .accessibilityLabel("默认配置：\(summary)")
     }
 
     private var gearColor: Color {
@@ -110,15 +219,19 @@ struct DeviceListSettings: View {
         // 「不切换分辨率」时用本机当前实际分辨率做预览，不再落回手机规格占位。
         let dimensions = preset?.dimensions(.standard) ?? DeviceScreenPreview.currentScreenDimensions
         let enabled = model.preferences.appliesConfiguration(for: id)
-        let summary = DeviceConfigurationSummary.text(for: id, in: model.preferences)
+        let summary = DeviceConfigurationSummary.effectiveSummary(for: id, in: model.preferences)
         let key = id ?? defaultID
+        let isConnected = id != nil && model.connectedDeviceID == id
         let hovered = hoveredCardID == key || Self.forcedHoverCardID == key
         let gearHovered = hoveredGearID == key || Self.forcedHoverCardID == key
         return VStack(spacing: 10) {
             HStack(spacing: 6) {
                 Text(name).font(.system(size: DesignTokens.fontBody, weight: .semibold))
                     .lineLimit(1).truncationMode(.middle).help(name)
-                if let id, model.preferences.remoteDevices.first(where: { $0.id == id })?.isNew == true {
+                if isConnected {
+                    Circle().fill(Color.green).frame(width: 7, height: 7)
+                        .help("已连接")
+                } else if let id, model.preferences.remoteDevices.first(where: { $0.id == id })?.isNew == true {
                     Text("新").font(.system(size: DesignTokens.fontCaption, weight: .medium))
                         .foregroundStyle(DesignTokens.Colors.accent)
                 }
@@ -133,7 +246,7 @@ struct DeviceListSettings: View {
                 }
                 Button { navigate(key) } label: {
                     Image(systemName: "gearshape")
-                        .font(.system(size: 16, weight: .light))
+                        .font(.system(size: DesignTokens.fontEmphasis, weight: .light))
                         .foregroundStyle(gearColor)
                         .frame(width: 28, height: 28)
                         .background(Circle().fill(Color.secondary.opacity(gearHovered ? 0.12 : 0)))
@@ -153,7 +266,7 @@ struct DeviceListSettings: View {
                 .opacity(enabled ? 1 : 0.45)
             Button { navigate(id ?? defaultID) } label: {
                 Text(summary)
-                    .font(.system(size: 12))
+                    .font(.system(size: DesignTokens.fontCaption))
                     .foregroundStyle(colorScheme == .dark ? AnyShapeStyle(.secondary) : AnyShapeStyle(mutedText))
                     .lineLimit(1).truncationMode(.tail)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -209,6 +322,7 @@ private struct DeviceScreenPreview: View {
     var identity: String
     /// UU or RustDesk only. Nil on the default-configuration card.
     var software: RemoteSoftware? = nil
+    var compact: Bool = false
 
     /// Main display point size (what Better Remote treats as the live desktop resolution).
     static var currentScreenDimensions: Dimensions {
@@ -219,10 +333,14 @@ private struct DeviceScreenPreview: View {
         return Dimensions(1440, 900)
     }
 
+    private var box: CGSize { compact ? CGSize(width: 48, height: 34) : CGSize(width: 164, height: 152) }
+    private var cornerRadius: CGFloat { compact ? 6 : 12 }
+    private var bezelWidth: CGFloat { compact ? 1.5 : 3 }
+
     private var size: CGSize {
         let width = CGFloat(dimensions.width)
         let height = CGFloat(dimensions.height)
-        let scale = min(164 / max(width, 1), 152 / max(height, 1))
+        let scale = min(box.width / max(width, 1), box.height / max(height, 1))
         return CGSize(width: width * scale, height: height * scale)
     }
     private var colors: [Color] {
@@ -256,18 +374,18 @@ private struct DeviceScreenPreview: View {
                 }.fill(LinearGradient(colors: [colors[1], colors[2]], startPoint: .top, endPoint: .bottom))
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay { RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.black.opacity(0.85), lineWidth: 3) }
-        .overlay { RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.white.opacity(0.65), lineWidth: 0.7) }
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .overlay { RoundedRectangle(cornerRadius: cornerRadius, style: .continuous).strokeBorder(Color.black.opacity(0.85), lineWidth: bezelWidth) }
+        .overlay { RoundedRectangle(cornerRadius: cornerRadius, style: .continuous).strokeBorder(Color.white.opacity(0.65), lineWidth: compact ? 0.5 : 0.7) }
         .frame(width: size.width, height: size.height)
         .overlay(alignment: .bottomLeading) {
-            if let software {
+            if let software, !compact {
                 RemoteSoftwareBadge(software: software)
                     .padding(.leading, RemoteSoftwareIcon.inset)
                     .padding(.bottom, RemoteSoftwareIcon.inset)
             }
         }
-        .frame(width: 164, height: 152)
+        .frame(width: box.width, height: box.height)
     }
 
 }
@@ -275,6 +393,7 @@ private struct DeviceScreenPreview: View {
 struct DeviceConfigurationSettings: View {
     @ObservedObject var model: ControlPanelModel
     var deviceID: String?
+    var onManageResolutions: (() -> Void)? = nil
     @Environment(\.settingsNarrow) private var narrow
     private var configuration: DeviceConfiguration { model.preferences.configuration(for: deviceID) }
     private var enabled: Bool { model.preferences.appliesConfiguration(for: deviceID) }
@@ -297,46 +416,62 @@ struct DeviceConfigurationSettings: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            if let deviceID {
+            if let deviceID, let device {
                 SettingsView.settingCard {
                     VStack(alignment: .leading, spacing: 0) {
-                        SettingsView.settingRow("连接时应用", symbol: "power") {
-                            Toggle("连接时应用", isOn: Binding(
-                                get: { enabled },
-                                set: { model.onDeviceConfigurationEnabled(deviceID, $0) }
-                            )).labelsHidden().toggleStyle(StableBlueSwitchStyle())
+                        HStack(spacing: 12) {
+                            SettingsView.settingIcon("iphone")
+                            VStack(alignment: .leading, spacing: 3) {
+                                TextField(device.name, text: $nameDraft)
+                                    .textFieldStyle(.plain)
+                                    .font(.system(size: DesignTokens.fontEmphasis, weight: .semibold))
+                                    .padding(.horizontal, 8)
+                                    .frame(maxWidth: narrow ? .infinity : 260, minHeight: 28)
+                                    .dsInputField(radius: DesignTokens.radiusSm)
+                                    .focused($editingName)
+                                    .onSubmit { saveName(); editingName = false }
+                                    .accessibilityLabel("设备名称")
+                                Text(device.software == .rustDesk ? "RustDesk ID：\(device.name)" : "UU 远程 · \(device.name)")
+                                    .font(.system(size: DesignTokens.fontCaption))
+                                    .foregroundStyle(.secondary)
+                                    .textSelection(.enabled)
+                                    .padding(.leading, 2)
+                            }
+                            Spacer(minLength: 8)
+                            HStack(spacing: 8) {
+                                if !narrow {
+                                    Text("连接时应用")
+                                        .font(.system(size: DesignTokens.fontCaption))
+                                        .foregroundStyle(.secondary)
+                                }
+                                Toggle("连接时应用", isOn: Binding(
+                                    get: { enabled },
+                                    set: { model.onDeviceConfigurationEnabled(deviceID, $0) }
+                                )).labelsHidden().toggleStyle(StableBlueSwitchStyle())
+                                    .help("连接时应用此设备配置")
+                            }
                         }
-                        Text("关闭后，此设备连接时不应用设备配置或默认配置。")
-                            .font(.system(size: DesignTokens.fontCaption)).foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .padding(.leading, narrow ? 14 : 54)
-                            .padding(.trailing, 14).padding(.bottom, 12)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                        if !enabled {
+                            Text("已停用：连接时不应用设备配置或默认配置。")
+                                .font(.system(size: DesignTokens.fontCaption)).foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.leading, narrow ? 14 : 54)
+                                .padding(.trailing, 14).padding(.bottom, 12)
+                        }
                     }
                 }
             }
             VStack(alignment: .leading, spacing: 18) {
-                if let device {
-                    section("设备") {
-                        VStack(spacing: 0) {
-                            SettingsView.wideControlRow("设备名称", symbol: "tag", narrow: narrow, controlWidth: 300) {
-                                TextField(device.name, text: $nameDraft)
-                                    .textFieldStyle(.plain)
-                                    .font(.system(size: DesignTokens.fontBody))
-                                    .padding(.horizontal, 12)
-                                    .frame(minHeight: 36)
-                                    .background(DesignTokens.Colors.secondaryFill, in: RoundedRectangle(cornerRadius: 8))
-                                    .focused($editingName)
-                                    .onSubmit { saveName(); editingName = false }
-                                    .accessibilityLabel("设备名称")
-                            }
-                            Divider().padding(.leading, 54)
-                            SettingsView.wideControlRow(device.software == .rustDesk ? "RustDesk ID" : "设备型号", symbol: "iphone", narrow: narrow, controlWidth: nil) {
-                                Text(device.name).foregroundStyle(.secondary).textSelection(.enabled)
-                            }
-                        }
+                section("分辨率", trailing: {
+                    if let onManageResolutions {
+                        Button("管理规格", action: onManageResolutions)
+                            .buttonStyle(.plain)
+                            .font(.system(size: DesignTokens.fontCaption, weight: .medium))
+                            .foregroundStyle(DesignTokens.Colors.accent)
                     }
-                }
-                section("分辨率") {
+                }) {
                     VStack(spacing: 0) {
                         SettingsView.wideControlRow("分辨率规格", symbol: "aspectratio", narrow: narrow, controlWidth: nil) {
                             GlassDropdown(label: "分辨率规格", items: [GlassDropdownItem(id: "", title: "不切换分辨率")]
@@ -349,59 +484,60 @@ struct DeviceConfigurationSettings: View {
                                 }
                         }
                         if configuration.selectedResolutionID != nil {
-                            Divider().padding(.leading, 54)
+                            Divider().padding(.leading, narrow ? 14 : 54)
                             toggle("断开后恢复原分辨率", symbol: FloatingAction.restoreDisplay.symbol, key: \.autoRestoreOnDisconnect)
                         }
                     }
                 }
-                if device?.software?.supportsSingleFingerScroll != false || device?.software?.supportsScrollReversal != false {
+                let showsSingleFinger = device?.software?.supportsSingleFingerScroll != false
+                let showsReversal = device?.software?.supportsScrollReversal != false
+                let showsSpeed = device?.software?.supportsScrollSpeed != false
+                if showsSingleFinger || showsReversal || showsSpeed {
                     section("触控") {
                         VStack(spacing: 0) {
-                            if device?.software?.supportsSingleFingerScroll != false {
+                            if showsSingleFinger {
                                 toggle("单指滚动", symbol: "hand.draw", key: \.uuTouchScrollEnabled)
                             }
-                            if device?.software?.supportsSingleFingerScroll != false && device?.software?.supportsScrollReversal != false {
-                                Divider().padding(.leading, 54)
+                            if showsSingleFinger && showsReversal {
+                                Divider().padding(.leading, narrow ? 14 : 54)
                             }
-                            if device?.software?.supportsScrollReversal != false {
+                            if showsReversal {
                                 toggle("反转滚动方向", symbol: "arrow.up.arrow.down", key: \.remoteScrollReversed)
+                            }
+                            if (showsSingleFinger || showsReversal) && showsSpeed {
+                                Divider().padding(.leading, narrow ? 14 : 54)
+                            }
+                            if showsSpeed {
+                                UUScrollSpeedSettings(percent: binding(\.uuScrollSpeedPercent), embedded: true)
                             }
                         }
                     }
-                }
-                if device?.software?.supportsScrollSpeed != false {
-                    UUScrollSpeedSettings(percent: binding(\.uuScrollSpeedPercent))
-                }
-                section("窗口") {
-                    toggle("远程时窗口自动铺满", symbol: "arrow.up.left.and.arrow.down.right.square", key: \.autoFillWindowsOnRemote)
                 }
                 section("桌面工具条") {
                     VStack(spacing: 0) {
                         SettingsView.wideControlRow("连接时显示", symbol: "sidebar.right", narrow: narrow, controlWidth: 240) {
-                            Picker("连接时显示", selection: binding(\.toolbarWhenConnected)) {
-                                ForEach(ToolbarVisibility.allCases, id: \.self) { level in
-                                    Text(level.title).tag(level)
-                                }
-                            }
-                            .pickerStyle(.segmented)
-                            .labelsHidden()
+                            DSSegmentedControl("连接时显示",
+                                               options: ToolbarVisibility.allCases.map { .init(value: $0, title: $0.title) },
+                                               selection: binding(\.toolbarWhenConnected))
                         }
-                        Divider().padding(.leading, 54)
+                        Divider().padding(.leading, narrow ? 14 : 54)
                         SettingsView.wideControlRow("停靠位置", symbol: "arrow.up.and.down.and.arrow.left.and.right", narrow: narrow, controlWidth: 240) {
-                            Picker("停靠位置", selection: binding(\.toolbarSide)) {
-                                ForEach(ToolbarSide.allCases, id: \.self) { side in
-                                    Text(side.title).tag(side)
-                                }
-                            }.pickerStyle(.segmented).labelsHidden()
+                            DSSegmentedControl("停靠位置",
+                                               options: ToolbarSide.allCases.map { .init(value: $0, title: $0.title) },
+                                               selection: binding(\.toolbarSide))
                         }
                     }
                 }
-                section("程序坞") {
-                    SettingsView.wideControlRow("连接时的程序坞", symbol: "dock.rectangle", narrow: narrow, controlWidth: nil) {
-                        GlassDropdown(label: "连接时的程序坞", items: ConnectionDockMode.allCases.map {
-                            GlassDropdownItem(id: $0, title: $0.title)
-                        }, selection: configuration.connectionDockMode, minWidth: DesignTokens.dropdownMinWidth) {
-                            binding(\.connectionDockMode).wrappedValue = $0
+                section("窗口与程序坞") {
+                    VStack(spacing: 0) {
+                        toggle("远程时窗口自动铺满", symbol: "arrow.up.left.and.arrow.down.right.square", key: \.autoFillWindowsOnRemote)
+                        Divider().padding(.leading, narrow ? 14 : 54)
+                        SettingsView.wideControlRow("连接时的程序坞", symbol: "dock.rectangle", narrow: narrow, controlWidth: nil) {
+                            GlassDropdown(label: "连接时的程序坞", items: ConnectionDockMode.allCases.map {
+                                GlassDropdownItem(id: $0, title: $0.title)
+                            }, selection: configuration.connectionDockMode, minWidth: narrow ? 0 : DesignTokens.dropdownMinWidth, flexibleWidth: narrow) {
+                                binding(\.connectionDockMode).wrappedValue = $0
+                            }
                         }
                     }
                 }
@@ -421,8 +557,16 @@ struct DeviceConfigurationSettings: View {
     }
 
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        section(title, trailing: { EmptyView() }, content: content)
+    }
+
+    private func section<Trailing: View, Content: View>(_ title: String, @ViewBuilder trailing: () -> Trailing, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.system(size: DesignTokens.fontBody, weight: .semibold)).foregroundStyle(.secondary)
+            HStack {
+                Text(title).font(.system(size: DesignTokens.fontBody, weight: .semibold)).foregroundStyle(.secondary)
+                Spacer(minLength: 0)
+                trailing()
+            }
             SettingsView.settingCard(content)
         }
     }

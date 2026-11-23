@@ -5,6 +5,15 @@
     <language>zh-CN</language>
 <!-- ITEMS -->
     <item>
+      <title>0.9.11</title>
+      <pubDate>Mon, 23 Nov 2026 12:57:47 +0000</pubDate>
+      <sparkle:version>215</sparkle:version>
+      <sparkle:shortVersionString>0.9.11</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[<h3>0.9.11 更新内容</h3><ul><li>重构设置页结构：打开默认进入「设备」，独立展示默认配置与已连接设备，并显示实时连接状态与实际生效摘要；「未连接时显示」归入「工具条」，设备详情页更精简并支持快速跳转管理分辨率规格。</li><li>修复 UU 远程仅后台服务运行（未打开主程序）时，手机连接后无法识别设备及未自动切换分辨率的问题，并在识别异常时展示提示。</li><li>全面打磨设置页、弹窗、窄屏（手机竖屏）适配及桌面工具条的界面细节与深浅色对比度。</li></ul>]]></description>
+      <enclosure url="https://github.com/pincc-debug/better-remote/releases/download/v0.9.11/Better-Remote-0.9.11.dmg" type="application/octet-stream" sparkle:edSignature="siPFvbszpurV0ZntEpYIwrKIS3xgdnmFViJOsBRviU/9YgKvz/zwLnATEk6TKI8MtF5RhNatBb1sbEoqTFwKAQ==" length="9060147" />
+    </item>
+    <item>
       <title>0.9.10</title>
       <pubDate>Mon, 16 Nov 2026 12:35:23 +0000</pubDate>
       <sparkle:version>214</sparkle:version>

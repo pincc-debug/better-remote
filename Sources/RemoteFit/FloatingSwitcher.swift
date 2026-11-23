@@ -676,12 +676,14 @@ final class FloatingSwitcher: NSObject {
         flyout.setFrame(frame, display: true)
         flyout.orderFrontRegardless()
         windowPanel = flyout
+        updateSelection()
         updateDismissalMonitors()
         startLayoutTargetTracking()
     }
     func hideWindowControls() {
         stopLayoutTargetTracking()
         windowPanel?.orderOut(nil)
+        updateSelection()
         hideApplicationShortcuts()
     }
 
@@ -1063,6 +1065,9 @@ final class FloatingSwitcher: NSObject {
             content.settings.onTap = { [weak self] in self?.performPersistent(.settings) }
             content.restore.onTap = { [weak self] in self?.performPersistent(.restoreDisplay) }
             hideWindowControls()
+            if let windowButton = content.windowButton {
+                buttons["persistent:window"] = windowButton
+            }
             content.windowButton?.onTap = { [weak self, weak content] in
                 guard let self, let button = content?.windowButton else { return }
                 sender.releaseAll(); onDismissPanels()
@@ -1349,6 +1354,9 @@ final class FloatingSwitcher: NSObject {
         canvas.addSubview(bar)
         bar.layoutSubtreeIfNeeded()
         let screen = canvas.bounds.insetBy(dx: 0, dy: gap)
+        if let windowButton = find(bar) as? ToolbarButton {
+            windowButton.selected = true
+        }
         let button = find(bar).map { $0.convert($0.bounds, to: canvas) } ?? CGRect(x: bar.frame.minX, y: canvas.bounds.midY, width: 1, height: 1)
         let frame = DesktopToolbarLayout.flyout(beside: button, toolbar: bar.frame, in: screen.union(CGRect(x: 0, y: screen.minY, width: 1, height: 1)),
                                                 size: flyout.frame.size, side: .right)
@@ -1441,7 +1449,8 @@ final class FloatingSwitcher: NSObject {
         for (id, button) in buttons {
             let held = sender.heldID.map { ConfiguredOperation.shortcutID($0) == id } ?? false
             let selected = activePanel.map { ConfiguredOperation.builtin($0).id == id } ?? false
-            button.selected = held || selected
+            let layoutOpen = id == "persistent:window" && windowPanel?.isVisible == true
+            button.selected = held || selected || layoutOpen
         }
     }
 }

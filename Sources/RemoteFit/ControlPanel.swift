@@ -35,6 +35,7 @@ struct VisualEffectBlurView: NSViewRepresentable {
 @MainActor
 final class ControlPanelModel: ObservableObject {
     @Published var preferences = Preferences()
+    @Published var isRemoteConnected = false
     @Published var connectedDeviceID: String?
     var onDeviceViewed: (String) -> Void = { _ in }
     var onDeviceName: (String, String) -> Void = { _, _ in }

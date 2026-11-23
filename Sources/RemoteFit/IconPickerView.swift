@@ -85,7 +85,7 @@ struct IconPickerView: View {
                 .font(.system(size: DesignTokens.fontBody))
                 .foregroundStyle(.secondary)
 
-            TextField("搜索图标", text: $searchText)
+            TextField(text: $searchText, prompt: Text("搜索图标").foregroundStyle(DesignTokens.Colors.textTertiary)) { Text("搜索图标") }
                 .textFieldStyle(.plain)
                 .font(.system(size: DesignTokens.fontBody))
 
@@ -101,9 +101,9 @@ struct IconPickerView: View {
                 .accessibilityLabel("清除搜索")
             }
         }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 6)
-        .cardSurface()
+        .padding(.horizontal, 10)
+        .frame(minHeight: 32)
+        .dsInputField()
     }
 
     // MARK: - Empty State
@@ -111,7 +111,7 @@ struct IconPickerView: View {
     private var emptySearchResults: some View {
         VStack(spacing: 6) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 20))
+                .font(.system(size: DesignTokens.fontTitle))
                 .foregroundStyle(.tertiary)
             Text("未找到图标")
                 .font(.system(size: DesignTokens.fontBody))

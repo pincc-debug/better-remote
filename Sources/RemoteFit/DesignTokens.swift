@@ -111,18 +111,19 @@ public enum DesignTokens {
 
         /// Brand blue 12%: selected toggle / chip fill.
         public static let accentFill = accent.opacity(0.12)
-        /// Card on a panel or page background: white (light) / card grey (dark), no stroke.
+        /// Card on a panel or page background: white (light) / card grey (dark).
         public static let card = Color(nsColor: adaptive("card", light: .white, dark: NSColor(calibratedWhite: 1, alpha: 0.07)))
-        /// Card edge: primary 8% in light (white card on a light page), none in dark.
-        public static let cardEdge = Color(nsColor: adaptive("cardEdge", light: NSColor(calibratedWhite: 0, alpha: 0.08), dark: .clear))
+        /// Card edge: primary 6% in light (soft lift on warm-neutral canvas), none in dark.
+        public static let cardEdge = Color(nsColor: adaptive("cardEdge", light: NSColor(calibratedWhite: 0, alpha: 0.06), dark: .clear))
         /// Secondary button / unselected control fill: black 4% (light) / white 6% (dark).
         public static let secondaryFill = Color(nsColor: adaptive("secondaryFill", light: NSColor(calibratedWhite: 0, alpha: 0.04), dark: NSColor(calibratedWhite: 1, alpha: 0.06)))
         public static let secondaryFillPressed = Color(nsColor: adaptive("secondaryFillPressed", light: NSColor(calibratedWhite: 0, alpha: 0.09), dark: NSColor(calibratedWhite: 1, alpha: 0.12)))
         /// Segmented control track and thumb.
         public static let segmentTrack = Color(nsColor: adaptive("segmentTrack", light: NSColor(calibratedWhite: 0, alpha: 0.06), dark: NSColor(calibratedWhite: 1, alpha: 0.08)))
         public static let segmentThumb = Color(nsColor: adaptive("segmentThumb", light: .white, dark: NSColor(calibratedRed: 0x63/255, green: 0x63/255, blue: 0x66/255, alpha: 1)))
-        /// Settings page background and sidebar.
-        public static let pageBackground = Color(nsColor: .windowBackgroundColor)
+        /// Settings page background and sidebar: soft neutral grey in light (matching the resolution panel) so white cards lift cleanly.
+        public static let pageBackground = Color(nsColor: adaptive("pageBackground", light: NSColor(calibratedWhite: 0.945, alpha: 1), dark: .windowBackgroundColor))
+        public static let sidebarBackground = Color(nsColor: adaptive("sidebarBackground", light: NSColor(calibratedWhite: 0.975, alpha: 1), dark: .windowBackgroundColor))
         public static let separator = Color.primary.opacity(0.08)
         /// Line icons at the start of rows.
         public static let icon = Color.secondary
@@ -211,5 +212,92 @@ extension View {
         background(DesignTokens.Colors.card, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous)
                 .strokeBorder(DesignTokens.Colors.cardEdge, lineWidth: 0.5).allowsHitTesting(false))
+    }
+    /// Unified text-input / search-field surface across settings and sheets.
+    func dsInputField(radius: CGFloat = DesignTokens.radiusMd) -> some View {
+        background(DesignTokens.Colors.secondaryFill, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous)
+                .strokeBorder(DesignTokens.Colors.cardBorder, lineWidth: 0.5).allowsHitTesting(false))
+    }
+}
+
+/// Unified segmented control matching DESIGN.md: white raised thumb in light, #636366 in dark, never solid blue.
+struct DSSegmentedControl<Value: Hashable>: View {
+    struct Option: Identifiable {
+        let value: Value
+        let title: String
+        var id: Value { value }
+    }
+
+    let label: String
+    let options: [Option]
+    @Binding var selection: Value
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    init(_ label: String, options: [Option], selection: Binding<Value>) {
+        self.label = label
+        self.options = options
+        _selection = selection
+    }
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(options) { option in
+                let isSelected = option.value == selection
+                Button {
+                    withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.14)) {
+                        selection = option.value
+                    }
+                } label: {
+                    Text(option.title)
+                        .font(.system(size: DesignTokens.fontBody, weight: isSelected ? .medium : .regular))
+                        .foregroundStyle(isSelected ? DesignTokens.Colors.textPrimary : DesignTokens.Colors.textSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                        .padding(.horizontal, DesignTokens.spacingSm)
+                        .frame(maxWidth: .infinity, minHeight: DesignTokens.controlHeight - 4)
+                        .background {
+                            if isSelected {
+                                RoundedRectangle(cornerRadius: DesignTokens.radiusSm, style: .continuous)
+                                    .fill(DesignTokens.Colors.segmentThumb)
+                                    .shadow(color: Color.black.opacity(0.10), radius: 1, y: 0.5)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(label)：\(option.title)")
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+            }
+        }
+        .padding(2)
+        .frame(minHeight: DesignTokens.controlHeight)
+        .background(DesignTokens.Colors.segmentTrack, in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous))
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(label)
+    }
+}
+
+/// Shared modal sheet header: 15pt semibold title + circular close glyph.
+struct DSSheetHeader: View {
+    let title: String
+    let onClose: () -> Void
+    var closeHelp = "关闭"
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(title)
+                .font(.system(size: DesignTokens.fontEmphasis, weight: .semibold))
+                .lineLimit(1)
+            Spacer()
+            Button(action: onClose) { IconArt.closeGlyph() }
+                .buttonStyle(.plain)
+                .help(closeHelp)
+                .accessibilityLabel("关闭")
+                .keyboardShortcut(.cancelAction)
+        }
+        .padding(.horizontal, DesignTokens.spacingXl)
+        .padding(.vertical, 14)
+        .fixedSize(horizontal: false, vertical: true)
     }
 }

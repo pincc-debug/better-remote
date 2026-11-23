@@ -17,40 +17,63 @@ struct ShortcutApplicationPicker: View {
     }
 
     var body: some View {
-        VStack(spacing: 14) {
-            HStack {
-                Text("添加应用").font(.system(size: DesignTokens.fontEmphasis, weight: .semibold))
-                Spacer()
-                Button("取消", action: onCancel).buttonStyle(DSSecondaryButtonStyle()).keyboardShortcut(.cancelAction)
-            }
-            TextField("搜索应用", text: $query).textFieldStyle(.roundedBorder)
-            if loading {
-                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if filtered.isEmpty {
-                Text("未找到应用").foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 4) {
-                        ForEach(filtered) { app in
-                            Button {
-                                failed = !onSelect(app)
-                            } label: {
-                                HStack(spacing: 12) {
-                                    Image(nsImage: NSWorkspace.shared.icon(forFile: app.path))
-                                        .resizable().frame(width: 32, height: 32)
-                                    Text(app.name).lineLimit(1)
-                                    Spacer()
-                                    Image(systemName: "plus").foregroundStyle(.secondary)
-                                }
-                                .padding(8).contentShape(Rectangle())
-                            }.buttonStyle(.plain)
+        VStack(spacing: 0) {
+            DSSheetHeader(title: "添加应用", onClose: onCancel)
+            Divider()
+            VStack(spacing: 12) {
+                HStack(spacing: DesignTokens.spacingSm) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: DesignTokens.fontBody))
+                        .foregroundStyle(.secondary)
+                    TextField(text: $query, prompt: Text("搜索应用").foregroundStyle(DesignTokens.Colors.textTertiary)) { Text("搜索应用") }
+                        .textFieldStyle(.plain)
+                        .font(.system(size: DesignTokens.fontBody))
+                        .accessibilityLabel("搜索应用")
+                    if !query.isEmpty {
+                        Button { query = "" } label: {
+                            Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("清空搜索")
+                    }
+                }
+                .padding(.horizontal, 10)
+                .frame(minHeight: 34)
+                .dsInputField()
+
+                if loading {
+                    ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if filtered.isEmpty {
+                    Text("未找到应用").foregroundStyle(.secondary).frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView {
+                        LazyVStack(spacing: 6) {
+                            ForEach(filtered) { app in
+                                Button {
+                                    failed = !onSelect(app)
+                                } label: {
+                                    HStack(spacing: 12) {
+                                        Image(nsImage: NSWorkspace.shared.icon(forFile: app.path))
+                                            .resizable().frame(width: 32, height: 32)
+                                        Text(app.name)
+                                            .font(.system(size: DesignTokens.fontBody, weight: .medium))
+                                            .lineLimit(1)
+                                        Spacer()
+                                        Image(systemName: "plus").foregroundStyle(.secondary)
+                                    }
+                                    .padding(10)
+                                    .cardSurface()
+                                    .contentShape(Rectangle())
+                                }.buttonStyle(.plain)
+                            }
                         }
                     }
                 }
+                if failed { Text("保存失败，请重试").foregroundStyle(.red).font(.system(size: DesignTokens.fontCaption)) }
             }
-            if failed { Text("保存失败，请重试").foregroundStyle(.red).font(.system(size: DesignTokens.fontCaption)) }
+            .padding(DesignTokens.spacingXl)
         }
-        .padding(20).dialogFrame(width: 440, height: 480)
+        .dialogFrame(width: 440, height: 480)
         .background(DesignTokens.Colors.pageBackground)
         .task {
             let running = NSWorkspace.shared.runningApplications.filter { $0.activationPolicy == .regular }.compactMap(\.bundleURL)

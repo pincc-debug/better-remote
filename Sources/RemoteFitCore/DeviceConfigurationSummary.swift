@@ -46,4 +46,52 @@ public enum DeviceConfigurationSummary {
                          software: RemoteSoftware.savedDeviceSoftware(for: deviceID)) { names[$0] }
         return list.isEmpty ? usesDefault : list.joined(separator: " · ")
     }
+
+    /// Readable summary of the default configuration itself (shown on the 默认配置 banner).
+    public static func defaultSummary(in preferences: Preferences) -> String {
+        effectiveSummary(for: nil, in: preferences)
+    }
+
+    /// Always describes what actually takes effect when this device (or default) connects,
+    /// avoiding the misleading "使用默认" label for snapshotted device profiles.
+    public static func effectiveSummary(for deviceID: String?, in preferences: Preferences) -> String {
+        if let deviceID, !preferences.appliesConfiguration(for: deviceID) {
+            return "已停用"
+        }
+        let configuration = preferences.configuration(for: deviceID)
+        let software = deviceID.flatMap(RemoteSoftware.savedDeviceSoftware(for:))
+        let names = Dictionary(preferences.customPresets.map { ($0.id, $0.name) }, uniquingKeysWith: { a, _ in a })
+        var parts: [String] = []
+        if let id = configuration.selectedResolutionID {
+            parts.append(names[id] ?? "自定义分辨率")
+        } else {
+            parts.append("不切换分辨率")
+        }
+        if software?.supportsSingleFingerScroll != false, configuration.uuTouchScrollEnabled {
+            parts.append("单指滚动")
+        }
+        if software?.supportsScrollSpeed != false, configuration.uuScrollSpeedPercent < 100 {
+            parts.append("滚速 \(configuration.uuScrollSpeedPercent)%")
+        }
+        switch configuration.toolbarWhenConnected {
+        case .toolbar: parts.append("显示工具条")
+        case .ball: parts.append("悬浮球")
+        case .hidden: parts.append("隐藏工具条")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    /// Names of saved devices (and/or 默认配置) currently bound to `presetID`.
+    public static func users(of presetID: String, in preferences: Preferences) -> [String] {
+        var result: [String] = []
+        if preferences.configuration(for: nil).selectedResolutionID == presetID {
+            result.append("默认配置")
+        }
+        for device in preferences.remoteDevices where device.appliesConfiguration {
+            if preferences.configuration(for: device.id).selectedResolutionID == presetID {
+                result.append(device.displayName)
+            }
+        }
+        return result
+    }
 }

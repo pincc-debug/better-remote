@@ -105,4 +105,16 @@ final class DeviceConfigurationSummaryTests: XCTestCase {
         XCTAssertFalse(RemoteSoftware.anyDesk.supportsScrollSpeed)
     }
 
+    func testEffectiveSummaryShowsActualConfigInsteadOfUsesDefault() {
+        var p = preferences()
+        let id = "uu:window:Phone"
+        var c = p.configuration(for: nil)
+        c.selectResolution("p15")
+        c.toolbarWhenConnected = .toolbar
+        p.setConfiguration(c, for: nil)
+        p.setConfiguration(c, for: id)
+        XCTAssertEqual(DeviceConfigurationSummary.effectiveSummary(for: nil, in: p), "iPhone 15 · 显示工具条")
+        XCTAssertEqual(DeviceConfigurationSummary.effectiveSummary(for: id, in: p), "iPhone 15 · 显示工具条")
+        XCTAssertEqual(DeviceConfigurationSummary.users(of: "p15", in: p), ["默认配置", "Phone"])
+    }
 }

@@ -72,7 +72,10 @@ actor RemoteSessionProbe {
             uuDevice = nil
         }
         if identifyUU, snapshot.active.contains(.uu), !uuReadAttempted {
-            let result = await UUWindowIdentification.identify()
+            let uuServerPath = assertions.first {
+                $0.executable.hasSuffix("/UURemote.app/Contents/Helpers/UURemoteServer")
+            }?.executable
+            let result = await UUWindowIdentification.identify(serverPath: uuServerPath)
             if Task.isCancelled {
                 uuReadAttempted = false
                 uuIdentifyFailures = 0

@@ -63,6 +63,8 @@ enum DiagnosticLogArchive {
         "RemoteFit.log.previous",
         "RemoteFit.previous.log",
         "Operations.log",
+        "Operations.log.previous",
+        "Operations.previous.log",
         "WindowActions.log",
         "WindowActions.log.previous",
         "WindowActions.previous.log"

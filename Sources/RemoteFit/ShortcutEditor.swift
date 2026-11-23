@@ -44,15 +44,16 @@ struct ShortcutEditor: View {
 
             // Only the middle scrolls; header and footer stay pinned.
             ScrollView {
-                VStack(spacing: 16) {
+                VStack(spacing: 12) {
                     nameSection
                     keySection
                     iconSection
                 }
                 .padding(.horizontal, 20)
-                .padding(.vertical, 16)
+                .padding(.vertical, 12)
                 .background(Self.heightReader { bodyHeight = $0 })
             }
+            .overflowEdgeFade()
             .frame(maxHeight: .infinity)
             .layoutPriority(-1)
 
@@ -95,21 +96,7 @@ struct ShortcutEditor: View {
     // MARK: - Header
 
     private var headerView: some View {
-        HStack(spacing: 14) {
-            Text(onDelete == nil ? "添加操作" : "编辑操作")
-                .font(.system(size: DesignTokens.fontEmphasis, weight: .semibold))
-                .lineLimit(1)
-
-            Spacer()
-
-            Button(action: onCancel) { IconArt.closeGlyph() }
-            .buttonStyle(.plain)
-            .help("关闭，不保存修改")
-            .accessibilityLabel("关闭")
-        }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
-        .fixedSize(horizontal: false, vertical: true)
+        DSSheetHeader(title: onDelete == nil ? "添加操作" : "编辑操作", onClose: onCancel, closeHelp: "关闭，不保存修改")
     }
 
     // MARK: - Name and Icon
@@ -119,9 +106,12 @@ struct ShortcutEditor: View {
             Text("名称")
                 .font(.system(size: DesignTokens.fontBody, weight: .medium))
                 .frame(width: 50, alignment: .leading)
-            TextField("操作名称", text: $name)
-                .textFieldStyle(.roundedBorder)
-                .controlSize(.regular)
+            TextField(text: $name, prompt: Text("操作名称").foregroundStyle(DesignTokens.Colors.textTertiary)) { Text("名称") }
+                .textFieldStyle(.plain)
+                .font(.system(size: DesignTokens.fontBody))
+                .padding(.horizontal, 10)
+                .frame(minHeight: DesignTokens.controlHeight)
+                .dsInputField()
                 .onChange(of: name) { _, newName in
                     if !userExplicitlySelectedIcon, let suggested = ShortcutIcon.suggested(for: newName, keyLabel: key?.label ?? "") {
                         icon = suggested
@@ -136,8 +126,9 @@ struct ShortcutEditor: View {
             HStack(spacing: 10) {
                 Text("图标")
                     .font(.system(size: DesignTokens.fontBody, weight: .medium))
+                    .frame(width: 50, alignment: .leading)
                 IconArt.image(icon.rawValue, pointSize: DesignTokens.fontEmphasis)
-                    .frame(width: 24)
+                    .frame(width: 24, alignment: .leading)
                 Text(icon.title)
                     .font(.system(size: DesignTokens.fontBody))
                     .foregroundStyle(.secondary)
@@ -179,15 +170,12 @@ struct ShortcutEditor: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("按键组合")
-                    .font(.system(size: DesignTokens.fontBody, weight: .semibold))
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: DesignTokens.fontBody, weight: .medium))
                 Spacer()
-                Picker("", selection: $useRecorder) {
-                    Text("手动配置").tag(false)
-                    Text("按键录制").tag(true)
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 160)
+                DSSegmentedControl("录入方式",
+                                   options: [.init(value: false, title: "手动配置"), .init(value: true, title: "按键录制")],
+                                   selection: $useRecorder)
+                    .frame(width: 172)
             }
 
             VStack(alignment: .leading, spacing: 12) {
@@ -205,13 +193,16 @@ struct ShortcutEditor: View {
                         Text("主按键")
                             .font(.system(size: DesignTokens.fontBody, weight: .medium))
                             .frame(width: 50, alignment: .leading)
-                        Picker("", selection: Binding(get: { key?.code ?? UInt16.max }, set: { setManualKey($0, modifiers: key?.modifiers ?? 0) })) {
-                            Text("请选择按键…").tag(UInt16.max)
-                            ForEach(Self.keys, id: \.0) { entry in
-                                Text(entry.1).tag(entry.0)
-                            }
+                        GlassDropdown(
+                            label: "主按键",
+                            items: [GlassDropdownItem(id: UInt16.max, title: "请选择按键…")]
+                                + Self.keys.map { GlassDropdownItem(id: $0.0, title: $0.1) },
+                            selection: key?.code ?? UInt16.max,
+                            placeholder: "请选择按键…",
+                            flexibleWidth: true
+                        ) { code in
+                            setManualKey(code, modifiers: key?.modifiers ?? 0)
                         }
-                        .frame(maxWidth: .infinity)
                     }
 
                     VStack(alignment: .leading, spacing: 6) {
@@ -219,7 +210,7 @@ struct ShortcutEditor: View {
                             .font(.system(size: DesignTokens.fontBody, weight: .medium))
                             .foregroundStyle(.secondary)
 
-                        HStack(spacing: 8) {
+                        ProportionalRowLayout(spacing: 6) {
                             keycapButton("⌘", title: "Command", mask: 1 << 20)
                             keycapButton("⌥", title: "Option", mask: 1 << 19)
                             keycapButton("⌃", title: "Control", mask: 1 << 18)
@@ -230,12 +221,12 @@ struct ShortcutEditor: View {
                 }
 
                 // Current keycap preview badge
-                HStack(spacing: 6) {
+                HStack(spacing: 10) {
                     Text("快捷键")
-                        .font(.system(size: DesignTokens.fontBody))
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: DesignTokens.fontBody, weight: .medium))
+                        .frame(width: 50, alignment: .leading)
                     if let key, key.isValid {
-                        Text(key.label)
+                        Text(key.displayLabel)
                             .font(.system(size: DesignTokens.fontBody, weight: .semibold, design: .monospaced))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
@@ -301,20 +292,25 @@ struct ShortcutEditor: View {
             guard let key else { return }
             setManualKey(key.code, modifiers: key.modifiers ^ mask)
         } label: {
-            HStack(spacing: DesignTokens.spacingXs) {
+            HStack(spacing: 3) {
                 Text(symbol)
                     .font(.system(size: DesignTokens.fontBody, weight: .semibold))
+                    .foregroundStyle(isPressed ? DesignTokens.Colors.accent : DesignTokens.Colors.textPrimary)
                 Text(title)
                     .font(.system(size: DesignTokens.fontCaption, weight: .medium))
+                    .foregroundStyle(DesignTokens.Colors.textPrimary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
             }
+            .padding(.horizontal, 8)
             .frame(maxWidth: .infinity, minHeight: 32, maxHeight: 32)
             .background(
                 isPressed ? DesignTokens.Colors.accentFill : DesignTokens.Colors.secondaryFill,
-                in: RoundedRectangle(cornerRadius: DesignTokens.radiusSm, style: .continuous)
+                in: RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous)
             )
-            .foregroundStyle(isPressed ? DesignTokens.Colors.accent : DesignTokens.Colors.textPrimary)
+            .overlay(
+                RoundedRectangle(cornerRadius: DesignTokens.radiusMd, style: .continuous)
+                    .strokeBorder(isPressed ? DesignTokens.Colors.accent : Color.clear, lineWidth: DesignTokens.selectedStroke)
+            )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -404,4 +400,30 @@ struct ShortcutEditor: View {
         (103, "F11"),
         (111, "F12")
     ]
+}
+
+/// Distributes available horizontal space beyond each subview's natural width equally,
+/// so wider modifier labels (`⌘ Command`) stay at full font size alongside shorter ones (`⇧ Shift`).
+private struct ProportionalRowLayout: Layout {
+    let spacing: CGFloat
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let ideals = subviews.map { $0.sizeThatFits(.unspecified) }
+        let height = ideals.map(\.height).max() ?? 32
+        let width = proposal.width ?? (ideals.map(\.width).reduce(0, +) + spacing * CGFloat(max(0, subviews.count - 1)))
+        return CGSize(width: width, height: height)
+    }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard !subviews.isEmpty else { return }
+        let ideals = subviews.map { $0.sizeThatFits(.unspecified) }
+        let totalSpacing = spacing * CGFloat(max(0, subviews.count - 1))
+        let totalIdeal = ideals.map(\.width).reduce(0, +)
+        let extra = (bounds.width - totalSpacing - totalIdeal) / CGFloat(subviews.count)
+        var x = bounds.minX
+        for (index, subview) in subviews.enumerated() {
+            let w = max(24, ideals[index].width + extra)
+            subview.place(at: CGPoint(x: x, y: bounds.minY), anchor: .topLeading,
+                          proposal: ProposedViewSize(width: w, height: bounds.height))
+            x += w + spacing
+        }
+    }
 }
